@@ -1,7 +1,7 @@
 /*
  * vkrunner
  *
- * Copyright (C) 2018 Intel Corporation
+ * Copyright (C) 2017 Neil Roberts
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,28 +23,35 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "config.h"
+#ifndef VR_WINDOW_H
+#define VR_WINDOW_H
 
-#include <stdlib.h>
-
+#include <stdbool.h>
 #include "vr-vk.h"
-#include "vr-window.h"
 
-int
-main(int argc, char **argv)
-{
-        int ret = EXIT_SUCCESS;
-        struct vr_window *window = NULL;
+struct vr_window {
+        VkDevice device;
+        VkPhysicalDevice physical_device;
+        VkPhysicalDeviceMemoryProperties memory_properties;
+        VkPhysicalDeviceProperties device_properties;
+        VkPhysicalDeviceFeatures features;
+        VkDescriptorPool descriptor_pool;
+        VkCommandPool command_pool;
+        VkCommandBuffer command_buffer;
+        VkRenderPass render_pass;
+        VkQueue queue;
+        int queue_family;
+        VkInstance vk_instance;
+        VkFence vk_fence;
+        VkSemaphore vk_semaphore;
 
-        window = vr_window_new();
-        if (window == NULL) {
-                ret = EXIT_FAILURE;
-                goto out;
-        }
+        bool libvulkan_loaded;
+};
 
-out:
-        if (window)
-                vr_window_free(window);
+struct vr_window *
+vr_window_new(void);
 
-        return ret;
-}
+void
+vr_window_free(struct vr_window *window);
+
+#endif /* VR_WINDOW_H */

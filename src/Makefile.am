@@ -15,6 +15,8 @@ vkrunner_SOURCES = \
 	vr-vk-core-funcs.h \
 	vr-vk-device-funcs.h \
 	vr-vk-instance-funcs.h \
+	vr-window.c \
+	vr-window.h \
 	main.c \
 	$(NULL)
 
