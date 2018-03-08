@@ -6,6 +6,8 @@ AM_CFLAGS = \
 	$(NULL)
 
 vkrunner_SOURCES = \
+	vr-util.c \
+	vr-util.h \
 	main.c \
 	$(NULL)
 

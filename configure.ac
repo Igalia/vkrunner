@@ -19,6 +19,8 @@ AC_C_BIGENDIAN([AC_DEFINE([HAVE_BIG_ENDIAN], [1], [System is big-endian])],
                [AC_DEFINE([HAVE_LITTLE_ENDIAN], [1],
                           [System is little-endian])])
 
+AC_CHECK_FUNCS([ffs ffsl])
+
 ALL_WARNING_CFLAGS="-Wall -Wuninitialized -Wempty-body -Wformat
                     -Wformat-security -Winit-self -Wundef
                     -Wvla -Wpointer-arith -Wmissing-declarations"
