@@ -26,20 +26,43 @@
 #include "config.h"
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "vr-vk.h"
 #include "vr-window.h"
+#include "vr-script.h"
+
+static bool
+process_script(const char *filename)
+{
+        struct vr_script *script = vr_script_load(filename);
+
+        if (script == NULL)
+                return false;
+
+        vr_script_free(script);
+
+        return true;
+}
 
 int
 main(int argc, char **argv)
 {
         int ret = EXIT_SUCCESS;
         struct vr_window *window = NULL;
+        int i;
 
         window = vr_window_new();
         if (window == NULL) {
                 ret = EXIT_FAILURE;
                 goto out;
+        }
+
+        for (i = 1; i < argc; i++) {
+                if (!process_script(argv[i])) {
+                        ret = EXIT_FAILURE;
+                        goto out;
+                }
         }
 
 out:
