@@ -21,6 +21,8 @@ vkrunner_SOURCES = \
 	vr-vk-core-funcs.h \
 	vr-vk-device-funcs.h \
 	vr-vk-instance-funcs.h \
+	vr-pipeline.c \
+	vr-pipeline.h \
 	vr-subprocess.c \
 	vr-subprocess.h \
 	vr-window.c \
