@@ -31,6 +31,9 @@
 #include "vr-allocate-store.h"
 #include "vr-flush-memory.h"
 
+#include <math.h>
+#include <stdio.h>
+
 struct test_buffer {
         struct vr_list link;
         VkBuffer buffer;
@@ -44,6 +47,9 @@ struct test_data {
         struct vr_pipeline *pipeline;
         struct vr_list buffers;
 };
+
+static const float
+tolerance[4] = { 0.01f, 0.01f, 0.01f, 0.01f };
 
 static struct test_buffer *
 allocate_test_buffer(struct test_data *data,
@@ -311,6 +317,90 @@ draw_rect(struct test_data *data,
         return true;
 }
 
+static bool
+compare_pixels(const float *color1,
+               const float *color2,
+               const float *tolerance)
+{
+        for (int p = 0; p < 4; ++p)
+                if (fabsf(color1[p] - color2[p]) > tolerance[p])
+                        return false;
+        return true;
+}
+
+static void
+print_components_float(const float *pixel)
+{
+        int p;
+        for (p = 0; p < 4; ++p)
+                printf(" %f", pixel[p]);
+}
+
+static void
+print_bad_pixel(int x, int y,
+                const float *expected,
+                const float *observed)
+{
+        printf("Probe color at (%i,%i)\n"
+               "  Expected:",
+               x, y);
+        print_components_float(expected);
+        printf("\n"
+               "  Observed:");
+        print_components_float(observed);
+        printf("\n");
+}
+
+static void
+load_pixel(const uint8_t *fb,
+           float *pixel)
+{
+        for (int i = 0; i < 3; i++)
+                pixel[2 - i] = fb[i] / 255.0f;
+        pixel[3] = fb[3] / 255.0f;
+}
+
+static bool
+probe_rect_rgba(struct test_data *data,
+                const struct vr_script_command *command)
+{
+        bool ret = true;
+
+        /* End the paint to copy the framebuffer into the linear buffer */
+        if (!end_paint(data))
+                ret = false;
+
+        for (int y = 0; y < command->probe_rect.h; y++) {
+                const uint8_t *p =
+                        ((y + command->probe_rect.y) *
+                         data->window->linear_memory_stride +
+                         command->probe_rect.x * 4 +
+                         (uint8_t *) data->window->linear_memory_map);
+                for (int x = 0; x < command->probe_rect.w; x++) {
+                        float pixel[4];
+                        load_pixel(p, pixel);
+                        p += 4;
+
+                        if (!compare_pixels(pixel,
+                                            command->probe_rect.color,
+                                            tolerance)) {
+                                ret = false;
+                                print_bad_pixel(x + command->probe_rect.x,
+                                                y + command->probe_rect.y,
+                                                command->probe_rect.color,
+                                                pixel);
+                                goto done;
+                        }
+                }
+        }
+done:
+
+        if (!begin_paint(data))
+                ret = false;
+
+        return ret;
+}
+
 bool
 vr_test_run(struct vr_window *window,
             struct vr_pipeline *pipeline,
@@ -333,6 +423,10 @@ vr_test_run(struct vr_window *window,
                 switch (command->op) {
                 case VR_SCRIPT_OP_DRAW_RECT:
                         if (!draw_rect(&data, command))
+                                ret = false;
+                        break;
+                case VR_SCRIPT_OP_PROBE_RECT_RGBA:
+                        if (!probe_rect_rgba(&data, command))
                                 ret = false;
                         break;
                 }

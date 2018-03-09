@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <ctype.h>
+#include <limits.h>
 
 #include "vr-script.h"
 #include "vr-list.h"
@@ -134,18 +135,59 @@ is_end(const char *p)
 static bool
 parse_floats(const char **p,
              float *out,
-             int n_floats)
+             int n_floats,
+             const char *sep)
 {
         char *tail;
 
         for (int i = 0; i < n_floats; i++) {
                 while (isspace(**p))
                         (*p)++;
+
                 errno = 0;
                 *(out++) = strtof(*p, &tail);
                 if (errno != 0 || tail == *p)
                         return false;
                 *p = tail;
+
+                if (sep && i < n_floats - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
+parse_ints(const char **p,
+           int *out,
+           int n_ints,
+           const char *sep)
+{
+        long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtol(*p, &tail, 10);
+                if (errno != 0 || tail == *p ||
+                    v < INT_MIN || v > INT_MAX)
+                        return false;
+                *(out++) = (int) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
         }
 
         return true;
@@ -174,10 +216,35 @@ process_test_line(struct load_state *data)
         command->line_num = data->line_num;
 
         if (looking_at(&p, "draw rect ")) {
-                if (!parse_floats(&p, &command->draw_rect.x, 4) ||
+                if (!parse_floats(&p, &command->draw_rect.x, 4, NULL) ||
                     !is_end(p))
                         goto error;
                 command->op = VR_SCRIPT_OP_DRAW_RECT;
+                return true;
+        }
+
+        if (looking_at(&p, "probe rect rgba ")) {
+                while (isspace(*p))
+                        p++;
+                if (*(p++) != '(')
+                        goto error;
+                if (!parse_ints(&p, &command->probe_rect.x, 4, ","))
+                        goto error;
+                while (isspace(*p))
+                        p++;
+                if (*(p++) != ')')
+                        goto error;
+                while (isspace(*p))
+                        p++;
+                if (*(p++) != '(')
+                        goto error;
+                if (!parse_floats(&p, command->probe_rect.color, 4, ","))
+                        goto error;
+                while (isspace(*p))
+                        p++;
+                if (*p != ')' || !is_end(p + 1))
+                        goto error;
+                command->op = VR_SCRIPT_OP_PROBE_RECT_RGBA;
                 return true;
         }
 

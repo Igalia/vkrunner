@@ -40,7 +40,8 @@ enum vr_script_shader_stage {
 #define VR_SCRIPT_N_STAGES 6
 
 enum vr_script_op {
-        VR_SCRIPT_OP_DRAW_RECT
+        VR_SCRIPT_OP_DRAW_RECT,
+        VR_SCRIPT_OP_PROBE_RECT_RGBA
 };
 
 struct vr_script_shader {
@@ -57,6 +58,11 @@ struct vr_script_command {
                 struct {
                         float x, y, w, h;
                 } draw_rect;
+
+                struct {
+                        int x, y, w, h;
+                        float color[4];
+                } probe_rect;
         };
 };
 
