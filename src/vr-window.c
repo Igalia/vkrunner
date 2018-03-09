@@ -31,6 +31,7 @@
 #include "vr-window.h"
 #include "vr-util.h"
 #include "vr-error-message.h"
+#include "vr-allocate-store.h"
 
 #define COLOR_IMAGE_FORMAT VK_FORMAT_B8G8R8A8_SRGB
 
@@ -67,8 +68,198 @@ find_queue_family(struct vr_window *window,
 }
 
 static void
+destroy_framebuffer_resources(struct vr_window *window)
+{
+        if (window->color_image_view) {
+                vr_vk.vkDestroyImageView(window->device,
+                                         window->color_image_view,
+                                         NULL /* allocator */);
+                window->color_image_view = NULL;
+        }
+        if (window->framebuffer) {
+                vr_vk.vkDestroyFramebuffer(window->device,
+                                           window->framebuffer,
+                                           NULL /* allocator */);
+                window->framebuffer = NULL;
+        }
+        if (window->linear_memory_map) {
+                vr_vk.vkUnmapMemory(window->device,
+                                    window->linear_memory);
+                window->linear_memory_map = NULL;
+        }
+        if (window->linear_memory) {
+                vr_vk.vkFreeMemory(window->device,
+                                   window->linear_memory,
+                                   NULL /* allocator */);
+                window->linear_memory = NULL;
+        }
+        if (window->memory) {
+                vr_vk.vkFreeMemory(window->device,
+                                   window->memory,
+                                   NULL /* allocator */);
+                window->memory = NULL;
+        }
+        if (window->linear_image) {
+                vr_vk.vkDestroyImage(window->device,
+                                     window->linear_image,
+                                     NULL /* allocator */);
+                window->linear_image = NULL;
+        }
+        if (window->color_image) {
+                vr_vk.vkDestroyImage(window->device,
+                                     window->color_image,
+                                     NULL /* allocator */);
+                window->color_image = NULL;
+        }
+}
+
+static bool
+init_framebuffer_resources(struct vr_window *window)
+{
+        VkResult res;
+        int linear_memory_type;
+
+        VkImageCreateInfo image_create_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+                .imageType = VK_IMAGE_TYPE_2D,
+                .format = COLOR_IMAGE_FORMAT,
+                .extent = {
+                        .width = VR_WINDOW_WIDTH,
+                        .height = VR_WINDOW_HEIGHT,
+                        .depth = 1
+                },
+                .mipLevels = 1,
+                .arrayLayers = 1,
+                .samples = VK_SAMPLE_COUNT_1_BIT,
+                .tiling = VK_IMAGE_TILING_OPTIMAL,
+                .usage = (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT),
+                .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+        };
+        res = vr_vk.vkCreateImage(window->device,
+                                  &image_create_info,
+                                  NULL, /* allocator */
+                                  &window->color_image);
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error creating VkImage");
+                return false;
+        }
+
+        image_create_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        image_create_info.tiling = VK_IMAGE_TILING_LINEAR;
+        res = vr_vk.vkCreateImage(window->device,
+                                  &image_create_info,
+                                  NULL, /* allocator */
+                                  &window->linear_image);
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error creating VkImage");
+                return false;
+        }
+
+        res = vr_allocate_store_image(window,
+                                      0, /* memory_type_flags */
+                                      1, /* n_images */
+                                      (VkImage[]) { window->color_image },
+                                      &window->memory,
+                                      NULL /* memory_type_index */);
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error allocating framebuffer memory");
+                return false;
+        }
+
+        res = vr_allocate_store_image(window,
+                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                                      1, /* n_images */
+                                      &window->linear_image,
+                                      &window->linear_memory,
+                                      &linear_memory_type);
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error allocating framebuffer memory");
+                return false;
+        }
+
+        window->need_linear_memory_invalidate =
+                (window->memory_properties.
+                 memoryTypes[linear_memory_type].propertyFlags &
+                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0;
+
+        VkImageSubresource linear_subresource = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel = 0,
+                .arrayLayer = 0
+        };
+        VkSubresourceLayout linear_layout;
+        vr_vk.vkGetImageSubresourceLayout(window->device,
+                                          window->linear_image,
+                                          &linear_subresource,
+                                          &linear_layout);
+        window->linear_memory_stride = linear_layout.rowPitch;
+
+        res = vr_vk.vkMapMemory(window->device,
+                                window->linear_memory,
+                                0, /* offset */
+                                VK_WHOLE_SIZE,
+                                0, /* flags */
+                                &window->linear_memory_map);
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error mapping linear memory");
+                return false;
+        }
+
+        VkImageViewCreateInfo image_view_create_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = window->color_image,
+                .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                .format = COLOR_IMAGE_FORMAT,
+                .components = {
+                        .r = VK_COMPONENT_SWIZZLE_R,
+                        .g = VK_COMPONENT_SWIZZLE_G,
+                        .b = VK_COMPONENT_SWIZZLE_B,
+                        .a = VK_COMPONENT_SWIZZLE_A
+                },
+                .subresourceRange = {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1
+                }
+        };
+        res = vr_vk.vkCreateImageView(window->device,
+                                      &image_view_create_info,
+                                      NULL, /* allocator */
+                                      &window->color_image_view);
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error creating image view");
+                return false;
+        }
+
+        VkImageView attachments[] = {
+                window->color_image_view,
+        };
+        VkFramebufferCreateInfo framebuffer_create_info = {
+                .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                .renderPass = window->render_pass,
+                .attachmentCount = VR_N_ELEMENTS(attachments),
+                .pAttachments = attachments,
+                .width = VR_WINDOW_WIDTH,
+                .height = VR_WINDOW_HEIGHT,
+                .layers = 1
+        };
+        res = vr_vk.vkCreateFramebuffer(window->device,
+                                        &framebuffer_create_info,
+                                        NULL, /* allocator */
+                                        &window->framebuffer);
+
+        return true;
+}
+
+static void
 deinit_vk(struct vr_window *window)
 {
+        destroy_framebuffer_resources(window);
+
         if (window->vk_fence) {
                 vr_vk.vkDestroyFence(window->device,
                                      window->vk_fence,
@@ -336,6 +527,9 @@ init_vk(struct vr_window *window)
                 vr_error_message("Error creating fence");
                 goto error;
         }
+
+        if (!init_framebuffer_resources(window))
+                goto error;
 
         return true;
 

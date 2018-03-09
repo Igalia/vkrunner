@@ -29,6 +29,9 @@
 #include <stdbool.h>
 #include "vr-vk.h"
 
+#define VR_WINDOW_WIDTH 250
+#define VR_WINDOW_HEIGHT 250
+
 struct vr_window {
         VkDevice device;
         VkPhysicalDevice physical_device;
@@ -44,6 +47,16 @@ struct vr_window {
         VkInstance vk_instance;
         VkFence vk_fence;
         VkSemaphore vk_semaphore;
+
+        VkImage color_image;
+        VkImage linear_image;
+        VkDeviceMemory memory;
+        VkDeviceMemory linear_memory;
+        bool need_linear_memory_invalidate;
+        void *linear_memory_map;
+        VkDeviceSize linear_memory_stride;
+        VkImageView color_image_view;
+        VkFramebuffer framebuffer;
 
         bool libvulkan_loaded;
 };
