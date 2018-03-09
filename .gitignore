@@ -16,6 +16,8 @@
 /src/Makefile
 /src/Makefile.in
 /src/vkrunner
+/examples/Makefile
+/examples/Makefile.in
 /stamp-h1
 *.o
 .deps

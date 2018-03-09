@@ -1,0 +1,33 @@
+[vertex shader]
+#version 430
+
+layout(location = 0) in vec4 pos;
+
+void
+main()
+{
+        gl_Position = pos;
+}
+
+[fragment shader]
+#version 430
+
+layout(location = 0) out vec4 color;
+
+void
+main()
+{
+        if (gl_FragCoord.x < 83.33333)
+                color = vec4(1.0, 0.0, 0.0, 1.0);
+        else if (gl_FragCoord.x < 166.66666)
+                color = vec4(1.0, 1.0, 1.0, 1.0);
+        else
+                color = vec4(0.0, 0.0, 1.0, 1.0);
+}
+
+[test]
+draw rect -1 -1 2 2
+
+probe rect rgba (1, 0, 81, 250) (1, 0, 0, 1)
+probe rect rgba (85, 0, 81, 250) (1, 1, 1, 1)
+probe rect rgba (168, 0, 81, 250) (0, 0, 1, 1)

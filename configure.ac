@@ -38,4 +38,5 @@ AC_SUBST([EXTRA_LIBS])
 AC_OUTPUT(
 Makefile
 src/Makefile
+examples/Makefile
 )
