@@ -32,6 +32,7 @@
 #include "vr-window.h"
 #include "vr-script.h"
 #include "vr-pipeline.h"
+#include "vr-test.h"
 
 static bool
 process_script(struct vr_window *window,
@@ -48,6 +49,9 @@ process_script(struct vr_window *window,
         if (pipeline == NULL) {
                 ret = false;
         } else {
+                if (!vr_test_run(window, pipeline, script))
+                        ret = false;
+
                 vr_pipeline_free(pipeline);
         }
 
