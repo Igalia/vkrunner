@@ -6,6 +6,8 @@ AM_CFLAGS = \
 	$(NULL)
 
 vkrunner_SOURCES = \
+	vr-buffer.c \
+	vr-buffer.h \
 	vr-error-message.c \
 	vr-error-message.h \
 	vr-util.c \
