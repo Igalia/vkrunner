@@ -23,6 +23,7 @@
 
 #include "config.h"
 #include "vr-subprocess.h"
+#include "vr-error-message.h"
 
 #include <unistd.h>
 #include <stdio.h>
@@ -189,4 +190,31 @@ vr_subprocess(char * const *arguments,
 
                 return ret;
         }
+}
+
+bool
+vr_subprocess_command(char * const *arguments)
+{
+        pid_t pid;
+
+        pid = fork();
+
+        if (pid < 0) {
+                vr_error_message("fork failed: %s\n", strerror(errno));
+                return false;
+        } else if (pid == 0) {
+                for (int i = 3; i < 256; i++)
+                        close(i);
+                execvp(arguments[0], arguments);
+                fprintf(stderr, "%s: %s\n", arguments[0], strerror(errno));
+                exit(EXIT_FAILURE);
+        } else {
+                int status;
+                while (waitpid(pid, &status, 0 /* options */) == -1);
+
+                if (!WIFEXITED(status) || WEXITSTATUS(status) != 0)
+                        return false;
+        }
+
+        return true;
 }

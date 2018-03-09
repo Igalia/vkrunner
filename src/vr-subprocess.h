@@ -35,4 +35,7 @@ vr_subprocess(char * const *arguments,
               size_t *output_size,
               uint8_t **output);
 
+bool
+vr_subprocess_command(char * const *arguments);
+
 #endif /* __VR_SUBPROCESS_H__ */
