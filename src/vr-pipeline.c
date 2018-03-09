@@ -45,6 +45,71 @@ stage_names[VR_SCRIPT_N_STAGES] = {
         [VR_SCRIPT_SHADER_STAGE_COMPUTE] = "comp",
 };
 
+static const VkViewport
+base_viewports[] = {
+        {
+                .width = VR_WINDOW_WIDTH,
+                .height = VR_WINDOW_HEIGHT,
+                .minDepth = 0.0f,
+                .maxDepth = 1.0f
+        }
+};
+
+static const VkRect2D
+base_scissors[] = {
+        {
+                .extent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT }
+        }
+};
+
+static const VkPipelineViewportStateCreateInfo
+base_viewport_state = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = VR_N_ELEMENTS(base_viewports),
+        .pViewports = base_viewports,
+        .scissorCount = VR_N_ELEMENTS(base_scissors),
+        .pScissors = base_scissors
+};
+
+static const VkPipelineRasterizationStateCreateInfo
+base_rasterization_state = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .polygonMode = VK_POLYGON_MODE_FILL,
+        .cullMode = VK_CULL_MODE_NONE,
+        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .lineWidth = 1.0f
+};
+
+static const VkPipelineMultisampleStateCreateInfo
+base_multisample_state = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
+};
+
+static const VkPipelineDepthStencilStateCreateInfo
+base_depth_stencil_state = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .depthTestEnable = false,
+        .depthWriteEnable = false,
+        .depthCompareOp = VK_COMPARE_OP_LESS
+};
+
+static const VkPipelineColorBlendAttachmentState base_blend_attachments[] = {
+        {
+                .blendEnable = false,
+                .colorWriteMask = (VK_COLOR_COMPONENT_R_BIT |
+                                   VK_COLOR_COMPONENT_G_BIT |
+                                   VK_COLOR_COMPONENT_B_BIT |
+                                   VK_COLOR_COMPONENT_A_BIT)
+        }
+};
+
+static const VkPipelineColorBlendStateCreateInfo base_color_blend_state = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .attachmentCount = VR_N_ELEMENTS(base_blend_attachments),
+        .pAttachments = base_blend_attachments
+};
+
 static bool
 create_named_temp_file(FILE **stream_out,
                        char **filename_out)
@@ -200,10 +265,123 @@ out:
         return module;
 }
 
+static VkPipeline
+create_vk_pipeline(struct vr_pipeline *pipeline)
+{
+        struct vr_window *window = pipeline->window;
+        VkResult res;
+        int num_stages = 0;
+
+        VkPipelineShaderStageCreateInfo stages[VR_SCRIPT_N_STAGES] = { };
+
+        for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
+                if (pipeline->modules[i] == NULL)
+                        continue;
+                stages[num_stages].sType =
+                        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+                stages[num_stages].stage = VK_SHADER_STAGE_VERTEX_BIT << i;
+                stages[num_stages].module = pipeline->modules[i];
+                stages[num_stages].pName = "main";
+                num_stages++;
+        }
+
+        VkVertexInputBindingDescription input_binding_descriptions[] = {
+                {
+                        .binding = 0,
+                        .stride = sizeof (struct vr_pipeline_vertex),
+                        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
+                },
+        };
+        VkVertexInputAttributeDescription attribute_descriptions[] = {
+                {
+                        .location = 0,
+                        .binding = 0,
+                        .format = VK_FORMAT_R32G32B32_SFLOAT,
+                        .offset = offsetof(struct vr_pipeline_vertex, x)
+                },
+        };
+        VkPipelineVertexInputStateCreateInfo vertex_input_state = {
+                .sType =
+                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+                .vertexBindingDescriptionCount =
+                VR_N_ELEMENTS(input_binding_descriptions),
+                .pVertexBindingDescriptions = input_binding_descriptions,
+                .vertexAttributeDescriptionCount =
+                VR_N_ELEMENTS(attribute_descriptions),
+                .pVertexAttributeDescriptions = attribute_descriptions
+        };
+        VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {
+                .sType =
+                VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+                .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                .primitiveRestartEnable = false
+        };
+
+        VkGraphicsPipelineCreateInfo info = {
+                .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+                .pViewportState = &base_viewport_state,
+                .pRasterizationState = &base_rasterization_state,
+                .pMultisampleState = &base_multisample_state,
+                .pDepthStencilState = &base_depth_stencil_state,
+                .pColorBlendState = &base_color_blend_state,
+                .subpass = 0,
+                .basePipelineHandle = NULL,
+                .basePipelineIndex = -1,
+
+                .stageCount = num_stages,
+                .pStages = stages,
+                .pVertexInputState = &vertex_input_state,
+                .pInputAssemblyState = &input_assembly_state,
+                .layout = pipeline->layout,
+                .renderPass = window->render_pass
+        };
+
+        VkPipeline vk_pipeline;
+
+        res = vr_vk.vkCreateGraphicsPipelines(window->device,
+                                              pipeline->pipeline_cache,
+                                              1, /* nCreateInfos */
+                                              &info,
+                                              NULL, /* allocator */
+                                              &vk_pipeline);
+
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error creating VkPipeline");
+                return NULL;
+        }
+
+        return vk_pipeline;
+}
+
+static VkPipelineLayout
+create_vk_layout(struct vr_pipeline *pipeline)
+{
+        VkResult res;
+
+        VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+                .pushConstantRangeCount = 0,
+                .setLayoutCount = 0
+        };
+
+        VkPipelineLayout layout;
+        res = vr_vk.vkCreatePipelineLayout(pipeline->window->device,
+                                           &pipeline_layout_create_info,
+                                           NULL, /* allocator */
+                                           &layout);
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error creating empty layout");
+                return NULL;
+        }
+
+        return layout;
+}
+
 struct vr_pipeline *
 vr_pipeline_create(struct vr_window *window,
                    const struct vr_script *script)
 {
+        VkResult res;
         struct vr_pipeline *pipeline = vr_calloc(sizeof *pipeline);
 
         pipeline->window = window;
@@ -213,13 +391,35 @@ vr_pipeline_create(struct vr_window *window,
                         continue;
 
                 pipeline->modules[i] = compile_stage(window, script, i);
-                if (pipeline->modules[i] == NULL) {
-                        vr_pipeline_free(pipeline);
-                        return NULL;
-                }
+                if (pipeline->modules[i] == NULL)
+                        goto error;
         }
 
+        VkPipelineCacheCreateInfo pipeline_cache_create_info = {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO
+        };
+        res = vr_vk.vkCreatePipelineCache(window->device,
+                                          &pipeline_cache_create_info,
+                                          NULL, /* allocator */
+                                          &pipeline->pipeline_cache);
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error creating pipeline cache");
+                goto error;
+        }
+
+        pipeline->layout = create_vk_layout(pipeline);
+        if (pipeline->layout == NULL)
+                goto error;
+
+        pipeline->pipeline = create_vk_pipeline(pipeline);
+        if (pipeline->pipeline == NULL)
+                goto error;
+
         return pipeline;
+
+error:
+        vr_pipeline_free(pipeline);
+        return NULL;
 }
 
 void
@@ -227,18 +427,30 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
 {
         struct vr_window *window = pipeline->window;
 
+        if (pipeline->pipeline) {
+                vr_vk.vkDestroyPipeline(window->device,
+                                        pipeline->pipeline,
+                                        NULL /* allocator */);
+        }
+
+        if (pipeline->pipeline_cache) {
+                vr_vk.vkDestroyPipelineCache(window->device,
+                                             pipeline->pipeline_cache,
+                                             NULL /* allocator */);
+        }
+
+        if (pipeline->layout) {
+                vr_vk.vkDestroyPipelineLayout(window->device,
+                                              pipeline->layout,
+                                              NULL /* allocator */);
+        }
+
         for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
                 if (pipeline->modules[i] == NULL)
                         continue;
                 vr_vk.vkDestroyShaderModule(window->device,
                                             pipeline->modules[i],
                                             NULL /* allocator */);
-        }
-
-        if (pipeline->pipeline) {
-                vr_vk.vkDestroyPipeline(window->device,
-                                        pipeline->pipeline,
-                                        NULL /* allocator */);
         }
 
         vr_free(pipeline);

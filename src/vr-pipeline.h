@@ -31,8 +31,14 @@
 
 struct vr_pipeline {
         struct vr_window *window;
+        VkPipelineLayout layout;
         VkPipeline pipeline;
+        VkPipelineCache pipeline_cache;
         VkShaderModule modules[VR_SCRIPT_N_STAGES];
+};
+
+struct vr_pipeline_vertex {
+        float x, y, z;
 };
 
 struct vr_pipeline *
