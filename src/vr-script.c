@@ -29,12 +29,19 @@
 #include <string.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 #include "vr-script.h"
 #include "vr-list.h"
 #include "vr-util.h"
 #include "vr-buffer.h"
 #include "vr-error-message.h"
+
+enum section {
+        SECTION_NONE,
+        SECTION_SHADER,
+        SECTION_TEST
+};
 
 struct load_state {
         const char *filename;
@@ -45,6 +52,8 @@ struct load_state {
         size_t len;
         ssize_t nread;
         int current_stage;
+        enum section current_section;
+        struct vr_buffer commands;
 };
 
 static const char *
@@ -57,13 +66,10 @@ stage_names[VR_SCRIPT_N_STAGES] = {
         "compute shader",
 };
 
-static bool
-end_section(struct load_state *data)
+static void
+end_shader(struct load_state *data)
 {
         struct vr_script_shader *shader;
-
-        if (data->current_stage == -1)
-                return true;
 
         shader = vr_alloc(sizeof *shader + data->buffer.length);
         shader->length = data->buffer.length;
@@ -71,22 +77,125 @@ end_section(struct load_state *data)
 
         vr_list_insert(data->script->stages[data->current_stage].prev,
                        &shader->link);
+}
 
-        data->current_stage = -1;
+static bool
+end_section(struct load_state *data)
+{
+        switch (data->current_section) {
+        case SECTION_NONE:
+                break;
+
+        case SECTION_SHADER:
+                end_shader(data);
+                break;
+
+        case SECTION_TEST:
+                break;
+        }
+
+        data->current_section = SECTION_NONE;
 
         return true;
 }
 
 static bool
+is_string(const char *string,
+          const char *start,
+          const char *end)
+{
+        return (end - start == strlen(string) &&
+                !memcmp(start, string, end - start));
+}
+
+static bool
+looking_at(const char **p,
+           const char *string)
+{
+        int len = strlen(string);
+
+        if (strncmp(*p, string, len) == 0) {
+                *p += len;
+                return true;
+        }
+
+        return false;
+}
+
+static bool
+is_end(const char *p)
+{
+        while (*p && isspace(*p))
+                p++;
+
+        return *p == '\0';
+}
+
+static bool
+parse_floats(const char **p,
+             float *out,
+             int n_floats)
+{
+        char *tail;
+
+        for (int i = 0; i < n_floats; i++) {
+                while (isspace(**p))
+                        (*p)++;
+                errno = 0;
+                *(out++) = strtof(*p, &tail);
+                if (errno != 0 || tail == *p)
+                        return false;
+                *p = tail;
+        }
+
+        return true;
+}
+
+static bool
+process_test_line(struct load_state *data)
+{
+        const char *p = data->line;
+
+        while (*p && isspace(*p))
+                p++;
+
+        if (*p == '#' || *p == '\0')
+                return true;
+
+        vr_buffer_set_length(&data->commands,
+                             data->commands.length +
+                             sizeof (struct vr_script_command));
+        struct vr_script_command *command =
+                (struct vr_script_command *)
+                (data->commands.data +
+                 data->commands.length -
+                 sizeof (struct vr_script_command));
+
+        command->line_num = data->line_num;
+
+        if (looking_at(&p, "draw rect ")) {
+                if (!parse_floats(&p, &command->draw_rect.x, 4) ||
+                    !is_end(p))
+                        goto error;
+                command->op = VR_SCRIPT_OP_DRAW_RECT;
+                return true;
+        }
+
+error:
+        vr_error_message("%s:%i: Invalid test command",
+                         data->filename,
+                         data->line_num);
+        return false;
+}
+
+static bool
 process_section_header(struct load_state *data)
 {
-        const char *end;
-        int stage;
-
         if (!end_section(data))
                 return false;
 
-        end = strchr(data->line, ']');
+        const char *start = data->line + 1;
+        const char *end = strchr(start, ']');
         if (end == NULL) {
                 vr_error_message("%s:%i: Missing ']'",
                                  data->filename,
@@ -94,26 +203,26 @@ process_section_header(struct load_state *data)
                 return false;
         }
 
-        for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
-                if (end - data->line - 1 ==
-                    strlen(stage_names[stage]) &&
-                    !memcmp(data->line + 1,
-                            stage_names[stage],
-                            end - data->line - 1))
-                        goto found_stage;
+        for (int stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
+                if (is_string(stage_names[stage], start, end)) {
+                        data->current_section = SECTION_SHADER;
+                        data->current_stage = stage;
+                        data->buffer.length = 0;
+                        return true;
+                }
         }
 
-        vr_error_message("%s:%i: Unknown stage “%.*s”",
+        if (is_string("test", start, end)) {
+                data->current_section = SECTION_TEST;
+                return true;
+        }
+
+        vr_error_message("%s:%i: Unknown section “%.*s”",
                          data->filename,
                          data->line_num,
-                         (int) (end - data->line - 1),
-                         data->line + 1);
+                         (int) (end - start),
+                         start);
         return false;
-
-found_stage:
-        data->current_stage = stage;
-        data->buffer.length = 0;
-        return true;
 }
 
 static bool
@@ -122,7 +231,17 @@ process_line(struct load_state *data)
         if (data->line[0] == '[')
                 return process_section_header(data);
 
-        vr_buffer_append(&data->buffer, data->line, data->nread);
+        switch (data->current_section) {
+        case SECTION_NONE:
+                return true;
+
+        case SECTION_SHADER:
+                vr_buffer_append(&data->buffer, data->line, data->nread);
+                return true;
+
+        case SECTION_TEST:
+                return process_test_line(data);
+        }
 
         return true;
 }
@@ -138,7 +257,9 @@ load_script_from_stream(const char *filename,
                 .line = NULL,
                 .len = 0,
                 .buffer = VR_BUFFER_STATIC_INIT,
-                .current_stage = -1
+                .commands = VR_BUFFER_STATIC_INIT,
+                .current_stage = -1,
+                .current_section = SECTION_NONE
         };
         bool res = true;
         int stage;
@@ -159,6 +280,12 @@ load_script_from_stream(const char *filename,
         if (res)
                 res = end_section(&data);
 
+        data.script->commands = vr_memdup(data.commands.data,
+                                          data.commands.length);
+        data.script->n_commands = (data.commands.length /
+                                   sizeof (struct vr_script_command));
+
+        vr_buffer_destroy(&data.commands);
         vr_buffer_destroy(&data.buffer);
         free(data.line);
 
@@ -202,6 +329,8 @@ vr_script_free(struct vr_script *script)
                         vr_free(shader);
                 }
         }
+
+        vr_free(script->commands);
 
         vr_free(script);
 }

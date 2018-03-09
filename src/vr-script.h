@@ -39,14 +39,31 @@ enum vr_script_shader_stage {
 
 #define VR_SCRIPT_N_STAGES 6
 
+enum vr_script_op {
+        VR_SCRIPT_OP_DRAW_RECT
+};
+
 struct vr_script_shader {
         struct vr_list link;
         size_t length;
         char source[];
 };
 
+struct vr_script_command {
+        enum vr_script_op op;
+        int line_num;
+
+        union {
+                struct {
+                        float x, y, w, h;
+                } draw_rect;
+        };
+};
+
 struct vr_script {
         struct vr_list stages[VR_SCRIPT_N_STAGES];
+        size_t n_commands;
+        struct vr_script_command *commands;
 };
 
 struct vr_script *
