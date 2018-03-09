@@ -31,18 +31,29 @@
 #include "vr-vk.h"
 #include "vr-window.h"
 #include "vr-script.h"
+#include "vr-pipeline.h"
 
 static bool
-process_script(const char *filename)
+process_script(struct vr_window *window,
+               const char *filename)
 {
+        bool ret = true;
         struct vr_script *script = vr_script_load(filename);
 
         if (script == NULL)
                 return false;
 
+        struct vr_pipeline *pipeline = vr_pipeline_create(window, script);
+
+        if (pipeline == NULL) {
+                ret = false;
+        } else {
+                vr_pipeline_free(pipeline);
+        }
+
         vr_script_free(script);
 
-        return true;
+        return ret;
 }
 
 int
@@ -59,7 +70,7 @@ main(int argc, char **argv)
         }
 
         for (i = 1; i < argc; i++) {
-                if (!process_script(argv[i])) {
+                if (!process_script(window, argv[i])) {
                         ret = EXIT_FAILURE;
                         goto out;
                 }
