@@ -264,6 +264,8 @@ load_script_from_stream(const char *filename,
         bool res = true;
         int stage;
 
+        data.script->filename = vr_strdup(filename);
+
         for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++)
                 vr_list_init(&data.script->stages[stage]);
 
@@ -329,6 +331,8 @@ vr_script_free(struct vr_script *script)
                         vr_free(shader);
                 }
         }
+
+        vr_free(script->filename);
 
         vr_free(script->commands);
 

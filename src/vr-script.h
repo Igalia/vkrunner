@@ -61,6 +61,7 @@ struct vr_script_command {
 };
 
 struct vr_script {
+        char *filename;
         struct vr_list stages[VR_SCRIPT_N_STAGES];
         size_t n_commands;
         struct vr_script_command *commands;
