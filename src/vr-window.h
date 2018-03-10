@@ -46,7 +46,6 @@ struct vr_window {
         int queue_family;
         VkInstance vk_instance;
         VkFence vk_fence;
-        VkSemaphore vk_semaphore;
 
         VkImage color_image;
         VkImage linear_image;

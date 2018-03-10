@@ -214,8 +214,6 @@ end_paint(struct test_data *data)
                 .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
                 .commandBufferCount = 1,
                 .pCommandBuffers = &window->command_buffer,
-                .waitSemaphoreCount = 1,
-                .pWaitSemaphores = (VkSemaphore[]) { window->vk_semaphore },
                 .pWaitDstStageMask =
                 (VkPipelineStageFlagBits[])
                 { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT }

@@ -291,12 +291,6 @@ deinit_vk(struct vr_window *window)
                                            NULL /* allocator */);
                 window->command_pool = NULL;
         }
-        if (window->vk_semaphore) {
-                vr_vk.vkDestroySemaphore(window->device,
-                                         window->vk_semaphore,
-                                         NULL /* allocator */);
-                window->vk_semaphore = NULL;
-        }
         if (window->device) {
                 vr_vk.vkDestroyDevice(window->device,
                                       NULL /* allocator */);
@@ -415,18 +409,6 @@ init_vk(struct vr_window *window)
                                window->queue_family,
                                0, /* queueIndex */
                                &window->queue);
-
-        VkSemaphoreCreateInfo semaphore_create_info = {
-                .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
-        };
-        res = vr_vk.vkCreateSemaphore(window->device,
-                                      &semaphore_create_info,
-                                      NULL, /* allocator */
-                                      &window->vk_semaphore);
-        if (res != VK_SUCCESS) {
-                vr_error_message("Error creating semaphore");
-                goto error;
-        }
 
         VkCommandPoolCreateInfo command_pool_create_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
