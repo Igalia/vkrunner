@@ -335,6 +335,13 @@ print_components_float(const float *pixel)
 }
 
 static void
+print_command_fail(const struct vr_script_command *command)
+{
+        printf("Command failed at line %i\n",
+               command->line_num);
+}
+
+static void
 print_bad_pixel(int x, int y,
                 const float *expected,
                 const float *observed)
@@ -383,6 +390,7 @@ probe_rect_rgba(struct test_data *data,
                                             command->probe_rect.color,
                                             tolerance)) {
                                 ret = false;
+                                print_command_fail(command);
                                 print_bad_pixel(x + command->probe_rect.x,
                                                 y + command->probe_rect.y,
                                                 command->probe_rect.color,
