@@ -39,7 +39,8 @@ show_help(void)
                "Options:\n"
                "  -h            Show this help message\n"
                "  -i IMG        Write the final rendering to IMG as a "
-               "PPM image\n");
+               "PPM image\n"
+               "  -d            Show the SPIR-V disassembly\n");
 }
 
 static void
@@ -60,7 +61,7 @@ vr_config_new(int argc, char **argv)
         vr_list_init(&config->scripts);
 
         while (true) {
-                int opt = getopt(argc, argv, "-hi:");
+                int opt = getopt(argc, argv, "-hi:d");
 
                 if (opt == -1)
                         break;
@@ -76,6 +77,9 @@ vr_config_new(int argc, char **argv)
                                 goto error;
                         }
                         config->image_filename = vr_strdup(optarg);
+                        break;
+                case 'd':
+                        config->show_disassembly = true;
                         break;
                 case 1:
                         add_script(config, optarg);

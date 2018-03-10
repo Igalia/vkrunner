@@ -37,6 +37,7 @@ struct vr_config_script {
 struct vr_config {
         char *image_filename;
         struct vr_list scripts;
+        bool show_disassembly;
 };
 
 struct vr_config *

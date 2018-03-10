@@ -84,7 +84,8 @@ process_script(struct vr_config *config,
         if (script == NULL)
                 return false;
 
-        struct vr_pipeline *pipeline = vr_pipeline_create(window, script);
+        struct vr_pipeline *pipeline =
+                vr_pipeline_create(config, window, script);
 
         if (pipeline == NULL) {
                 ret = false;

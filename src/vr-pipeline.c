@@ -182,8 +182,24 @@ load_stream_contents(FILE *stream,
         return true;
 }
 
+static bool
+show_disassembly(const char *filename)
+{
+        char *args[] = {
+                getenv("PIGLIT_SPIRV_DIS_BINARY"),
+                (char *) filename,
+                NULL
+        };
+
+        if (args[0] == NULL)
+                args[0] = "spirv-dis";
+
+        return vr_subprocess_command(args);
+}
+
 static VkShaderModule
-compile_stage(struct vr_window *window,
+compile_stage(const struct vr_config *config,
+              struct vr_window *window,
               const struct vr_script *script,
               enum vr_script_shader_stage stage)
 {
@@ -226,6 +242,9 @@ compile_stage(struct vr_window *window,
                 vr_error_message("glslangValidator failed");
                 goto out;
         }
+
+        if (config->show_disassembly)
+                show_disassembly(module_filename);
 
         if (!load_stream_contents(module_stream, &module_binary, &module_size))
                 goto out;
@@ -378,7 +397,8 @@ create_vk_layout(struct vr_pipeline *pipeline)
 }
 
 struct vr_pipeline *
-vr_pipeline_create(struct vr_window *window,
+vr_pipeline_create(const struct vr_config *config,
+                   struct vr_window *window,
                    const struct vr_script *script)
 {
         VkResult res;
@@ -390,7 +410,7 @@ vr_pipeline_create(struct vr_window *window,
                 if (vr_list_empty(&script->stages[i]))
                         continue;
 
-                pipeline->modules[i] = compile_stage(window, script, i);
+                pipeline->modules[i] = compile_stage(config, window, script, i);
                 if (pipeline->modules[i] == NULL)
                         goto error;
         }

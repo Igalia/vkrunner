@@ -28,6 +28,7 @@
 
 #include "vr-script.h"
 #include "vr-window.h"
+#include "vr-config.h"
 
 struct vr_pipeline {
         struct vr_window *window;
@@ -42,7 +43,8 @@ struct vr_pipeline_vertex {
 };
 
 struct vr_pipeline *
-vr_pipeline_create(struct vr_window *window,
+vr_pipeline_create(const struct vr_config *config,
+                   struct vr_window *window,
                    const struct vr_script *script);
 
 void
