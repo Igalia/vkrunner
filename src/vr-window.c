@@ -252,6 +252,54 @@ init_framebuffer_resources(struct vr_window *window)
                                         NULL, /* allocator */
                                         &window->framebuffer);
 
+        VkCommandBufferBeginInfo command_buffer_begin_info = {
+                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+        };
+        vr_vk.vkBeginCommandBuffer(window->command_buffer,
+                                   &command_buffer_begin_info);
+
+        VkImageMemoryBarrier image_memory_barrier = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .srcAccessMask = 0,
+                .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = window->linear_image,
+                .subresourceRange = {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .layerCount = 1
+                }
+        };
+        vr_vk.vkCmdPipelineBarrier(window->command_buffer,
+                                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                   0, /* dependencyFlags */
+                                   0, /* memoryBarrierCount */
+                                   NULL, /* pMemoryBarriers */
+                                   0, /* bufferMemoryBarrierCount */
+                                   NULL, /* pBufferMemoryBarriers */
+                                   1, /* imageMemoryBarrierCount */
+                                   &image_memory_barrier);
+
+        vr_vk.vkEndCommandBuffer(window->command_buffer);
+
+        VkSubmitInfo submitInfo = {
+                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                .commandBufferCount = 1,
+                .pCommandBuffers = &window->command_buffer
+        };
+        vr_vk.vkQueueSubmit(window->queue,
+                            1,
+                            &submitInfo,
+                            VK_NULL_HANDLE);
+
+        vr_vk.vkQueueWaitIdle(window->queue);
+
         return true;
 }
 
