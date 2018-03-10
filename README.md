@@ -28,7 +28,17 @@ Vulkan’s normalised coordinate system is different from OpenGL’s.
 
 > probe rect rgba (_x_, _y_, _width_, _height_) (_r_, _g_, _b_, _a_)
 
-Verfies that a given rectangle (in viewport coordinates) matches the
+Verifies that a given rectangle (in viewport coordinates) matches the
 given colour.
 
 Take a look in the examples directory for examples.
+
+## Command line arguments
+
+    usage: vkrunner [OPTION]... SCRIPT...
+    Runs the shader test script SCRIPT
+    
+    Options:
+      -h            Show this help message
+      -i IMG        Write the final rendering to IMG as a PPM image
+      -d            Show the SPIR-V disassembly
