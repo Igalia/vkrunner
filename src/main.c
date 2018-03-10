@@ -27,15 +27,55 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <errno.h>
 
 #include "vr-vk.h"
 #include "vr-window.h"
 #include "vr-script.h"
 #include "vr-pipeline.h"
 #include "vr-test.h"
+#include "vr-config.h"
+#include "vr-error-message.h"
 
 static bool
-process_script(struct vr_window *window,
+write_ppm(struct vr_window *window,
+          const char *filename)
+{
+        FILE *out = fopen(filename, "w");
+
+        if (out == NULL) {
+                vr_error_message("%s: %s", filename, strerror(errno));
+                return false;
+        }
+
+        fprintf(out,
+                "P6\n"
+                "%i %i\n"
+                "255\n",
+                VR_WINDOW_WIDTH,
+                VR_WINDOW_HEIGHT);
+
+        const uint8_t *p = window->linear_memory_map;
+
+        for (int y = 0; y < VR_WINDOW_HEIGHT; y++) {
+                for (int x = 0; x < VR_WINDOW_WIDTH; x++) {
+                        fputc(p[2], out);
+                        fputc(p[1], out);
+                        fputc(p[0], out);
+                        p += 4;
+                }
+                p += window->linear_memory_stride - VR_WINDOW_WIDTH * 4;
+        }
+
+        fclose(out);
+
+        return true;
+}
+
+static bool
+process_script(struct vr_config *config,
+               struct vr_window *window,
                const char *filename)
 {
         bool ret = true;
@@ -57,6 +97,11 @@ process_script(struct vr_window *window,
 
         vr_script_free(script);
 
+        if (config->image_filename) {
+                if (!write_ppm(window, config->image_filename))
+                        ret = false;
+        }
+
         return ret;
 }
 
@@ -65,7 +110,10 @@ main(int argc, char **argv)
 {
         int ret = EXIT_SUCCESS;
         struct vr_window *window = NULL;
-        int i;
+
+        struct vr_config *config = vr_config_new(argc, argv);
+        if (config == NULL)
+                return EXIT_FAILURE;
 
         window = vr_window_new();
         if (window == NULL) {
@@ -73,8 +121,9 @@ main(int argc, char **argv)
                 goto out;
         }
 
-        for (i = 1; i < argc; i++) {
-                if (!process_script(window, argv[i])) {
+        struct vr_config_script *script;
+        vr_list_for_each(script, &config->scripts, link) {
+                if (!process_script(config, window, script->filename)) {
                         ret = EXIT_FAILURE;
                         goto out;
                 }
@@ -83,6 +132,8 @@ main(int argc, char **argv)
 out:
         if (window)
                 vr_window_free(window);
+
+        vr_config_free(config);
 
         return ret;
 }

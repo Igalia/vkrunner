@@ -10,6 +10,8 @@ vkrunner_SOURCES = \
 	vr-allocate-store.h \
 	vr-buffer.c \
 	vr-buffer.h \
+	vr-config.c \
+	vr-config.h \
 	vr-error-message.c \
 	vr-error-message.h \
 	vr-flush-memory.c \
