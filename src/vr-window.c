@@ -251,6 +251,11 @@ init_framebuffer_resources(struct vr_window *window)
                                         &framebuffer_create_info,
                                         NULL, /* allocator */
                                         &window->framebuffer);
+        if (res != VK_SUCCESS) {
+                window->framebuffer = NULL;
+                vr_error_message("Error creating framebuffer");
+                return false;
+        }
 
         VkCommandBufferBeginInfo command_buffer_begin_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
