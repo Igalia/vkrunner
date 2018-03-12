@@ -16,9 +16,12 @@ from [here](https://github.com/KhronosGroup/glslang/).
 ## Status
 
 VkRunner can compile shaders from shader sections like `[vertex
-shader]` as in shader_runner. It doesn’t support the `[require]` or
-`[vertex data]` sections. The `[test]` section currently only supports
-two commands:
+shader]` as in shader_runner. It doesn’t support the `[vertex data]`
+sections.
+
+## [test] section:
+
+The `[test]` currently only supports three commands:
 
 > draw rect _x_ _y_ _width_ _height_
 
@@ -31,7 +34,21 @@ Vulkan’s normalised coordinate system is different from OpenGL’s.
 Verifies that a given rectangle (in viewport coordinates) matches the
 given colour.
 
+> uniform _type_ _offset_ _values_…
+
+Sets a push constant at the given offset. Note that unlike Piglit, the
+offset is a byte offset into the push constant buffer rather than a
+uniform location. The type can be one of int, float, double, vec[234],
+dvec[234] or ivec[234].
+
 Take a look in the examples directory for examples.
+
+## [require] section
+
+The `[require]` section can contain names of members from
+VkPhysicalDeviceFeatures. These will be searched for when deciding
+which physical device to open. If no physical device with the
+corresponding requirements can be found then it will report an error.
 
 ## Command line arguments
 
