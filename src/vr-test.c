@@ -407,6 +407,23 @@ done:
         return ret;
 }
 
+static bool
+set_push_constant(struct test_data *data,
+                  const struct vr_script_command *command)
+{
+        const struct vr_script_value *value =
+                &command->set_push_constant.value;
+
+        vr_vk.vkCmdPushConstants(data->window->command_buffer,
+                                 data->pipeline->layout,
+                                 data->pipeline->stages,
+                                 command->set_push_constant.offset,
+                                 vr_script_type_size(value->type),
+                                 &value->i);
+
+        return true;
+}
+
 bool
 vr_test_run(struct vr_window *window,
             struct vr_pipeline *pipeline,
@@ -433,6 +450,10 @@ vr_test_run(struct vr_window *window,
                         break;
                 case VR_SCRIPT_OP_PROBE_RECT_RGBA:
                         if (!probe_rect_rgba(&data, command))
+                                ret = false;
+                        break;
+                case VR_SCRIPT_OP_SET_PUSH_CONSTANT:
+                        if (!set_push_constant(&data, command))
                                 ret = false;
                         break;
                 }

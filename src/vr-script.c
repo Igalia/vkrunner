@@ -162,6 +162,35 @@ parse_floats(const char **p,
 }
 
 static bool
+parse_doubles(const char **p,
+              double *out,
+              int n_doubles,
+              const char *sep)
+{
+        char *tail;
+
+        for (int i = 0; i < n_doubles; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                *(out++) = strtod(*p, &tail);
+                if (errno != 0 || tail == *p)
+                        return false;
+                *p = tail;
+
+                if (sep && i < n_doubles - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
 parse_ints(const char **p,
            int *out,
            int n_ints,
@@ -191,6 +220,57 @@ parse_ints(const char **p,
         }
 
         return true;
+}
+
+static bool
+parse_size_t(const char **p,
+             size_t *out)
+{
+        unsigned long v;
+        char *tail;
+
+        errno = 0;
+        v = strtoul(*p, &tail, 10);
+        if (errno != 0 || tail == *p || v > SIZE_MAX)
+                return false;
+        *out = v;
+        *p = tail;
+
+        return true;
+}
+
+static bool
+parse_value_type(const char **p,
+                 enum vr_script_type *type)
+{
+        if (looking_at(p, "int ")) {
+                *type = VR_SCRIPT_TYPE_INT;
+                return true;
+        } else if (looking_at(p, "float ")) {
+                *type = VR_SCRIPT_TYPE_FLOAT;
+                return true;
+        } else if (looking_at(p, "double ")) {
+                *type = VR_SCRIPT_TYPE_DOUBLE;
+                return true;
+        } else {
+                return false;
+        }
+}
+
+static bool
+parse_value(const char **p,
+            struct vr_script_value *value)
+{
+        switch (value->type) {
+        case VR_SCRIPT_TYPE_INT:
+                return parse_ints(p, &value->i, 1, NULL);
+        case VR_SCRIPT_TYPE_FLOAT:
+                return parse_floats(p, &value->f, 1, NULL);
+        case VR_SCRIPT_TYPE_DOUBLE:
+                return parse_doubles(p, &value->d, 1, NULL);
+        }
+
+        vr_fatal("should not be reached");
 }
 
 static bool
@@ -245,6 +325,22 @@ process_test_line(struct load_state *data)
                 if (*p != ')' || !is_end(p + 1))
                         goto error;
                 command->op = VR_SCRIPT_OP_PROBE_RECT_RGBA;
+                return true;
+        }
+
+        if (looking_at(&p, "uniform ")) {
+                while (isspace(*p))
+                        p++;
+                if (!parse_value_type(&p,
+                                      &command->set_push_constant.value.type))
+                        goto error;
+                if (!parse_size_t(&p, &command->set_push_constant.offset))
+                        goto error;
+                if (!parse_value(&p, &command->set_push_constant.value))
+                        goto error;
+                if (!is_end(p + 1))
+                        goto error;
+                command->op = VR_SCRIPT_OP_SET_PUSH_CONSTANT;
                 return true;
         }
 
@@ -404,4 +500,18 @@ vr_script_free(struct vr_script *script)
         vr_free(script->commands);
 
         vr_free(script);
+}
+
+size_t
+vr_script_type_size(enum vr_script_type type)
+{
+        switch (type) {
+        case VR_SCRIPT_TYPE_INT:
+        case VR_SCRIPT_TYPE_FLOAT:
+                return 4;
+        case VR_SCRIPT_TYPE_DOUBLE:
+                return 8;
+        }
+
+        vr_fatal("should not be reached");
 }

@@ -372,16 +372,63 @@ create_vk_pipeline(struct vr_pipeline *pipeline)
         return vk_pipeline;
 }
 
+static size_t
+get_push_constant_size(const struct vr_script *script)
+{
+        size_t max = 0;
+
+        for (int i = 0; i < script->n_commands; i++) {
+                const struct vr_script_command *command =
+                        script->commands + i;
+                if (command->op != VR_SCRIPT_OP_SET_PUSH_CONSTANT)
+                        continue;
+
+                enum vr_script_type type =
+                        command->set_push_constant.value.type;
+                size_t value_size = vr_script_type_size(type);
+                size_t end = command->set_push_constant.offset + value_size;
+
+                if (end > max)
+                        max = end;
+        }
+
+        return max;
+}
+
+static VkShaderStageFlags
+get_script_stages(const struct vr_script *script)
+{
+        VkShaderStageFlags flags = 0;
+
+        for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
+                if (!vr_list_empty(script->stages + i))
+                        flags |= VK_SHADER_STAGE_VERTEX_BIT << i;
+        }
+
+        return flags;
+}
+
 static VkPipelineLayout
-create_vk_layout(struct vr_pipeline *pipeline)
+create_vk_layout(struct vr_pipeline *pipeline,
+                 const struct vr_script *script)
 {
         VkResult res;
 
+        VkPushConstantRange push_constant_range = {
+                .stageFlags = pipeline->stages,
+                .offset = 0,
+                .size = get_push_constant_size(script)
+        };
         VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-                .pushConstantRangeCount = 0,
                 .setLayoutCount = 0
         };
+
+        if (push_constant_range.size > 0) {
+                pipeline_layout_create_info.pushConstantRangeCount = 1;
+                pipeline_layout_create_info.pPushConstantRanges =
+                        &push_constant_range;
+        }
 
         VkPipelineLayout layout;
         res = vr_vk.vkCreatePipelineLayout(pipeline->window->device,
@@ -427,7 +474,9 @@ vr_pipeline_create(const struct vr_config *config,
                 goto error;
         }
 
-        pipeline->layout = create_vk_layout(pipeline);
+        pipeline->stages = get_script_stages(script);
+
+        pipeline->layout = create_vk_layout(pipeline, script);
         if (pipeline->layout == NULL)
                 goto error;
 

@@ -36,6 +36,7 @@ struct vr_pipeline {
         VkPipeline pipeline;
         VkPipelineCache pipeline_cache;
         VkShaderModule modules[VR_SCRIPT_N_STAGES];
+        VkShaderStageFlagBits stages;
 };
 
 struct vr_pipeline_vertex {
