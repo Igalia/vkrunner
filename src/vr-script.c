@@ -243,18 +243,32 @@ static bool
 parse_value_type(const char **p,
                  enum vr_script_type *type)
 {
-        if (looking_at(p, "int ")) {
-                *type = VR_SCRIPT_TYPE_INT;
-                return true;
-        } else if (looking_at(p, "float ")) {
-                *type = VR_SCRIPT_TYPE_FLOAT;
-                return true;
-        } else if (looking_at(p, "double ")) {
-                *type = VR_SCRIPT_TYPE_DOUBLE;
-                return true;
-        } else {
-                return false;
+        static const struct {
+                const char *name;
+                enum vr_script_type type;
+        } types[] = {
+                { "int ", VR_SCRIPT_TYPE_INT },
+                { "float ", VR_SCRIPT_TYPE_FLOAT },
+                { "double ", VR_SCRIPT_TYPE_DOUBLE },
+                { "vec2 ", VR_SCRIPT_TYPE_VEC2 },
+                { "vec3 ", VR_SCRIPT_TYPE_VEC3 },
+                { "vec4 ", VR_SCRIPT_TYPE_VEC4 },
+                { "dvec2 ", VR_SCRIPT_TYPE_DVEC2 },
+                { "dvec3 ", VR_SCRIPT_TYPE_DVEC3 },
+                { "dvec4 ", VR_SCRIPT_TYPE_DVEC4 },
+                { "ivec2 ", VR_SCRIPT_TYPE_IVEC2 },
+                { "ivec3 ", VR_SCRIPT_TYPE_IVEC3 },
+                { "ivec4 ", VR_SCRIPT_TYPE_IVEC4 },
+        };
+
+        for (int i = 0; i < VR_N_ELEMENTS(types); i++) {
+                if (looking_at(p, types[i].name)) {
+                        *type = types[i].type;
+                        return true;
+                }
         }
+
+        return false;
 }
 
 static bool
@@ -268,6 +282,24 @@ parse_value(const char **p,
                 return parse_floats(p, &value->f, 1, NULL);
         case VR_SCRIPT_TYPE_DOUBLE:
                 return parse_doubles(p, &value->d, 1, NULL);
+        case VR_SCRIPT_TYPE_VEC2:
+                return parse_floats(p, value->vec, 2, NULL);
+        case VR_SCRIPT_TYPE_VEC3:
+                return parse_floats(p, value->vec, 3, NULL);
+        case VR_SCRIPT_TYPE_VEC4:
+                return parse_floats(p, value->vec, 4, NULL);
+        case VR_SCRIPT_TYPE_DVEC2:
+                return parse_doubles(p, value->dvec, 2, NULL);
+        case VR_SCRIPT_TYPE_DVEC3:
+                return parse_doubles(p, value->dvec, 3, NULL);
+        case VR_SCRIPT_TYPE_DVEC4:
+                return parse_doubles(p, value->dvec, 4, NULL);
+        case VR_SCRIPT_TYPE_IVEC2:
+                return parse_ints(p, value->ivec, 2, NULL);
+        case VR_SCRIPT_TYPE_IVEC3:
+                return parse_ints(p, value->ivec, 3, NULL);
+        case VR_SCRIPT_TYPE_IVEC4:
+                return parse_ints(p, value->ivec, 4, NULL);
         }
 
         vr_fatal("should not be reached");
@@ -511,6 +543,21 @@ vr_script_type_size(enum vr_script_type type)
                 return 4;
         case VR_SCRIPT_TYPE_DOUBLE:
                 return 8;
+        case VR_SCRIPT_TYPE_VEC2:
+        case VR_SCRIPT_TYPE_IVEC2:
+                return 4 * 2;
+        case VR_SCRIPT_TYPE_VEC3:
+        case VR_SCRIPT_TYPE_IVEC3:
+                return 4 * 3;
+        case VR_SCRIPT_TYPE_VEC4:
+        case VR_SCRIPT_TYPE_IVEC4:
+                return 4 * 4;
+        case VR_SCRIPT_TYPE_DVEC2:
+                return 8 * 2;
+        case VR_SCRIPT_TYPE_DVEC3:
+                return 8 * 3;
+        case VR_SCRIPT_TYPE_DVEC4:
+                return 8 * 4;
         }
 
         vr_fatal("should not be reached");

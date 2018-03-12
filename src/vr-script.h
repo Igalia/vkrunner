@@ -55,6 +55,15 @@ enum vr_script_type {
         VR_SCRIPT_TYPE_INT,
         VR_SCRIPT_TYPE_FLOAT,
         VR_SCRIPT_TYPE_DOUBLE,
+        VR_SCRIPT_TYPE_VEC2,
+        VR_SCRIPT_TYPE_VEC3,
+        VR_SCRIPT_TYPE_VEC4,
+        VR_SCRIPT_TYPE_DVEC2,
+        VR_SCRIPT_TYPE_DVEC3,
+        VR_SCRIPT_TYPE_DVEC4,
+        VR_SCRIPT_TYPE_IVEC2,
+        VR_SCRIPT_TYPE_IVEC3,
+        VR_SCRIPT_TYPE_IVEC4,
 };
 
 struct vr_script_value {
@@ -63,6 +72,9 @@ struct vr_script_value {
                 int i;
                 float f;
                 double d;
+                float vec[4];
+                double dvec[4];
+                int ivec[4];
         };
 };
 
