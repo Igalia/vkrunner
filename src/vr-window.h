@@ -61,7 +61,7 @@ struct vr_window {
 };
 
 struct vr_window *
-vr_window_new(void);
+vr_window_new(const struct VkPhysicalDeviceFeatures *requires);
 
 void
 vr_window_free(struct vr_window *window);

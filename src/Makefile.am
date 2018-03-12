@@ -14,6 +14,8 @@ vkrunner_SOURCES = \
 	vr-config.h \
 	vr-error-message.c \
 	vr-error-message.h \
+	vr-feature-offsets.c \
+	vr-feature-offsets.h \
 	vr-flush-memory.c \
 	vr-flush-memory.h \
 	vr-list.c \

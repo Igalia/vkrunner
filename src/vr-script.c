@@ -37,9 +37,11 @@
 #include "vr-util.h"
 #include "vr-buffer.h"
 #include "vr-error-message.h"
+#include "vr-feature-offsets.h"
 
 enum section {
         SECTION_NONE,
+        SECTION_REQUIRE,
         SECTION_SHADER,
         SECTION_TEST
 };
@@ -85,6 +87,9 @@ end_section(struct load_state *data)
 {
         switch (data->current_section) {
         case SECTION_NONE:
+                break;
+
+        case SECTION_REQUIRE:
                 break;
 
         case SECTION_SHADER:
@@ -306,6 +311,33 @@ parse_value(const char **p,
 }
 
 static bool
+process_require_line(struct load_state *data)
+{
+        const char *start = data->line, *p;
+
+        while (*start && isspace(*start))
+                start++;
+
+        if (*start == '#' || *start == '\0')
+                return true;
+
+        for (int i = 0; vr_feature_offsets[i].name; i++) {
+                p = start;
+                if (!looking_at(&p, vr_feature_offsets[i].name) || !is_end(p))
+                        continue;
+                *(VkBool32 *) ((uint8_t *) &data->script->required_features +
+                               vr_feature_offsets[i].offset) = true;
+                return true;
+        }
+
+        vr_error_message("%s:%i: Invalid require line",
+                         data->filename,
+                         data->line_num);
+
+        return false;
+}
+
+static bool
 process_test_line(struct load_state *data)
 {
         const char *p = data->line;
@@ -407,6 +439,11 @@ process_section_header(struct load_state *data)
                 }
         }
 
+        if (is_string("require", start, end)) {
+                data->current_section = SECTION_REQUIRE;
+                return true;
+        }
+
         if (is_string("test", start, end)) {
                 data->current_section = SECTION_TEST;
                 return true;
@@ -429,6 +466,9 @@ process_line(struct load_state *data)
         switch (data->current_section) {
         case SECTION_NONE:
                 return true;
+
+        case SECTION_REQUIRE:
+                return process_require_line(data);
 
         case SECTION_SHADER:
                 vr_buffer_append(&data->buffer, data->line, data->nread);

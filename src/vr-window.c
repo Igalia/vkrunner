@@ -32,6 +32,7 @@
 #include "vr-util.h"
 #include "vr-error-message.h"
 #include "vr-allocate-store.h"
+#include "vr-feature-offsets.h"
 
 #define COLOR_IMAGE_FORMAT VK_FORMAT_B8G8R8A8_SRGB
 
@@ -357,7 +358,31 @@ deinit_vk(struct vr_window *window)
 }
 
 static bool
-find_physical_device(struct vr_window *window)
+get_feature(const VkPhysicalDeviceFeatures *features,
+            int feature_num)
+{
+        const struct vr_feature_offset *fo =
+                vr_feature_offsets + feature_num;
+        return *(const VkBool32 *) ((const uint8_t *) features + fo->offset);
+}
+
+static bool
+check_features(const VkPhysicalDeviceFeatures *features,
+               const VkPhysicalDeviceFeatures *requires)
+{
+        for (int i = 0; vr_feature_offsets[i].name; i++) {
+                if (get_feature(requires, i) &&
+                    !get_feature(features, i)) {
+                        return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
+find_physical_device(struct vr_window *window,
+                     const VkPhysicalDeviceFeatures *requires)
 {
         VkResult res;
         uint32_t count;
@@ -383,6 +408,11 @@ find_physical_device(struct vr_window *window)
         }
 
         for (i = 0; i < count; i++) {
+                VkPhysicalDeviceFeatures features;
+                vr_vk.vkGetPhysicalDeviceFeatures(devices[i], &features);
+                if (!check_features(&features, requires))
+                        continue;
+
                 queue_family = find_queue_family(window, devices[i]);
                 if (queue_family == -1)
                         continue;
@@ -398,7 +428,8 @@ find_physical_device(struct vr_window *window)
 }
 
 static bool
-init_vk(struct vr_window *window)
+init_vk(struct vr_window *window,
+        const VkPhysicalDeviceFeatures *requires)
 {
         VkPhysicalDeviceMemoryProperties *memory_properties =
                 &window->memory_properties;
@@ -423,7 +454,7 @@ init_vk(struct vr_window *window)
 
         vr_vk_init_instance(window->vk_instance);
 
-        if (!find_physical_device(window))
+        if (!find_physical_device(window, requires))
                 goto error;
 
         vr_vk.vkGetPhysicalDeviceProperties(window->physical_device,
@@ -446,6 +477,7 @@ init_vk(struct vr_window *window)
                 .ppEnabledExtensionNames = (const char * const []) {
                         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
                 },
+                .pEnabledFeatures = requires
         };
         res = vr_vk.vkCreateDevice(window->physical_device,
                                    &device_create_info,
@@ -574,7 +606,7 @@ error:
 }
 
 struct vr_window *
-vr_window_new(void)
+vr_window_new(const VkPhysicalDeviceFeatures *requires)
 {
         struct vr_window *window = vr_calloc(sizeof *window);
 
@@ -583,7 +615,7 @@ vr_window_new(void)
 
         window->libvulkan_loaded = true;
 
-        if (!init_vk(window))
+        if (!init_vk(window, requires))
                 goto error;
 
         return window;

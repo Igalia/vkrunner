@@ -75,33 +75,47 @@ write_ppm(struct vr_window *window,
 
 static bool
 process_script(struct vr_config *config,
-               struct vr_window *window,
                const char *filename)
 {
         bool ret = true;
-        struct vr_script *script = vr_script_load(filename);
+        struct vr_script *script = NULL;
+        struct vr_window *window = NULL;
+        struct vr_pipeline *pipeline = NULL;
 
-        if (script == NULL)
-                return false;
+        script = vr_script_load(filename);
+        if (script == NULL) {
+                ret = false;
+                goto out;
+        }
 
-        struct vr_pipeline *pipeline =
-                vr_pipeline_create(config, window, script);
+        window = vr_window_new(&script->required_features);
+        if (window == NULL) {
+                ret = false;
+                goto out;
+        }
+
+        pipeline = vr_pipeline_create(config, window, script);
 
         if (pipeline == NULL) {
                 ret = false;
-        } else {
-                if (!vr_test_run(window, pipeline, script))
-                        ret = false;
-
-                vr_pipeline_free(pipeline);
+                goto out;
         }
 
-        vr_script_free(script);
+        if (!vr_test_run(window, pipeline, script))
+                ret = false;
 
         if (config->image_filename) {
                 if (!write_ppm(window, config->image_filename))
                         ret = false;
         }
+
+out:
+        if (pipeline)
+                vr_pipeline_free(pipeline);
+        if (window)
+                vr_window_free(window);
+        if (script)
+                vr_script_free(script);
 
         return ret;
 }
@@ -110,29 +124,18 @@ int
 main(int argc, char **argv)
 {
         int ret = EXIT_SUCCESS;
-        struct vr_window *window = NULL;
 
         struct vr_config *config = vr_config_new(argc, argv);
         if (config == NULL)
                 return EXIT_FAILURE;
 
-        window = vr_window_new();
-        if (window == NULL) {
-                ret = EXIT_FAILURE;
-                goto out;
-        }
-
         struct vr_config_script *script;
         vr_list_for_each(script, &config->scripts, link) {
-                if (!process_script(config, window, script->filename)) {
+                if (!process_script(config, script->filename)) {
                         ret = EXIT_FAILURE;
-                        goto out;
+                        break;
                 }
         }
-
-out:
-        if (window)
-                vr_window_free(window);
 
         vr_config_free(config);
 
