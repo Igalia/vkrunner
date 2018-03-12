@@ -34,7 +34,7 @@
 #include "vr-allocate-store.h"
 #include "vr-feature-offsets.h"
 
-#define COLOR_IMAGE_FORMAT VK_FORMAT_B8G8R8A8_SRGB
+#define COLOR_IMAGE_FORMAT VK_FORMAT_B8G8R8A8_UNORM
 
 static int
 find_queue_family(struct vr_window *window,
