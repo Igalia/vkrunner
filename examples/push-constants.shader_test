@@ -1,0 +1,40 @@
+[vertex shader]
+#version 430
+
+layout(location = 0) in vec4 pos;
+
+void
+main()
+{
+        gl_Position = pos;
+}
+
+[fragment shader]
+#version 430
+
+layout(std140, push_constant) uniform block {
+        uniform vec4 in_color;
+        uniform float multiplier;
+};
+
+layout(location = 0) out vec4 out_color;
+
+void
+main()
+{
+        out_color = in_color * multiplier;
+}
+
+[test]
+uniform float 16 2.0
+uniform vec4 0 0.5 0.5 0.5 0.5
+draw rect -1.0 -1.0 0.66666 1.0
+
+uniform float 16 0.5
+uniform vec4 0 0.0 2.0 0.0 2.0
+draw rect -0.33333 -1.0 1.33333 1.0
+draw rect -1.0 0.0 2.0 1.0
+
+probe rect rgba (1, 1, 81, 122) (1, 1, 1, 1)
+probe rect rgba (85, 1, 163, 122) (0, 1, 0, 1)
+probe rect rgba (0, 126, 250, 122) (0, 1, 0, 1)
