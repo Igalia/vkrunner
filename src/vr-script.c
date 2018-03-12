@@ -38,6 +38,7 @@
 #include "vr-buffer.h"
 #include "vr-error-message.h"
 #include "vr-feature-offsets.h"
+#include "vr-window.h"
 
 enum section {
         SECTION_NONE,
@@ -389,6 +390,19 @@ process_test_line(struct load_state *data)
                 if (*p != ')' || !is_end(p + 1))
                         goto error;
                 command->op = VR_SCRIPT_OP_PROBE_RECT_RGBA;
+                return true;
+        }
+
+        if (looking_at(&p, "probe all rgba ")) {
+                if (!parse_floats(&p, command->probe_rect.color, 4, NULL))
+                        goto error;
+                if (!is_end(p + 1))
+                        goto error;
+                command->op = VR_SCRIPT_OP_PROBE_RECT_RGBA;
+                command->probe_rect.x = 0;
+                command->probe_rect.y = 0;
+                command->probe_rect.w = VR_WINDOW_WIDTH;
+                command->probe_rect.h = VR_WINDOW_HEIGHT;
                 return true;
         }
 

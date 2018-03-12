@@ -21,7 +21,7 @@ sections.
 
 ## [test] section:
 
-The `[test]` currently only supports three commands:
+The `[test]` currently only supports the following commands:
 
 > draw rect _x_ _y_ _width_ _height_
 
@@ -33,6 +33,10 @@ Vulkan’s normalised coordinate system is different from OpenGL’s.
 
 Verifies that a given rectangle (in viewport coordinates) matches the
 given colour.
+
+> probe all rgba _r_ _g_ _b_ _a_
+
+The same as above except that it probes the entire window.
 
 > uniform _type_ _offset_ _values_…
 
