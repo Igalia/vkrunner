@@ -396,7 +396,7 @@ process_test_line(struct load_state *data)
         if (looking_at(&p, "probe all rgba ")) {
                 if (!parse_floats(&p, command->probe_rect.color, 4, NULL))
                         goto error;
-                if (!is_end(p + 1))
+                if (!is_end(p))
                         goto error;
                 command->op = VR_SCRIPT_OP_PROBE_RECT_RGBA;
                 command->probe_rect.x = 0;
@@ -416,7 +416,7 @@ process_test_line(struct load_state *data)
                         goto error;
                 if (!parse_value(&p, &command->set_push_constant.value))
                         goto error;
-                if (!is_end(p + 1))
+                if (!is_end(p))
                         goto error;
                 command->op = VR_SCRIPT_OP_SET_PUSH_CONSTANT;
                 return true;
