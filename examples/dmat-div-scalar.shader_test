@@ -1,0 +1,39 @@
+[require]
+shaderFloat64
+
+[vertex shader]
+#version 430
+
+layout(location = 0) in vec4 vertex;
+
+void main()
+{
+        gl_Position = vertex;
+}
+
+[fragment shader]
+#version 430
+
+layout(std140, push_constant) uniform block {
+        uniform double scalar;
+};
+
+layout(location = 0) out vec4 color_out;
+
+void main()
+{
+        dmat4 mat = dmat4(2.0);
+        dmat4 res = mat / scalar;
+        color_out = vec4(res[0][0], res[1][1], res[2][2], res[3][3]);
+}
+
+[test]
+clear
+
+uniform double 0 4
+draw rect -1 -1 2 2
+probe all rgba 0.5 0.5 0.5 0.5
+
+uniform double 0 8
+draw rect -1 -1 2 2
+probe all rgba 0.25 0.25 0.25 0.25
