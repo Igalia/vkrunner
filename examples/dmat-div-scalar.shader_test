@@ -1,3 +1,5 @@
+# See https://github.com/KhronosGroup/glslang/issues/1278
+
 [require]
 shaderFloat64
 
