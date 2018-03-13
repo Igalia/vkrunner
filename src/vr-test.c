@@ -46,6 +46,7 @@ struct test_data {
         struct vr_window *window;
         struct vr_pipeline *pipeline;
         struct vr_list buffers;
+        float clear_color[4];
 };
 
 static const float
@@ -424,6 +425,43 @@ set_push_constant(struct test_data *data,
         return true;
 }
 
+static bool
+clear_color(struct test_data *data,
+            const struct vr_script_command *command)
+{
+        memcpy(data->clear_color,
+               command->clear_color.color,
+               sizeof data->clear_color);
+        return true;
+}
+
+static bool
+clear(struct test_data *data,
+      const struct vr_script_command *command)
+{
+        VkClearAttachment color_clear_attachment = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .colorAttachment = 0,
+        };
+        VkClearRect color_clear_rect = {
+                .rect = {
+                        .offset = { 0, 0 },
+                        .extent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT }
+                },
+                .baseArrayLayer = 0,
+                .layerCount = 1
+        };
+        memcpy(color_clear_attachment.clearValue.color.float32,
+               data->clear_color,
+               sizeof data->clear_color);
+        vr_vk.vkCmdClearAttachments(data->window->command_buffer,
+                                    1, /* attachmentCount */
+                                    &color_clear_attachment,
+                                    1,
+                                    &color_clear_rect);
+        return true;
+}
+
 bool
 vr_test_run(struct vr_window *window,
             struct vr_pipeline *pipeline,
@@ -454,6 +492,14 @@ vr_test_run(struct vr_window *window,
                         break;
                 case VR_SCRIPT_OP_SET_PUSH_CONSTANT:
                         if (!set_push_constant(&data, command))
+                                ret = false;
+                        break;
+                case VR_SCRIPT_OP_CLEAR_COLOR:
+                        if (!clear_color(&data, command))
+                                ret = false;
+                        break;
+                case VR_SCRIPT_OP_CLEAR:
+                        if (!clear(&data, command))
                                 ret = false;
                         break;
                 }
