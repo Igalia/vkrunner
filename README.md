@@ -45,6 +45,15 @@ offset is a byte offset into the push constant buffer rather than a
 uniform location. The type can be one of int, float, double, vec[234],
 dvec[234] or ivec[234].
 
+> clear color _r_ _g_ _b_ _a_
+
+Sets the color to use for subsequent clear commands. Defaults to all
+zeros.
+
+> clear
+
+Clears the entire framebuffer to the previously set clear color.
+
 Take a look in the examples directory for examples.
 
 ## [require] section

@@ -422,6 +422,22 @@ process_test_line(struct load_state *data)
                 return true;
         }
 
+        if (looking_at(&p, "clear color ")) {
+                if (!parse_floats(&p, command->clear_color.color, 4, NULL))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                command->op = VR_SCRIPT_OP_CLEAR_COLOR;
+                return true;
+        }
+
+        if (looking_at(&p, "clear")) {
+                if (!is_end(p))
+                        goto error;
+                command->op = VR_SCRIPT_OP_CLEAR;
+                return true;
+        }
+
 error:
         vr_error_message("%s:%i: Invalid test command",
                          data->filename,

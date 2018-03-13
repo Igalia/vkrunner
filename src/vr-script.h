@@ -43,7 +43,9 @@ enum vr_script_shader_stage {
 enum vr_script_op {
         VR_SCRIPT_OP_DRAW_RECT,
         VR_SCRIPT_OP_PROBE_RECT_RGBA,
-        VR_SCRIPT_OP_SET_PUSH_CONSTANT
+        VR_SCRIPT_OP_SET_PUSH_CONSTANT,
+        VR_SCRIPT_OP_CLEAR_COLOR,
+        VR_SCRIPT_OP_CLEAR
 };
 
 struct vr_script_shader {
@@ -97,6 +99,10 @@ struct vr_script_command {
                         size_t offset;
                         struct vr_script_value value;
                 } set_push_constant;
+
+                struct {
+                        float color[4];
+                } clear_color;
         };
 };
 
