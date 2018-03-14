@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <assert.h>
 
 static const char *
 stage_names[VR_SCRIPT_N_STAGES] = {
@@ -284,6 +285,104 @@ out:
         return module;
 }
 
+static VkShaderModule
+assemble_stage(const struct vr_config *config,
+               struct vr_window *window,
+               const struct vr_script_shader *shader)
+{
+        FILE *module_stream = NULL;
+        char *module_filename;
+        char *source_filename = NULL;
+        uint8_t *module_binary = NULL;
+        VkShaderModule module = NULL;
+        size_t module_size;
+        bool res;
+
+        if (!create_named_temp_file(&module_stream, &module_filename))
+                goto out;
+
+        source_filename = create_file_for_shader(shader);
+        if (source_filename == NULL)
+                goto out;
+
+        char *args[] = {
+                getenv("PIGLIT_SPIRV_AS_BINARY"),
+                "-o", module_filename,
+                source_filename,
+                NULL
+        };
+
+        if (args[0] == NULL)
+                args[0] = "spirv-as";
+
+        res = vr_subprocess_command(args);
+        if (!res) {
+                vr_error_message("spirv-as failed");
+                goto out;
+        }
+
+        if (config->show_disassembly)
+                show_disassembly(module_filename);
+
+        if (!load_stream_contents(module_stream, &module_binary, &module_size))
+                goto out;
+
+        VkShaderModuleCreateInfo shader_module_create_info = {
+                        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                        .codeSize = module_size,
+                        .pCode = (const uint32_t *) module_binary
+        };
+        res = vr_vk.vkCreateShaderModule(window->device,
+                                         &shader_module_create_info,
+                                         NULL, /* allocator */
+                                         &module);
+        if (res != VK_SUCCESS) {
+                vr_error_message("vkCreateShaderModule failed");
+                module = NULL;
+                goto out;
+        }
+
+out:
+        if (source_filename) {
+                unlink(source_filename);
+                vr_free(source_filename);
+        }
+
+        if (module_stream) {
+                fclose(module_stream);
+                unlink(module_filename);
+                vr_free(module_filename);
+        }
+
+        if (module_binary)
+                vr_free(module_binary);
+
+        return module;
+}
+
+static VkShaderModule
+build_stage(const struct vr_config *config,
+            struct vr_window *window,
+            const struct vr_script *script,
+            enum vr_script_shader_stage stage)
+{
+        assert(!vr_list_empty(&script->stages[stage]));
+
+        struct vr_script_shader *shader =
+                vr_container_of(script->stages[stage].next,
+                                struct vr_script_shader,
+                                link);
+
+        switch (shader->source_type) {
+        case VR_SCRIPT_SOURCE_TYPE_GLSL:
+                return compile_stage(config, window, script, stage);
+        case VR_SCRIPT_SOURCE_TYPE_SPIRV:
+                return assemble_stage(config, window, shader);
+        }
+
+        vr_fatal("should not be reached");
+}
+
 static VkPipeline
 create_vk_pipeline(struct vr_pipeline *pipeline)
 {
@@ -457,7 +556,7 @@ vr_pipeline_create(const struct vr_config *config,
                 if (vr_list_empty(&script->stages[i]))
                         continue;
 
-                pipeline->modules[i] = compile_stage(config, window, script, i);
+                pipeline->modules[i] = build_stage(config, window, script, i);
                 if (pipeline->modules[i] == NULL)
                         goto error;
         }

@@ -55,7 +55,8 @@ struct load_state {
         char *line;
         size_t len;
         ssize_t nread;
-        int current_stage;
+        enum vr_script_shader_stage current_stage;
+        enum vr_script_source_type current_source_type;
         enum section current_section;
         struct vr_buffer commands;
 };
@@ -77,6 +78,7 @@ end_shader(struct load_state *data)
 
         shader = vr_alloc(sizeof *shader + data->buffer.length);
         shader->length = data->buffer.length;
+        shader->source_type = data->current_source_type;
         memcpy(shader->source, data->buffer.data, shader->length);
 
         vr_list_insert(data->script->stages[data->current_stage].prev,
@@ -446,6 +448,41 @@ error:
 }
 
 static bool
+is_stage_section(struct load_state *data,
+                 const char *start,
+                 const char *end)
+{
+        int stage;
+
+        for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
+                if (is_string(stage_names[stage], start, end)) {
+                        data->current_source_type = VR_SCRIPT_SOURCE_TYPE_GLSL;
+                        goto found;
+                }
+        }
+
+        if (end - start <= 6 || memcmp(" spirv", end - 6, 6))
+                return false;
+
+        end -= 6;
+
+        for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
+                if (is_string(stage_names[stage], start, end)) {
+                        data->current_source_type = VR_SCRIPT_SOURCE_TYPE_SPIRV;
+                        goto found;
+                }
+        }
+
+        return false;
+
+found:
+        data->current_section = SECTION_SHADER;
+        data->current_stage = stage;
+        data->buffer.length = 0;
+        return true;
+}
+
+static bool
 process_section_header(struct load_state *data)
 {
         if (!end_section(data))
@@ -460,13 +497,19 @@ process_section_header(struct load_state *data)
                 return false;
         }
 
-        for (int stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
-                if (is_string(stage_names[stage], start, end)) {
-                        data->current_section = SECTION_SHADER;
-                        data->current_stage = stage;
-                        data->buffer.length = 0;
-                        return true;
+        if (is_stage_section(data, start, end)) {
+                const struct vr_script *script = data->script;
+                if (data->current_source_type == VR_SCRIPT_SOURCE_TYPE_SPIRV &&
+                    !vr_list_empty(&script->stages[data->current_stage])) {
+                        vr_error_message("%s:%i: SPIR-V source can not be "
+                                         "linked with other shaders in the "
+                                         "same stage",
+                                         data->filename,
+                                         data->line_num);
+                        return false;
                 }
+
+            return true;
         }
 
         if (is_string("require", start, end)) {

@@ -63,6 +63,17 @@ VkPhysicalDeviceFeatures. These will be searched for when deciding
 which physical device to open. If no physical device with the
 corresponding requirements can be found then it will report an error.
 
+## Shader sections
+
+Shaders can be stored in sections like `[vertex shader]` just like in
+`shader_runner`. Multiple GLSL shaders can be given for a single stage
+and they will be linked together via glslangValidator.
+
+Alternatively, the disassembly of the SPIR-V source can be provided
+with a section like `[vertex shader spirv]`. This will be assembled
+with `spirv-as`. If a SPIR-V section is given for a stage there can be
+no other shaders for that stage.
+
 ## Command line arguments
 
     usage: vkrunner [OPTION]... SCRIPT...

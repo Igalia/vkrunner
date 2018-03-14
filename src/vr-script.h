@@ -48,8 +48,14 @@ enum vr_script_op {
         VR_SCRIPT_OP_CLEAR
 };
 
+enum vr_script_source_type {
+        VR_SCRIPT_SOURCE_TYPE_GLSL,
+        VR_SCRIPT_SOURCE_TYPE_SPIRV
+};
+
 struct vr_script_shader {
         struct vr_list link;
+        enum vr_script_source_type source_type;
         size_t length;
         char source[];
 };
