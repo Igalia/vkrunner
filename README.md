@@ -74,6 +74,10 @@ with a section like `[vertex shader spirv]`. This will be assembled
 with `spirv-as`. If a SPIR-V section is given for a stage there can be
 no other shaders for that stage.
 
+The vertex shader can also be skipped with an empty section called
+`[vertex shader passthrough]`. That will create a simple vertex shader
+than just copies a vec4 for input location 0 to `gl_Position`.
+
 ## Command line arguments
 
     usage: vkrunner [OPTION]... SCRIPT...

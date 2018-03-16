@@ -71,18 +71,43 @@ stage_names[VR_SCRIPT_N_STAGES] = {
         "compute shader",
 };
 
+static const char
+vertex_shader_passthrough[] =
+        "#version 430\n"
+        "\n"
+        "layout(location = 0) in vec4 piglit_vertex;\n"
+        "\n"
+        "void\n"
+        "main()\n"
+        "{\n"
+        "        gl_Position = piglit_vertex;\n"
+        "}\n";
+
 static void
-end_shader(struct load_state *data)
+add_shader(struct load_state *data,
+           enum vr_script_shader_stage stage,
+           enum vr_script_source_type source_type,
+           size_t length,
+           const char *source)
 {
         struct vr_script_shader *shader;
 
-        shader = vr_alloc(sizeof *shader + data->buffer.length);
-        shader->length = data->buffer.length;
-        shader->source_type = data->current_source_type;
-        memcpy(shader->source, data->buffer.data, shader->length);
+        shader = vr_alloc(sizeof *shader + length);
+        shader->length = length;
+        shader->source_type = source_type;
+        memcpy(shader->source, source, length);
 
-        vr_list_insert(data->script->stages[data->current_stage].prev,
-                       &shader->link);
+        vr_list_insert(data->script->stages[stage].prev, &shader->link);
+}
+
+static void
+end_shader(struct load_state *data)
+{
+        add_shader(data,
+                   data->current_stage,
+                   data->current_source_type,
+                   data->buffer.length,
+                   (const char *) data->buffer.data);
 }
 
 static bool
@@ -527,6 +552,16 @@ process_section_header(struct load_state *data)
                         return false;
                 }
 
+                return true;
+        }
+
+        if (is_string("vertex shader passthrough", start, end)) {
+                data->current_section = SECTION_NONE;
+                add_shader(data,
+                           VR_SCRIPT_SHADER_STAGE_VERTEX,
+                           VR_SCRIPT_SOURCE_TYPE_GLSL,
+                           (sizeof vertex_shader_passthrough) - 1,
+                           vertex_shader_passthrough);
                 return true;
         }
 
