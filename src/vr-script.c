@@ -509,7 +509,7 @@ process_section_header(struct load_state *data)
                         return false;
                 }
 
-            return true;
+                return true;
         }
 
         if (is_string("require", start, end)) {
