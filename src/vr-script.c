@@ -314,6 +314,24 @@ parse_value(const char **p,
 }
 
 static bool
+process_none_line(struct load_state *data)
+{
+        const char *start = data->line;
+
+        while (*start && isspace(*start))
+                start++;
+
+        if (*start != '#' && *start != '\0') {
+                vr_error_message("%s:%i expected empty line",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        return true;
+}
+
+static bool
 process_require_line(struct load_state *data)
 {
         const char *start = data->line, *p;
@@ -538,7 +556,7 @@ process_line(struct load_state *data)
 
         switch (data->current_section) {
         case SECTION_NONE:
-                return true;
+                return process_none_line(data);
 
         case SECTION_REQUIRE:
                 return process_require_line(data);
