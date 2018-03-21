@@ -1,0 +1,88 @@
+[require]
+shaderFloat64
+
+[vertex shader passthrough]
+
+[fragment shader]
+#version 430
+
+layout(std140, push_constant) uniform block {
+        dvec2 arg0;
+        dvec2 arg1;
+        float arg2;
+        double tolerance;
+        dvec2 expected;
+};
+
+layout(location = 0) out vec4 color_out;
+
+void
+main()
+{
+        dvec2 result = refract(arg0, arg1, arg2);
+
+        color_out = (distance(result, expected) <= tolerance ?
+                     vec4(0.0, 1.0, 0.0, 1.0) :
+                     vec4(1.0, 0.0, 0.0, 1.0));
+}
+
+[test]
+clear color 0.0 0.0 1.0 0.0
+clear
+
+uniform dvec2 0 -0.083045479853739973 -0.99654575824487956
+uniform dvec2 16 -0.083045479853739973 -0.99654575824487956
+uniform float 32 0.5
+uniform dvec2 48 0.083045479853739973 0.99654575824487956
+uniform double 40 9.9999999999999991e-06
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.083045479853739973 -0.99654575824487956
+uniform dvec2 16 -0.083045479853739973 -0.99654575824487956
+uniform float 32 2.0
+uniform dvec2 48 0.08304547985373989 0.99654575824487868
+uniform double 40 9.9999999999999907e-06
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.083045479853739973 -0.99654575824487956
+uniform dvec2 16 -0.65850460786851817 0.75257669470687794
+uniform float 32 0.5
+uniform dvec2 48 0.34406582839171168 -0.93894552862939029
+uniform double 40 1.0000000000000001e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.083045479853739973 -0.99654575824487956
+uniform dvec2 16 -0.65850460786851817 0.75257669470687794
+uniform float 32 2.0
+uniform dvec2 48 -0.0 -0.0
+uniform double 40 0.0
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.65850460786851817 0.75257669470687794
+uniform dvec2 16 -0.083045479853739973 -0.99654575824487956
+uniform float 32 0.5
+uniform dvec2 48 -0.28062487247894746 0.95981752481717819
+uniform double 40 1.0000000000000001e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.65850460786851817 0.75257669470687794
+uniform dvec2 16 -0.083045479853739973 -0.99654575824487956
+uniform float 32 2.0
+uniform dvec2 48 -0.0 0.0
+uniform double 40 0.0
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.65850460786851817 0.75257669470687794
+uniform dvec2 16 -0.65850460786851817 0.75257669470687794
+uniform float 32 0.5
+uniform dvec2 48 0.65850460786851817 -0.75257669470687782
+uniform double 40 1.0000000000000001e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.65850460786851817 0.75257669470687794
+uniform dvec2 16 -0.65850460786851817 0.75257669470687794
+uniform float 32 2.0
+uniform dvec2 48 0.65850460786851905 -0.75257669470687905
+uniform double 40 1.0000000000000016e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0

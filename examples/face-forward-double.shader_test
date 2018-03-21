@@ -1,0 +1,88 @@
+[require]
+shaderFloat64
+
+[vertex shader passthrough]
+
+[fragment shader]
+#version 430
+
+layout(std140, push_constant) uniform block {
+        dvec2 arg0;
+        dvec2 arg1;
+        dvec2 arg2;
+        double tolerance;
+        dvec2 expected;
+};
+
+layout(location = 0) out vec4 color_out;
+
+void
+main()
+{
+        dvec2 result = faceforward(arg0, arg1, arg2);
+
+        color_out = (distance(result, expected) <= tolerance ?
+                     vec4(0.0, 1.0, 0.0, 1.0) :
+                     vec4(1.0, 0.0, 0.0, 1.0));
+}
+
+[test]
+clear color 0.0 0.0 1.0 0.0
+clear
+
+uniform dvec2 0 -0.10000000000000001 -1.2
+uniform dvec2 16 -0.10000000000000001 -1.2
+uniform dvec2 32 -0.10000000000000001 -1.2
+uniform dvec2 64 0.10000000000000001 1.2
+uniform double 48 1.2041594578792297e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.10000000000000001 -1.2
+uniform dvec2 16 -0.10000000000000001 -1.2
+uniform dvec2 32 -0.41999999999999998 0.47999999999999998
+uniform dvec2 64 -0.10000000000000001 -1.2
+uniform double 48 1.2041594578792297e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.10000000000000001 -1.2
+uniform dvec2 16 -0.41999999999999998 0.47999999999999998
+uniform dvec2 32 -0.10000000000000001 -1.2
+uniform dvec2 64 -0.10000000000000001 -1.2
+uniform double 48 1.2041594578792297e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.10000000000000001 -1.2
+uniform dvec2 16 -0.41999999999999998 0.47999999999999998
+uniform dvec2 32 -0.41999999999999998 0.47999999999999998
+uniform dvec2 64 0.10000000000000001 1.2
+uniform double 48 1.2041594578792297e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.41999999999999998 0.47999999999999998
+uniform dvec2 16 -0.10000000000000001 -1.2
+uniform dvec2 32 -0.10000000000000001 -1.2
+uniform dvec2 64 0.41999999999999998 -0.47999999999999998
+uniform double 48 6.3780874876407897e-06
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.41999999999999998 0.47999999999999998
+uniform dvec2 16 -0.10000000000000001 -1.2
+uniform dvec2 32 -0.41999999999999998 0.47999999999999998
+uniform dvec2 64 -0.41999999999999998 0.47999999999999998
+uniform double 48 6.3780874876407897e-06
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.41999999999999998 0.47999999999999998
+uniform dvec2 16 -0.41999999999999998 0.47999999999999998
+uniform dvec2 32 -0.10000000000000001 -1.2
+uniform dvec2 64 -0.41999999999999998 0.47999999999999998
+uniform double 48 6.3780874876407897e-06
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.41999999999999998 0.47999999999999998
+uniform dvec2 16 -0.41999999999999998 0.47999999999999998
+uniform dvec2 32 -0.41999999999999998 0.47999999999999998
+uniform dvec2 64 0.41999999999999998 -0.47999999999999998
+uniform double 48 6.3780874876407897e-06
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
