@@ -55,7 +55,8 @@ struct load_state {
         char *line;
         size_t len;
         ssize_t nread;
-        int current_stage;
+        enum vr_script_shader_stage current_stage;
+        enum vr_script_source_type current_source_type;
         enum section current_section;
         struct vr_buffer commands;
 };
@@ -70,17 +71,43 @@ stage_names[VR_SCRIPT_N_STAGES] = {
         "compute shader",
 };
 
+static const char
+vertex_shader_passthrough[] =
+        "#version 430\n"
+        "\n"
+        "layout(location = 0) in vec4 piglit_vertex;\n"
+        "\n"
+        "void\n"
+        "main()\n"
+        "{\n"
+        "        gl_Position = piglit_vertex;\n"
+        "}\n";
+
 static void
-end_shader(struct load_state *data)
+add_shader(struct load_state *data,
+           enum vr_script_shader_stage stage,
+           enum vr_script_source_type source_type,
+           size_t length,
+           const char *source)
 {
         struct vr_script_shader *shader;
 
-        shader = vr_alloc(sizeof *shader + data->buffer.length);
-        shader->length = data->buffer.length;
-        memcpy(shader->source, data->buffer.data, shader->length);
+        shader = vr_alloc(sizeof *shader + length);
+        shader->length = length;
+        shader->source_type = source_type;
+        memcpy(shader->source, source, length);
 
-        vr_list_insert(data->script->stages[data->current_stage].prev,
-                       &shader->link);
+        vr_list_insert(data->script->stages[stage].prev, &shader->link);
+}
+
+static void
+end_shader(struct load_state *data)
+{
+        add_shader(data,
+                   data->current_stage,
+                   data->current_source_type,
+                   data->buffer.length,
+                   (const char *) data->buffer.data);
 }
 
 static bool
@@ -312,6 +339,24 @@ parse_value(const char **p,
 }
 
 static bool
+process_none_line(struct load_state *data)
+{
+        const char *start = data->line;
+
+        while (*start && isspace(*start))
+                start++;
+
+        if (*start != '#' && *start != '\0') {
+                vr_error_message("%s:%i expected empty line",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        return true;
+}
+
+static bool
 process_require_line(struct load_state *data)
 {
         const char *start = data->line, *p;
@@ -446,6 +491,41 @@ error:
 }
 
 static bool
+is_stage_section(struct load_state *data,
+                 const char *start,
+                 const char *end)
+{
+        int stage;
+
+        for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
+                if (is_string(stage_names[stage], start, end)) {
+                        data->current_source_type = VR_SCRIPT_SOURCE_TYPE_GLSL;
+                        goto found;
+                }
+        }
+
+        if (end - start <= 6 || memcmp(" spirv", end - 6, 6))
+                return false;
+
+        end -= 6;
+
+        for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
+                if (is_string(stage_names[stage], start, end)) {
+                        data->current_source_type = VR_SCRIPT_SOURCE_TYPE_SPIRV;
+                        goto found;
+                }
+        }
+
+        return false;
+
+found:
+        data->current_section = SECTION_SHADER;
+        data->current_stage = stage;
+        data->buffer.length = 0;
+        return true;
+}
+
+static bool
 process_section_header(struct load_state *data)
 {
         if (!end_section(data))
@@ -460,13 +540,29 @@ process_section_header(struct load_state *data)
                 return false;
         }
 
-        for (int stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
-                if (is_string(stage_names[stage], start, end)) {
-                        data->current_section = SECTION_SHADER;
-                        data->current_stage = stage;
-                        data->buffer.length = 0;
-                        return true;
+        if (is_stage_section(data, start, end)) {
+                const struct vr_script *script = data->script;
+                if (data->current_source_type == VR_SCRIPT_SOURCE_TYPE_SPIRV &&
+                    !vr_list_empty(&script->stages[data->current_stage])) {
+                        vr_error_message("%s:%i: SPIR-V source can not be "
+                                         "linked with other shaders in the "
+                                         "same stage",
+                                         data->filename,
+                                         data->line_num);
+                        return false;
                 }
+
+                return true;
+        }
+
+        if (is_string("vertex shader passthrough", start, end)) {
+                data->current_section = SECTION_NONE;
+                add_shader(data,
+                           VR_SCRIPT_SHADER_STAGE_VERTEX,
+                           VR_SCRIPT_SOURCE_TYPE_GLSL,
+                           (sizeof vertex_shader_passthrough) - 1,
+                           vertex_shader_passthrough);
+                return true;
         }
 
         if (is_string("require", start, end)) {
@@ -495,7 +591,7 @@ process_line(struct load_state *data)
 
         switch (data->current_section) {
         case SECTION_NONE:
-                return true;
+                return process_none_line(data);
 
         case SECTION_REQUIRE:
                 return process_require_line(data);
