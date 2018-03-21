@@ -1,0 +1,151 @@
+# This is the same as the refract-double test except that it uses
+# SPIR-V disassembly to explicitly use a 32-bit type for the exp
+# argument. This works around a bug in glslang which seems to make it
+# always have the same type as the other arguments.
+
+[require]
+shaderFloat64
+
+[vertex shader passthrough]
+
+[fragment shader spirv]
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 6
+; Bound: 49
+; Schema: 0
+               OpCapability Shader
+               OpCapability Float64
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint Fragment %main "main" %color_out
+               OpExecutionMode %main OriginUpperLeft
+               OpSource GLSL 430
+               OpName %main "main"
+               OpName %result "result"
+               OpName %block "block"
+               OpMemberName %block 0 "arg0"
+               OpMemberName %block 1 "arg1"
+               OpMemberName %block 2 "arg2"
+               OpMemberName %block 3 "tolerance"
+               OpMemberName %block 4 "expected"
+               OpName %_ ""
+               OpName %color_out "color_out"
+               OpMemberDecorate %block 0 Offset 0
+               OpMemberDecorate %block 1 Offset 16
+               OpMemberDecorate %block 2 Offset 32
+               OpMemberDecorate %block 3 Offset 40
+               OpMemberDecorate %block 4 Offset 48
+               OpDecorate %block Block
+               OpDecorate %color_out Location 0
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+     %double = OpTypeFloat 64
+   %v2double = OpTypeVector %double 2
+%_ptr_Function_v2double = OpTypePointer Function %v2double
+      %float = OpTypeFloat 32
+      %block = OpTypeStruct %v2double %v2double %float %double %v2double
+%_ptr_PushConstant_block = OpTypePointer PushConstant %block
+          %_ = OpVariable %_ptr_PushConstant_block PushConstant
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+%_ptr_PushConstant_v2double = OpTypePointer PushConstant %v2double
+      %int_1 = OpConstant %int 1
+      %int_2 = OpConstant %int 2
+%_ptr_PushConstant_float = OpTypePointer PushConstant %float
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+  %color_out = OpVariable %_ptr_Output_v4float Output
+      %int_4 = OpConstant %int 4
+      %int_3 = OpConstant %int 3
+%_ptr_PushConstant_double = OpTypePointer PushConstant %double
+       %bool = OpTypeBool
+    %float_0 = OpConstant %float 0
+    %float_1 = OpConstant %float 1
+         %44 = OpConstantComposite %v4float %float_0 %float_1 %float_0 %float_1
+         %45 = OpConstantComposite %v4float %float_1 %float_0 %float_0 %float_1
+     %v4bool = OpTypeVector %bool 4
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+     %result = OpVariable %_ptr_Function_v2double Function
+         %17 = OpAccessChain %_ptr_PushConstant_v2double %_ %int_0
+         %18 = OpLoad %v2double %17
+         %20 = OpAccessChain %_ptr_PushConstant_v2double %_ %int_1
+         %21 = OpLoad %v2double %20
+         %24 = OpAccessChain %_ptr_PushConstant_float %_ %int_2
+         %25 = OpLoad %float %24
+         %27 = OpExtInst %v2double %1 Refract %18 %21 %25
+               OpStore %result %27
+         %31 = OpLoad %v2double %result
+         %33 = OpAccessChain %_ptr_PushConstant_v2double %_ %int_4
+         %34 = OpLoad %v2double %33
+         %35 = OpExtInst %double %1 Distance %31 %34
+         %38 = OpAccessChain %_ptr_PushConstant_double %_ %int_3
+         %39 = OpLoad %double %38
+         %41 = OpFOrdLessThanEqual %bool %35 %39
+         %47 = OpCompositeConstruct %v4bool %41 %41 %41 %41
+         %48 = OpSelect %v4float %47 %44 %45
+               OpStore %color_out %48
+               OpReturn
+               OpFunctionEnd
+
+[test]
+clear color 0.0 0.0 1.0 0.0
+clear
+
+uniform dvec2 0 -0.083045479853739973 -0.99654575824487956
+uniform dvec2 16 -0.083045479853739973 -0.99654575824487956
+uniform float 32 0.5
+uniform dvec2 48 0.083045479853739973 0.99654575824487956
+uniform double 40 9.9999999999999991e-06
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.083045479853739973 -0.99654575824487956
+uniform dvec2 16 -0.083045479853739973 -0.99654575824487956
+uniform float 32 2.0
+uniform dvec2 48 0.08304547985373989 0.99654575824487868
+uniform double 40 9.9999999999999907e-06
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.083045479853739973 -0.99654575824487956
+uniform dvec2 16 -0.65850460786851817 0.75257669470687794
+uniform float 32 0.5
+uniform dvec2 48 0.34406582839171168 -0.93894552862939029
+uniform double 40 1.0000000000000001e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.083045479853739973 -0.99654575824487956
+uniform dvec2 16 -0.65850460786851817 0.75257669470687794
+uniform float 32 2.0
+uniform dvec2 48 -0.0 -0.0
+uniform double 40 0.0
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.65850460786851817 0.75257669470687794
+uniform dvec2 16 -0.083045479853739973 -0.99654575824487956
+uniform float 32 0.5
+uniform dvec2 48 -0.28062487247894746 0.95981752481717819
+uniform double 40 1.0000000000000001e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.65850460786851817 0.75257669470687794
+uniform dvec2 16 -0.083045479853739973 -0.99654575824487956
+uniform float 32 2.0
+uniform dvec2 48 -0.0 0.0
+uniform double 40 0.0
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.65850460786851817 0.75257669470687794
+uniform dvec2 16 -0.65850460786851817 0.75257669470687794
+uniform float 32 0.5
+uniform dvec2 48 0.65850460786851817 -0.75257669470687782
+uniform double 40 1.0000000000000001e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
+uniform dvec2 0 -0.65850460786851817 0.75257669470687794
+uniform dvec2 16 -0.65850460786851817 0.75257669470687794
+uniform float 32 2.0
+uniform dvec2 48 0.65850460786851905 -0.75257669470687905
+uniform double 40 1.0000000000000016e-05
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
