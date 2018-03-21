@@ -18,6 +18,8 @@ vkrunner_SOURCES = \
 	vr-feature-offsets.h \
 	vr-flush-memory.c \
 	vr-flush-memory.h \
+	vr-half-float.c \
+	vr-half-float.h \
 	vr-list.c \
 	vr-list.h \
 	vr-script.c \
