@@ -1,0 +1,81 @@
+# Test proper behavior of the isinf(vec4) function.
+#
+# Note: testing behavior if isinf() is challenging because the GLSL
+# 1.50 spec does not explicitly define any circumstances under which
+# infinite values are required to be generated.  This test assumes
+# that the expressions 1.0*exp(1000.0) and -1.0*exp(1000.0) produce
+# infinite values when evaluated in the shader.
+
+[require]
+shaderFloat64
+
+[vertex shader]
+#version 430
+
+layout(std140, push_constant) uniform block {
+        double tolerance;
+        dvec4 multiplier;
+        vec4 exponent;
+        dvec4 expected;
+};
+
+layout(location = 0) in vec4 piglit_vertex;
+layout(location = 0) out vec4 vscolor;
+
+void
+main()
+{
+        gl_Position = piglit_vertex;
+        vscolor = vec4(0.0);
+
+        dvec4 r4 = multiplier*exp(exponent);
+        dvec4 bl4 = dvec4(isinf(r4));
+        if (distance(bl4, expected) > tolerance)
+                vscolor.x = 1.0;
+
+        dvec3 r3 = multiplier.xyz*exp(exponent.xyz);
+        dvec3 bl3 = dvec3(isinf(r3));
+        if (distance(bl3, expected.xyz) > tolerance)
+                vscolor.y = 1.0;
+
+        dvec2 r2 = multiplier.zw*exp(exponent.zw);
+        dvec2 bl2 = dvec2(isinf(r2));
+        if (distance(bl2, expected.zw) > tolerance)
+                vscolor.z = 1.0;
+
+        double r1 = multiplier.x*exp(exponent.x);
+        double bl1 = double(isinf(r1));
+        if (distance(bl1, expected.x) > tolerance)
+                vscolor.w = 1.0;
+}
+
+[fragment shader]
+#version 430
+
+layout(location = 0) in vec4 vscolor;
+layout(location = 0) out vec4 color;
+
+void
+main()
+{
+        color = vscolor;
+}
+
+[test]
+clear color 0.0 0.0 1.0 0.0
+
+clear
+uniform double 0 0.0
+uniform dvec4 32 1.0 1.0   -1.0   -1.0
+uniform vec4 64    1.0 1000.0 1000.0 1.0
+uniform dvec4 96   0.0 1.0    1.0    0.0
+draw rect -1 -1 2 2
+probe all rgba 0.0 0.0 0.0 0.0
+
+clear
+uniform double 0  0.0
+uniform dvec4 32 -1.0   -1.0 1.0 1.0
+uniform vec4 64     1000.0 1.0 1.0 1000.0
+uniform dvec4 96    1.0    0.0 0.0 1.0
+draw rect -1 -1 2 2
+probe all rgba 0.0 0.0 0.0 0.0
