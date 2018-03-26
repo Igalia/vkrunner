@@ -39,6 +39,8 @@ vkrunner_SOURCES = \
 	vr-subprocess.h \
 	vr-test.c \
 	vr-test.h \
+	vr-vbo.c \
+	vr-vbo.h \
 	vr-window.c \
 	vr-window.h \
 	main.c \
