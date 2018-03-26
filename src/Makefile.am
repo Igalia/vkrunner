@@ -20,6 +20,8 @@ vkrunner_SOURCES = \
 	vr-flush-memory.h \
 	vr-half-float.c \
 	vr-half-float.h \
+	vr-hex.c \
+	vr-hex.h \
 	vr-list.c \
 	vr-list.h \
 	vr-script.c \
