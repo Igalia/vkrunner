@@ -1,0 +1,68 @@
+# Test that interface block members are correctly matched by explicit
+# location.
+
+[vertex shader]
+#version 440
+
+layout(location = 0) in vec4 piglit_vertex;
+
+out block {
+        layout(location = 2) vec4 c;
+        layout(location = 3) vec4 d;
+        layout(location = 0) vec4 a;
+        layout(location = 1) vec4 b;
+} name;
+
+void main()
+{
+        name.a = vec4(1.0, 0.0, 0.0, 1.0);
+        name.b = vec4(0.0, 1.0, 0.0, 1.0);
+        name.c = vec4(0.0, 0.0, 1.0, 1.0);
+        name.d = vec4(1.0, 1.0, 1.0, 1.0);
+
+        gl_Position = piglit_vertex;
+}
+
+[fragment shader]
+#version 440
+
+layout(location = 0) in vec4 a;
+layout(location = 1) in vec4 b;
+layout(location = 2) in vec4 c;
+layout(location = 3) in vec4 d;
+
+layout(std140, push_constant) uniform block {
+        int i;
+};
+
+layout(location = 0) out vec4 color;
+
+void main()
+{
+        if (i == 0) {
+                color = a;
+        } else if (i == 1) {
+                color = b;
+        } else if (i == 2) {
+                color = c;
+        } else if (i == 3) {
+                color = d;
+        }
+}
+
+[test]
+uniform int 0 0
+draw rect -1 -1 1 1
+relative probe rect rgb (0.0, 0.0, 0.5, 0.5) (1.0, 0.0, 0.0)
+
+uniform int 0 1
+draw rect 0 -1 1 1
+relative probe rect rgb (0.5, 0.0, 0.5, 0.5) (0.0, 1.0, 0.0)
+
+uniform int 0 2
+draw rect -1 0 1 1
+relative probe rect rgb (0.0, 0.5, 0.5, 0.5) (0.0, 0.0, 1.0)
+
+uniform int 0 3
+draw rect 0 0 1 1
+relative probe rect rgb (0.5, 0.5, 0.5, 0.5) (1.0, 1.0, 1.0)
