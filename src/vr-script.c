@@ -31,6 +31,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <limits.h>
+#include <assert.h>
 
 #include "vr-script.h"
 #include "vr-list.h"
@@ -384,6 +385,113 @@ process_require_line(struct load_state *data)
 }
 
 static bool
+process_probe_command(const char **p,
+                      struct vr_script_command *command)
+{
+        bool relative = false;
+        enum { POINT, RECT, ALL } region_type = POINT;
+        int n_components;
+
+        if (looking_at(p, "relative "))
+                relative = true;
+
+        if (!looking_at(p, "probe "))
+                return false;
+
+        if (looking_at(p, "rect "))
+                region_type = RECT;
+        else if (looking_at(p, "all "))
+                region_type = ALL;
+
+        if (looking_at(p, "rgb "))
+                n_components = 3;
+        else if (looking_at(p, "rgba "))
+                n_components = 4;
+        else
+                return false;
+
+        command->op = VR_SCRIPT_OP_PROBE_RECT;
+        command->probe_rect.n_components = n_components;
+
+        if (region_type == ALL) {
+                if (relative)
+                        return false;
+                if (!parse_floats(p,
+                                  command->probe_rect.color,
+                                  n_components,
+                                  NULL))
+                        return false;
+                if (!is_end(*p))
+                        return false;
+                command->probe_rect.x = 0;
+                command->probe_rect.y = 0;
+                command->probe_rect.w = VR_WINDOW_WIDTH;
+                command->probe_rect.h = VR_WINDOW_HEIGHT;
+                return true;
+        }
+
+        while (isspace(**p))
+                (*p)++;
+        if (**p != '(')
+                return false;
+        (*p)++;
+
+        if (region_type == POINT) {
+                if (relative) {
+                        float rel_pos[2];
+                        if (!parse_floats(p, rel_pos, 2, ","))
+                                return false;
+                        command->probe_rect.x = rel_pos[0] * VR_WINDOW_WIDTH;
+                        command->probe_rect.y = rel_pos[1] * VR_WINDOW_HEIGHT;
+                } else if (!parse_ints(p, &command->probe_rect.x, 2, ",")) {
+                        return false;
+                }
+                command->probe_rect.w = 1;
+                command->probe_rect.h = 1;
+        } else {
+                assert(region_type == RECT);
+
+                if (relative) {
+                        float rel_pos[4];
+                        if (!parse_floats(p, rel_pos, 4, ","))
+                                return false;
+                        command->probe_rect.x = rel_pos[0] * VR_WINDOW_WIDTH;
+                        command->probe_rect.y = rel_pos[1] * VR_WINDOW_HEIGHT;
+                        command->probe_rect.w = rel_pos[2] * VR_WINDOW_WIDTH;
+                        command->probe_rect.h = rel_pos[3] * VR_WINDOW_HEIGHT;
+                } else if (!parse_ints(p, &command->probe_rect.x, 4, ",")) {
+                        return false;
+                }
+        }
+
+        while (isspace(**p))
+                (*p)++;
+        if (**p != ')')
+                return false;
+        (*p)++;
+
+        while (isspace(**p))
+                (*p)++;
+        if (**p != '(')
+                return false;
+        (*p)++;
+
+        if (!parse_floats(p, command->probe_rect.color, n_components, ","))
+                return false;
+
+        while (isspace(**p))
+                (*p)++;
+        if (**p != ')')
+                return false;
+        (*p)++;
+
+        if (!is_end(*p))
+                return false;
+
+        return true;
+}
+
+static bool
 process_test_line(struct load_state *data)
 {
         const char *p = data->line;
@@ -413,43 +521,8 @@ process_test_line(struct load_state *data)
                 return true;
         }
 
-        if (looking_at(&p, "probe rect rgba ")) {
-                while (isspace(*p))
-                        p++;
-                if (*(p++) != '(')
-                        goto error;
-                if (!parse_ints(&p, &command->probe_rect.x, 4, ","))
-                        goto error;
-                while (isspace(*p))
-                        p++;
-                if (*(p++) != ')')
-                        goto error;
-                while (isspace(*p))
-                        p++;
-                if (*(p++) != '(')
-                        goto error;
-                if (!parse_floats(&p, command->probe_rect.color, 4, ","))
-                        goto error;
-                while (isspace(*p))
-                        p++;
-                if (*p != ')' || !is_end(p + 1))
-                        goto error;
-                command->op = VR_SCRIPT_OP_PROBE_RECT_RGBA;
+        if (process_probe_command(&p, command))
                 return true;
-        }
-
-        if (looking_at(&p, "probe all rgba ")) {
-                if (!parse_floats(&p, command->probe_rect.color, 4, NULL))
-                        goto error;
-                if (!is_end(p))
-                        goto error;
-                command->op = VR_SCRIPT_OP_PROBE_RECT_RGBA;
-                command->probe_rect.x = 0;
-                command->probe_rect.y = 0;
-                command->probe_rect.w = VR_WINDOW_WIDTH;
-                command->probe_rect.h = VR_WINDOW_HEIGHT;
-                return true;
-        }
 
         if (looking_at(&p, "uniform ")) {
                 while (isspace(*p))
