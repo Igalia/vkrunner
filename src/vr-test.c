@@ -319,19 +319,21 @@ draw_rect(struct test_data *data,
 static bool
 compare_pixels(const float *color1,
                const float *color2,
-               const float *tolerance)
+               const float *tolerance,
+               int n_components)
 {
-        for (int p = 0; p < 4; ++p)
+        for (int p = 0; p < n_components; ++p)
                 if (fabsf(color1[p] - color2[p]) > tolerance[p])
                         return false;
         return true;
 }
 
 static void
-print_components_float(const float *pixel)
+print_components_float(const float *pixel,
+                       int n_components)
 {
         int p;
-        for (p = 0; p < 4; ++p)
+        for (p = 0; p < n_components; ++p)
                 printf(" %f", pixel[p]);
 }
 
@@ -344,16 +346,17 @@ print_command_fail(const struct vr_script_command *command)
 
 static void
 print_bad_pixel(int x, int y,
+                int n_components,
                 const float *expected,
                 const float *observed)
 {
         printf("Probe color at (%i,%i)\n"
                "  Expected:",
                x, y);
-        print_components_float(expected);
+        print_components_float(expected, n_components);
         printf("\n"
                "  Observed:");
-        print_components_float(observed);
+        print_components_float(observed, n_components);
         printf("\n");
 }
 
@@ -367,9 +370,10 @@ load_pixel(const uint8_t *fb,
 }
 
 static bool
-probe_rect_rgba(struct test_data *data,
-                const struct vr_script_command *command)
+probe_rect(struct test_data *data,
+           const struct vr_script_command *command)
 {
+        int n_components = command->probe_rect.n_components;
         bool ret = true;
 
         /* End the paint to copy the framebuffer into the linear buffer */
@@ -389,11 +393,13 @@ probe_rect_rgba(struct test_data *data,
 
                         if (!compare_pixels(pixel,
                                             command->probe_rect.color,
-                                            tolerance)) {
+                                            tolerance,
+                                            n_components)) {
                                 ret = false;
                                 print_command_fail(command);
                                 print_bad_pixel(x + command->probe_rect.x,
                                                 y + command->probe_rect.y,
+                                                n_components,
                                                 command->probe_rect.color,
                                                 pixel);
                                 goto done;
@@ -486,8 +492,8 @@ vr_test_run(struct vr_window *window,
                         if (!draw_rect(&data, command))
                                 ret = false;
                         break;
-                case VR_SCRIPT_OP_PROBE_RECT_RGBA:
-                        if (!probe_rect_rgba(&data, command))
+                case VR_SCRIPT_OP_PROBE_RECT:
+                        if (!probe_rect(&data, command))
                                 ret = false;
                         break;
                 case VR_SCRIPT_OP_SET_PUSH_CONSTANT:

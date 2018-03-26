@@ -29,12 +29,17 @@ Draws a rectangle at the given normalised coordinates. The vertices
 will be uploaded at vertex input location 0 as a vec3. Remember that
 Vulkan’s normalised coordinate system is different from OpenGL’s.
 
-> probe rect rgba (_x_, _y_, _width_, _height_) (_r_, _g_, _b_, _a_)
+> [relative] probe [rect] (rgb|rgba) (_x_, _y_[, _width_, _height_]) (_r_, _g_, _b_[, _a_])
 
-Verifies that a given rectangle (in viewport coordinates) matches the
-given colour.
+Verifies that a given rectangle matches the given colour. If the
+command begins with the keyword `relative` then the coordinates are
+normalised from 0.0 to 1.0, otherwise they are pixel coordinates.
+Either way the origin is the top-left corner of the image. If `rect`
+is not specified then the width and height are set to 1 pixel. The
+alpha component of the image can be ignored or not by specifying
+either `rgb` or `rgba`.
 
-> probe all rgba _r_ _g_ _b_ _a_
+> probe all (rgb|rgba) _r_ _g_ _b_ [_a_]
 
 The same as above except that it probes the entire window.
 
