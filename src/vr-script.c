@@ -45,6 +45,7 @@ enum section {
         SECTION_NONE,
         SECTION_REQUIRE,
         SECTION_SHADER,
+        SECTION_VERTEX_DATA,
         SECTION_TEST
 };
 
@@ -112,6 +113,15 @@ end_shader(struct load_state *data)
 }
 
 static bool
+end_vertex_data(struct load_state *data)
+{
+        data->script->vertex_data = vr_vbo_parse((const char *)
+                                                 data->buffer.data,
+                                                 data->buffer.length);
+        return data->script->vertex_data != NULL;
+}
+
+static bool
 end_section(struct load_state *data)
 {
         switch (data->current_section) {
@@ -124,6 +134,9 @@ end_section(struct load_state *data)
         case SECTION_SHADER:
                 end_shader(data);
                 break;
+
+        case SECTION_VERTEX_DATA:
+                return end_vertex_data(data);
 
         case SECTION_TEST:
                 break;
@@ -648,6 +661,18 @@ process_section_header(struct load_state *data)
                 return true;
         }
 
+        if (is_string("vertex data", start, end)) {
+                if (data->script->vertex_data) {
+                        vr_error_message("%s:%i: Duplicate vertex data section",
+                                         data->filename,
+                                         data->line_num);
+                        return false;
+                }
+                data->current_section = SECTION_VERTEX_DATA;
+                data->buffer.length = 0;
+                return true;
+        }
+
         vr_error_message("%s:%i: Unknown section “%.*s”",
                          data->filename,
                          data->line_num,
@@ -670,6 +695,7 @@ process_line(struct load_state *data)
                 return process_require_line(data);
 
         case SECTION_SHADER:
+        case SECTION_VERTEX_DATA:
                 vr_buffer_append(&data->buffer, data->line, data->nread);
                 return true;
 
@@ -765,6 +791,9 @@ vr_script_free(struct vr_script *script)
                         vr_free(shader);
                 }
         }
+
+        if (script->vertex_data)
+                vr_vbo_free(script->vertex_data);
 
         vr_free(script->filename);
 
