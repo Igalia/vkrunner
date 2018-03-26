@@ -113,6 +113,9 @@ vr_realloc(void *ptr, size_t size);
 char *
 vr_strdup(const char *str);
 
+char *
+vr_strndup(const char *str, size_t size);
+
 void *
 vr_memdup(const void *data, size_t size);
 
