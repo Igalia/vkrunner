@@ -164,15 +164,6 @@ get_attrib_location(const char *name,
         }
 }
 
-static void
-header_error(const char *text)
-{
-        vr_error_message("Column headers must be in the form"
-                         " location/type/dimensions/.\n"
-                         "Got: %s",
-                         text);
-}
-
 /**
  * Build a vertex_attrib_description from a column header, by
  * interpreting the location, type, dimensions and mattrix_column
@@ -193,7 +184,10 @@ parse_vertex_attrib(struct vr_vbo_attrib *attrib,
          */
         const char *first_slash = strchr(text, '/');
         if (first_slash == NULL) {
-                header_error(text);
+                vr_error_message("Column headers must be in the form"
+                                 " location/format.\n"
+                                 "Got: %s",
+                                 text);
                 ret = false;
                 goto out;
         }
