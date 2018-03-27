@@ -13,12 +13,6 @@ available in your path or you can set the variable
 `PIGLIT_GLSLANG_VALIDATOR_BINARY` to point to it. It can be obtained
 from [here](https://github.com/KhronosGroup/glslang/).
 
-## Status
-
-VkRunner can compile shaders from shader sections like `[vertex
-shader]` as in shader_runner. It doesn’t support the `[vertex data]`
-sections.
-
 ## [test] section:
 
 The `[test]` currently only supports the following commands:
@@ -28,6 +22,11 @@ The `[test]` currently only supports the following commands:
 Draws a rectangle at the given normalised coordinates. The vertices
 will be uploaded at vertex input location 0 as a vec3. Remember that
 Vulkan’s normalised coordinate system is different from OpenGL’s.
+
+> draw arrays [instanced] _firstVertex_ _vertexCount_ [_instanceCount_]
+
+Calls `vkCmdDraw` with the given parameters. The vertex data will be
+sourced from the `[vertex data]` section.
 
 > [relative] probe [rect] (rgb|rgba) (_x_, _y_[, _width_, _height_]) (_r_, _g_, _b_[, _a_])
 
@@ -82,6 +81,28 @@ no other shaders for that stage.
 The vertex shader can also be skipped with an empty section called
 `[vertex shader passthrough]`. That will create a simple vertex shader
 than just copies a vec4 for input location 0 to `gl_Position`.
+
+## [vertex data] section
+
+The `[vertex data]` section is used to specify vertex attributes and
+data for use with the draw arrays command. It is similar to Piglit
+except that integer locations are used instead of names and matrices
+are specifed by using a location within the matrix rather than having
+a separate field.
+
+The format consists of a row of column headers followed by any
+number of rows of data. Each column header has the form
+_ATTRLOC_/_GL\_TYPE_/_GLSL\_TYPE_, where _ATTRLOC_ is the location of the
+vertex attribute to be bound to this column, _ARRAY\_INDEX_ is the
+index, _GL\_TYPE_ is the GL type of data that follows (“half”,
+“float”, “double”, “byte”, “ubyte”, “short”, “ushort”, “int” or
+“uint”), _GLSL\_TYPE_ is the GLSL type of the data (“int”, “uint”,
+“float”, “double”, “ivec”\*, “uvec”\*, “vec”\*, “dvec”\*, “mat”\*,
+“dmat”\*).
+
+The data follows the column headers in space-separated form. “#” can
+be used for comments, as in shell scripts. See the
+`vertex-data.shader_test` file as an example.
 
 ## Command line arguments
 
