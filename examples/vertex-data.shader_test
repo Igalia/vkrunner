@@ -25,37 +25,37 @@ main()
 }
 
 [vertex data]
-# position   color
-0/R8G8_SSCALED 1/A8B8G8R8_UNORM_PACK32
+# position      color
+0/R32G32_SFLOAT 1/A8B8G8R8_UNORM_PACK32
 
 # Top-left red
--1 -1          0xff0000ff
-0  -1          0xff0000ff
--1 0           0xff0000ff
-0  -1          0xff0000ff
--1 0           0xff0000ff
-0  0           0xff0000ff
+-1 -1           0xff0000ff
+0  -1           0xff0000ff
+-1 0            0xff0000ff
+0  -1           0xff0000ff
+-1 0            0xff0000ff
+0  0            0xff0000ff
 # Top-right green
-0 -1           0xff00ff00
-1  -1          0xff00ff00
-0 0            0xff00ff00
-1  -1          0xff00ff00
-0 0            0xff00ff00
-1  0           0xff00ff00
+0 -1            0xff00ff00
+1  -1           0xff00ff00
+0 0             0xff00ff00
+1  -1           0xff00ff00
+0 0             0xff00ff00
+1  0            0xff00ff00
 # Bottom-left blue
--1 0           0xffff0000
-0  0           0xffff0000
--1 1           0xffff0000
-0  0           0xffff0000
--1 1           0xffff0000
-0  1           0xffff0000
+-1 0            0xffff0000
+0  0            0xffff0000
+-1 1            0xffff0000
+0  0            0xffff0000
+-1 1            0xffff0000
+0  1            0xffff0000
 # Bottom-right purple
-0 0            0xff800080
-1 0            0xff800080
-0 1            0xff800080
-1 0            0xff800080
-0 1            0xff800080
-1 1            0xff800080
+0 0             0xff800080
+1 0             0xff800080
+0 1             0xff800080
+1 0             0xff800080
+0 1             0xff800080
+1 1             0xff800080
 
 [test]
 clear
