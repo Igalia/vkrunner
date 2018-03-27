@@ -28,7 +28,7 @@
  * tests using a columnar text format, for example:
  *
  *   \verbatim
- *   0/double/vec3      2/uint/uint     3/int/int       4/int/int
+ *   0/r32g32b32_sfloat 1/r32_uint      3/int/int       4/int/int
  *   0.0 0.0 0.0        10              0               0       # comment
  *   0.0 1.0 0.0         5              1               1
  *   1.0 1.0 0.0         0              0               1
@@ -36,21 +36,19 @@
  *
  * The format consists of a row of column headers followed by any
  * number of rows of data. Each column header has the form
- * "ATTRLOC/GL_TYPE/GLSL_TYPE", where ATTRLOC is the location of the
- * vertex attribute to be bound to this column, ARRAY_INDEX is the
- * index, GL_TYPE is the GL type of data that follows ("half",
- * "float", "double", "byte", "ubyte", "short", "ushort", "int" or
- * "uint"), GLSL_TYPE is the GLSL type of the data ("int", "uint",
- * "float", "double", "ivec"*, "uvec"*, "vec"*, "dvec"*, "mat"*,
- * "dmat"*).
+ * ATTRLOC/FORMAT where ATTRLOC is the location of the vertex
+ * attribute to be bound to this column and FORMAT is the name of a
+ * VkFormat minus the VK_FORMAT prefix.
  *
- * The data follows the column headers in space-separated form.  "#"
+ * Alternatively the column header can use something closer the Piglit
+ * format like ATTRLOC/GL_TYPE/GLSL_TYPE. GL_TYPE is the GL type of
+ * data that follows (“half”, “float”, “double”, “byte”, “ubyte”,
+ * “short”, “ushort”, “int” or “uint”), GLSL_TYPE is the GLSL type of
+ * the data (“int”, “uint”, “float”, “double”, “ivec”\*, “uvec”\*,
+ * “vec”\*, “dvec”\*).
+ *
+ * The data follows the column headers in space-separated form. “#”
  * can be used for comments, as in shell scripts.
- *
- * To process textual vertex data, call the function
- * vr_vbo_from_text(), passing the int identifying the linked
- * program, and the string containing the vertex data.  The return
- * value is the number of rows of vertex data found.
  */
 
 #include "config.h"
