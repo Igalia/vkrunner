@@ -60,11 +60,6 @@ struct vr_vbo_attrib {
         enum vr_vbo_type glsl_data_type;
 
         /**
-         * Number of columns of the GLSL data type of this attribute.
-         */
-        size_t cols;
-
-        /**
          * Number of rows of the GLSL data type of this attribute.
          */
         size_t rows;

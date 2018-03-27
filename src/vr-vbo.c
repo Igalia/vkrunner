@@ -125,12 +125,10 @@ static bool
 decode_glsl_type(const char *type,
                  enum vr_vbo_type *glsl_type,
                  size_t *rows,
-                 size_t *cols,
                  char **endptr)
 {
         assert(glsl_type);
         assert(rows);
-        assert(cols);
         assert(endptr);
 
         static struct type_table_entry {
@@ -145,8 +143,6 @@ decode_glsl_type(const char *type,
                 { "uvec",    VR_VBO_TYPE_UNSIGNED_INT   },
                 { "vec",     VR_VBO_TYPE_FLOAT          },
                 { "dvec",    VR_VBO_TYPE_DOUBLE         },
-                { "mat",     VR_VBO_TYPE_FLOAT          },
-                { "dmat",    VR_VBO_TYPE_DOUBLE         },
                 { NULL,      0                          }
         };
 
@@ -164,24 +160,8 @@ decode_glsl_type(const char *type,
                                         goto cleanup;
                                 *rows = **endptr - '0';
                                 ++*endptr;
-
-                                /* In case of matrices, let's
-                                 * calculate the rows.
-                                 */
-                                if (i > 7) {
-                                        *cols = *rows;
-                                        if (**endptr == 'x') {
-                                                if (!isdigit(*(++*endptr)))
-                                                        goto cleanup;
-                                                *rows = **endptr - '0';
-                                                ++*endptr;
-                                        }
-                                } else {
-                                        *cols = 1;
-                                }
                         } else {
                                 *rows = 1;
-                                *cols = 1;
                         }
                         *glsl_type = type_table[i].glsl_type;
                         return true;
@@ -259,7 +239,7 @@ parse_vertex_attrib(struct vr_vbo_attrib *attrib,
         char *endptr;
         if (!decode_glsl_type(second_slash + 1,
                               &attrib->glsl_data_type,
-                              &attrib->rows, &attrib->cols,
+                              &attrib->rows,
                               &endptr)) {
                 vr_error_message("Unrecognized GLSL type: %s",
                                  second_slash + 1);
@@ -294,13 +274,6 @@ parse_vertex_attrib(struct vr_vbo_attrib *attrib,
         if (attrib->rows < 1 || attrib->rows > 4) {
                 vr_error_message("Rows must be between 1 and 4.  Got: %lu",
                                  (unsigned long) attrib->rows);
-                ret = false;
-                goto out;
-        }
-
-        if (attrib->cols < 1 || attrib->cols > 4) {
-                vr_error_message("Columns must be between 1 and 4.  Got: %lu",
-                                 (unsigned long) attrib->cols);
                 ret = false;
                 goto out;
         }

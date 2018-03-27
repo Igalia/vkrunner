@@ -97,8 +97,7 @@ vertex attribute to be bound to this column, _ARRAY\_INDEX_ is the
 index, _GL\_TYPE_ is the GL type of data that follows (“half”,
 “float”, “double”, “byte”, “ubyte”, “short”, “ushort”, “int” or
 “uint”), _GLSL\_TYPE_ is the GLSL type of the data (“int”, “uint”,
-“float”, “double”, “ivec”\*, “uvec”\*, “vec”\*, “dvec”\*, “mat”\*,
-“dmat”\*).
+“float”, “double”, “ivec”\*, “uvec”\*, “vec”\*, “dvec”\*).
 
 The data follows the column headers in space-separated form. “#” can
 be used for comments, as in shell scripts. See the
