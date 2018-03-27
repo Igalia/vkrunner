@@ -1,0 +1,98 @@
+# Tests that the driver assigns the correct locations to a vertex
+# input with doubles in it. The inputs are declared in a block with a
+# location so that the driver itself has to decide the locations of
+# the members. The first attribute is a dvec4 so the driver should
+# assign two locations to it.
+
+[require]
+shaderFloat64
+
+[vertex shader spirv]
+               OpCapability Shader
+               OpCapability Float64
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint Vertex %main "main" %_ %piglit_vertex %color_out %name
+               OpSource GLSL 440
+               OpName %main "main"
+               OpName %gl_PerVertex "gl_PerVertex"
+               OpMemberName %gl_PerVertex 0 "gl_Position"
+               OpMemberName %gl_PerVertex 1 "gl_PointSize"
+               OpMemberName %gl_PerVertex 2 "gl_ClipDistance"
+               OpName %_ ""
+               OpName %piglit_vertex "piglit_vertex"
+               OpName %color_out "color_out"
+               OpMemberDecorate %gl_PerVertex 0 BuiltIn Position
+               OpMemberDecorate %gl_PerVertex 1 BuiltIn PointSize
+               OpMemberDecorate %gl_PerVertex 2 BuiltIn ClipDistance
+               OpDecorate %name Location 1
+               OpDecorate %gl_PerVertex Block
+               OpDecorate %piglit_vertex Location 0
+               OpDecorate %color_out Location 0
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+       %uint = OpTypeInt 32 0
+     %uint_1 = OpConstant %uint 1
+%_arr_float_uint_1 = OpTypeArray %float %uint_1
+%gl_PerVertex = OpTypeStruct %v4float %float %_arr_float_uint_1
+%_ptr_Output_gl_PerVertex = OpTypePointer Output %gl_PerVertex
+          %_ = OpVariable %_ptr_Output_gl_PerVertex Output
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+      %int_1 = OpConstant %int 1
+     %double = OpTypeFloat 64
+   %v4double = OpTypeVector %double 4
+%_ptr_Input_v4float = OpTypePointer Input %v4float
+%_ptr_Input_v4double = OpTypePointer Input %v4double
+%_ptr_Input_double = OpTypePointer Input %double
+%piglit_vertex = OpVariable %_ptr_Input_v4float Input
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+  %color_out = OpVariable %_ptr_Output_v4float Output
+      %block = OpTypeStruct %v4double %double
+%_ptr_Input_block = OpTypePointer Input %block
+       %name = OpVariable %_ptr_Input_block Input
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+         %18 = OpLoad %v4float %piglit_vertex
+         %20 = OpAccessChain %_ptr_Output_v4float %_ %int_0
+               OpStore %20 %18
+         %color_in = OpAccessChain %_ptr_Input_v4double %name %int_0
+         %multiplier = OpAccessChain %_ptr_Input_double %name %int_1
+         %26 = OpLoad %v4double %color_in
+         %29 = OpLoad %double %multiplier
+         %30 = OpVectorTimesScalar %v4double %26 %29
+         %31 = OpFConvert %v4float %30
+               OpStore %color_out %31
+               OpReturn
+               OpFunctionEnd
+
+[fragment shader]
+#version 440
+
+layout(location = 0) in vec4 color_in;
+layout(location = 0) out vec4 color_out;
+
+void main()
+{
+        color_out = color_in;
+}
+
+[vertex data]
+# pos           / color                 / multiplier
+0/r32g32_sfloat   1/r64g64b64a64_sfloat   3/r64_sfloat
+-1 -1             0.0 0.8 0.0 1.0         1.0
+1 -1              0.0 0.4 0.0 0.5         2.0
+-1 1              0.0 0.2 0.0 0.25        4.0
+1 -1              0.0 0.1 0.0 0.125       8.0
+-1 1              0.0 0.05 0.0 0.0625     16.0
+1 1               0.0 0.025 0.0 0.03125   32.0
+
+[test]
+clear color 0.8 0.0 0.0 1.0
+clear
+
+draw arrays TRIANGLE_LIST 0 6
+
+probe all rgba 0.0 0.8 0.0 1.0

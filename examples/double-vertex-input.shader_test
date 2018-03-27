@@ -1,0 +1,50 @@
+# Tests that the driver assigns the correct locations to a vertex input
+# with doubles in it.
+
+[require]
+shaderFloat64
+
+[vertex shader]
+#version 440
+
+layout(location = 0) in vec4 piglit_vertex;
+
+layout(location = 1) in dvec4 color_in;
+layout(location = 3) in double multiplier;
+
+layout(location = 0) out vec4 color_out;
+
+void main()
+{
+        gl_Position = piglit_vertex;
+        color_out = vec4(color_in * multiplier);
+}
+
+[fragment shader]
+#version 440
+
+layout(location = 0) in vec4 color_in;
+layout(location = 0) out vec4 color_out;
+
+void main()
+{
+        color_out = color_in;
+}
+
+[vertex data]
+# pos           / color                 / multiplier
+0/r32g32_sfloat   1/r64g64b64a64_sfloat   3/r64_sfloat
+-1 -1             0.0 0.8 0.0 1.0         1.0
+1 -1              0.0 0.4 0.0 0.5         2.0
+-1 1              0.0 0.2 0.0 0.25        4.0
+1 -1              0.0 0.1 0.0 0.125       8.0
+-1 1              0.0 0.05 0.0 0.0625     16.0
+1 1               0.0 0.025 0.0 0.03125   32.0
+
+[test]
+clear color 0.8 0.0 0.0 1.0
+clear
+
+draw arrays TRIANGLE_LIST 0 6
+
+probe all rgba 0.0 0.8 0.0 1.0
