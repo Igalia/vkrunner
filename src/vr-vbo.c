@@ -457,6 +457,8 @@ parse_header_line(struct vbo_data *data,
 
         vbo->stride = 0;
 
+        int max_alignment = 1;
+
         while (pos < line_size) {
                 if (isspace(line[pos])) {
                         ++pos;
@@ -482,10 +484,18 @@ parse_header_line(struct vbo_data *data,
                 if (!res)
                         return false;
 
+                int alignment = attrib->data_type_size;
+
+                vbo->stride = vr_align(vbo->stride, alignment);
                 attrib->offset = vbo->stride;
                 vbo->stride += attrib->rows * attrib->data_type_size;
                 pos = column_header_end + 1;
+
+                if (alignment > max_alignment)
+                        max_alignment = alignment;
         }
+
+        vbo->stride = vr_align(vbo->stride, max_alignment);
 
         return true;
 }
@@ -506,12 +516,15 @@ parse_data_line(struct vbo_data *data,
         /* Allocate space in raw_data for this line */
         size_t old_length = data->raw_data.length;
         vr_buffer_set_length(&data->raw_data, old_length + vbo->stride);
-        uint8_t *data_ptr = data->raw_data.data + old_length;
 
         const char *line_ptr = line;
         const struct vr_vbo_attrib *attrib;
 
         vr_list_for_each(attrib, &vbo->attribs, link) {
+                uint8_t *data_ptr = (data->raw_data.data +
+                                     old_length +
+                                     attrib->offset);
+
                 for (size_t j = 0; j < attrib->rows; ++j) {
                         if (!parse_datum(attrib->data_type,
                                          &line_ptr,
