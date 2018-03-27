@@ -505,6 +505,87 @@ process_probe_command(const char **p,
 }
 
 static bool
+process_draw_arrays_command(struct load_state *data,
+                            const char *p,
+                            struct vr_script_command *command)
+{
+        int args[3];
+        int n_args;
+
+        if (looking_at(&p, "instanced ")) {
+                n_args = 3;
+        } else {
+                n_args = 2;
+                args[2] = 1;
+        }
+
+        static const struct {
+                const char *name;
+                VkPrimitiveTopology topology;
+        } topologies[] = {
+                /* GL names used in Piglit */
+                { "GL_POINTS", VK_PRIMITIVE_TOPOLOGY_POINT_LIST },
+                { "GL_LINES", VK_PRIMITIVE_TOPOLOGY_LINE_LIST },
+                { "GL_LINE_STRIP", VK_PRIMITIVE_TOPOLOGY_LINE_STRIP },
+                { "GL_TRIANGLES", VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST },
+                { "GL_TRIANGLE_STRIP", VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP },
+                { "GL_TRIANGLE_FAN", VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN },
+                { "GL_LINES_ADJACENCY",
+                  VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY },
+                { "GL_LINE_STRIP_ADJACENCY",
+                  VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY },
+                { "GL_TRIANGLES_ADJACENCY",
+                  VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY },
+                { "GL_TRIANGLE_STRIP_ADJACENCY",
+                  VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY },
+                { "GL_PATCHES", VK_PRIMITIVE_TOPOLOGY_PATCH_LIST },
+                /* Vulkan names */
+#define vkname(x) { VR_STRINGIFY(x), VK_PRIMITIVE_TOPOLOGY_ ## x }
+                vkname(POINT_LIST),
+                vkname(LINE_LIST),
+                vkname(LINE_STRIP),
+                vkname(TRIANGLE_LIST),
+                vkname(TRIANGLE_STRIP),
+                vkname(TRIANGLE_FAN),
+                vkname(LINE_LIST_WITH_ADJACENCY),
+                vkname(LINE_STRIP_WITH_ADJACENCY),
+                vkname(TRIANGLE_LIST_WITH_ADJACENCY),
+                vkname(TRIANGLE_STRIP_WITH_ADJACENCY),
+                vkname(PATCH_LIST),
+#undef vkname
+        };
+
+        for (int i = 0; i < VR_N_ELEMENTS(topologies); i++) {
+                if (looking_at(&p, topologies[i].name)) {
+                        command->draw_arrays.topology = topologies[i].topology;
+                        goto found_topology;
+                }
+        }
+
+        vr_error_message("%s:%i: Unknown topology in draw arrays command",
+                         data->filename,
+                         data->line_num);
+        return false;
+
+found_topology:
+        if (!parse_ints(&p, args, n_args, NULL) ||
+            !is_end(p)) {
+                vr_error_message("%s:%i: Invalid draw arrays command",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        command->op = VR_SCRIPT_OP_DRAW_ARRAYS;
+        command->draw_arrays.first_vertex = args[0];
+        command->draw_arrays.vertex_count = args[1];
+        command->draw_arrays.first_instance = 0;
+        command->draw_arrays.instance_count = args[2];
+
+        return true;
+}
+
+static bool
 process_test_line(struct load_state *data)
 {
         const char *p = data->line;
@@ -536,6 +617,9 @@ process_test_line(struct load_state *data)
 
         if (process_probe_command(&p, command))
                 return true;
+
+        if (looking_at(&p, "draw arrays "))
+                return process_draw_arrays_command(data, p, command);
 
         if (looking_at(&p, "uniform ")) {
                 while (isspace(*p))
