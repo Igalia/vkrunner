@@ -23,10 +23,12 @@ Draws a rectangle at the given normalised coordinates. The vertices
 will be uploaded at vertex input location 0 as a vec3. Remember that
 Vulkan’s normalised coordinate system is different from OpenGL’s.
 
-> draw arrays [instanced] _firstVertex_ _vertexCount_ [_instanceCount_]
+> draw arrays [instanced] _topology_ _firstVertex_ _vertexCount_ [_instanceCount_]
 
 Calls `vkCmdDraw` with the given parameters. The vertex data will be
-sourced from the `[vertex data]` section.
+sourced from the `[vertex data]` section. The _topology_ should be one
+of the values of VkPrimitiveTopology minus the VK\_PRIMITIVE\_TOPOLOGY
+prefix. Alternatively it can be a GLenum value as used in Piglit.
 
 > [relative] probe [rect] (rgb|rgba) (_x_, _y_[, _width_, _height_]) (_r_, _g_, _b_[, _a_])
 
