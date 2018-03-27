@@ -70,108 +70,81 @@
 #include <stdint.h>
 
 /**
- * Convert a type name string to a GLenum.
+ * Convert from Piglit style formats to a VkFormat
  */
-static bool
-decode_type(const char *type,
-            enum vr_vbo_type *gl_type,
-            size_t *gl_type_size,
-            enum vr_vbo_type *glsl_type)
+static const struct vr_format *
+decode_type(const char *gl_type,
+            const char *glsl_type)
 {
-        assert(type);
-        assert(gl_type);
-        assert(gl_type_size);
-
-        static struct type_table_entry {
-                const char *type; /* NULL means end of table */
-                enum vr_vbo_type gl_type;
-                size_t gl_type_size;
-                enum vr_vbo_type glsl_type;
-        } const type_table[] = {
-                { "byte", VR_VBO_TYPE_BYTE, 1, VR_VBO_TYPE_INT },
-                { "ubyte", VR_VBO_TYPE_UNSIGNED_BYTE, 1,
-                  VR_VBO_TYPE_UNSIGNED_INT },
-                { "short", VR_VBO_TYPE_SHORT, 2, VR_VBO_TYPE_INT },
-                { "ushort", VR_VBO_TYPE_UNSIGNED_SHORT, 2,
-                  VR_VBO_TYPE_UNSIGNED_INT },
-                { "int", VR_VBO_TYPE_INT, 4, VR_VBO_TYPE_INT },
-                { "uint", VR_VBO_TYPE_UNSIGNED_INT, 4,
-                  VR_VBO_TYPE_UNSIGNED_INT },
-                { "half", VR_VBO_TYPE_HALF_FLOAT, 2, VR_VBO_TYPE_FLOAT },
-                { "float", VR_VBO_TYPE_FLOAT, 4, VR_VBO_TYPE_FLOAT },
-                { "double", VR_VBO_TYPE_DOUBLE, 8, VR_VBO_TYPE_DOUBLE },
-                { NULL, 0, 0, 0 },
+        static const struct {
+                const char *name;
+                enum vr_format_mode mode;
+                int bit_size;
+        } gl_types[] = {
+                { "byte", VR_FORMAT_MODE_SINT, 8 },
+                { "ubyte", VR_FORMAT_MODE_UINT, 8 },
+                { "short", VR_FORMAT_MODE_SINT, 16 },
+                { "ushort", VR_FORMAT_MODE_UINT, 16 },
+                { "int", VR_FORMAT_MODE_SINT, 32 },
+                { "uint", VR_FORMAT_MODE_UINT, 32 },
+                { "half", VR_FORMAT_MODE_SFLOAT, 16 },
+                { "float", VR_FORMAT_MODE_SFLOAT, 32 },
+                { "double", VR_FORMAT_MODE_SFLOAT, 64 },
         };
 
+        enum vr_format_mode mode;
+        int bit_size;
+        int n_components;
 
-        for (int i = 0; type_table[i].type; ++i) {
-                if (0 == strcmp(type, type_table[i].type)) {
-                        *gl_type = type_table[i].gl_type;
-                        *gl_type_size = type_table[i].gl_type_size;
-                        if (glsl_type)
-                                *glsl_type = type_table[i].glsl_type;
-                        return true;
+        for (int i = 0; i < VR_N_ELEMENTS(gl_types); i++) {
+                if (!strcmp(gl_types[i].name, gl_type)) {
+                        mode = gl_types[i].mode;
+                        bit_size = gl_types[i].bit_size;
+                        goto found_gl_type;
                 }
         }
 
-        return false;
-}
+        vr_error_message("Unknown gl_type: %s", gl_type);
+        return NULL;
 
+found_gl_type:
+        if (!strcmp(glsl_type, "int") ||
+            !strcmp(glsl_type, "uint") ||
+            !strcmp(glsl_type, "float") ||
+            !strcmp(glsl_type, "double")) {
+                n_components = 1;
+        } else {
+                if (!strncmp(glsl_type, "vec", 3)) {
+                        n_components = glsl_type[3] - '0';
+                } else if (strchr("iud", glsl_type[0]) &&
+                           !strncmp(glsl_type + 1, "vec", 3)) {
+                        n_components = glsl_type[4] - '0';
+                } else {
+                        vr_error_message("Unknown glsl_type: %s",
+                                         glsl_type);
+                        return NULL;
+                }
 
-/**
- * Convert a GLSL type name string to its basic GLenum type.
- */
-static bool
-decode_glsl_type(const char *type,
-                 enum vr_vbo_type *glsl_type,
-                 size_t *rows,
-                 char **endptr)
-{
-        assert(glsl_type);
-        assert(rows);
-        assert(endptr);
-
-        static struct type_table_entry {
-                const char *type; /* NULL means end of table */
-                enum vr_vbo_type glsl_type;
-        } const type_table[] = {
-                { "int",     VR_VBO_TYPE_INT            },
-                { "uint",    VR_VBO_TYPE_UNSIGNED_INT   },
-                { "float",   VR_VBO_TYPE_FLOAT          },
-                { "double",  VR_VBO_TYPE_DOUBLE         },
-                { "ivec",    VR_VBO_TYPE_INT            },
-                { "uvec",    VR_VBO_TYPE_UNSIGNED_INT   },
-                { "vec",     VR_VBO_TYPE_FLOAT          },
-                { "dvec",    VR_VBO_TYPE_DOUBLE         },
-                { NULL,      0                          }
-        };
-
-
-        for (int i = 0; type_table[i].type; ++i) {
-                const size_t type_len = strlen(type_table[i].type);
-                if (0 == strncmp(type, type_table[i].type, type_len)) {
-                        *endptr = (char *) &type[type_len];
-
-                        /* In case of vectors or matrices, let's
-                         * calculate rows and columns.
-                         */
-                        if (i > 3) {
-                                if (!isdigit(**endptr))
-                                        goto cleanup;
-                                *rows = **endptr - '0';
-                                ++*endptr;
-                        } else {
-                                *rows = 1;
-                        }
-                        *glsl_type = type_table[i].glsl_type;
-                        return true;
+                if (n_components < 2 || n_components > 4) {
+                        vr_error_message("Invalid components: %s",
+                                         glsl_type);
+                        return NULL;
                 }
         }
 
-cleanup:
-        *glsl_type = 0;
-        *endptr = (char *) type;
-        return false;
+        const struct vr_format *format =
+                vr_format_lookup_by_details(bit_size,
+                                            mode,
+                                            n_components);
+
+        if (format == NULL) {
+                vr_error_message("Invalid type combo: %s/%s",
+                                 gl_type,
+                                 glsl_type);
+                return NULL;
+        }
+
+        return format;
 }
 
 static bool
@@ -213,7 +186,6 @@ parse_vertex_attrib(struct vr_vbo_attrib *attrib,
                     const char *text)
 {
         char *name = NULL;
-        char *type_str = NULL;
         bool ret = true;
 
         /* Split the column header into location/type/dimensions
@@ -229,39 +201,26 @@ parse_vertex_attrib(struct vr_vbo_attrib *attrib,
         size_t name_size = first_slash - text;
         name = vr_strndup(text, name_size);
 
+        const struct vr_format *format;
+
         const char *second_slash = strchr(first_slash + 1, '/');
         if (second_slash == NULL) {
-                header_error(text);
-                ret = false;
-                goto out;
-        }
+                format = vr_format_lookup_by_name(first_slash + 1);
+                if (format == NULL) {
+                        vr_error_message("Unknown format: %s", first_slash + 1);
+                        ret = false;
+                        goto out;
+                }
+        } else {
+                char *gl_type = vr_strndup(first_slash + 1,
+                                           second_slash - first_slash - 1);
+                format = decode_type(gl_type, second_slash + 1);
+                vr_free(gl_type);
 
-        char *endptr;
-        if (!decode_glsl_type(second_slash + 1,
-                              &attrib->glsl_data_type,
-                              &attrib->rows,
-                              &endptr)) {
-                vr_error_message("Unrecognized GLSL type: %s",
-                                 second_slash + 1);
-                ret = false;
-                goto out;
-        }
-
-        type_str = vr_strndup(first_slash + 1, second_slash - first_slash - 1);
-
-        if (!decode_type(type_str,
-                         &attrib->data_type,
-                         &attrib->data_type_size,
-                         &attrib->glsl_data_type)) {
-                vr_error_message("Unrecognized GL type: %s", type_str);
-                ret = false;
-                goto out;
-        }
-
-        if (*endptr != '\0') {
-                header_error(text);
-                ret = false;
-                goto out;
+                if (format == NULL) {
+                        ret = false;
+                        goto out;
+                }
         }
 
         if (!get_attrib_location(name, &attrib->location)) {
@@ -271,16 +230,10 @@ parse_vertex_attrib(struct vr_vbo_attrib *attrib,
                 goto out;
         }
 
-        if (attrib->rows < 1 || attrib->rows > 4) {
-                vr_error_message("Rows must be between 1 and 4.  Got: %lu",
-                                 (unsigned long) attrib->rows);
-                ret = false;
-                goto out;
-        }
+        attrib->format = format;
 
 out:
         vr_free(name);
-        vr_free(type_str);
 
         return ret;
 }
@@ -294,103 +247,149 @@ out:
  * then return false.  Otherwise return true.
  */
 static bool
-parse_datum(enum vr_vbo_type type,
+parse_datum(enum vr_format_mode mode,
+            int bit_size,
             const char **text,
             void *data)
 {
         char *endptr;
         errno = 0;
-        switch (type) {
-        case VR_VBO_TYPE_HALF_FLOAT: {
-                unsigned short value = vr_hex_strtohf(*text, &endptr);
-                if (errno == ERANGE) {
-                        vr_error_message("Could not parse as half float");
-                        return false;
+        switch (mode) {
+        case VR_FORMAT_MODE_SFLOAT:
+                switch (bit_size) {
+                case 16: {
+                        unsigned short value = vr_hex_strtohf(*text, &endptr);
+                        if (errno == ERANGE) {
+                                vr_error_message("Could not parse as "
+                                                 "half float");
+                                return false;
+                        }
+                        *((uint16_t *) data) = value;
+                        goto handled;
                 }
-                *((uint16_t *) data) = value;
-                break;
-        }
-        case VR_VBO_TYPE_FLOAT: {
-                float value = vr_hex_strtof(*text, &endptr);
-                if (errno == ERANGE) {
-                        vr_error_message("Could not parse as float");
-                        return false;
+                case 32: {
+                        float value = vr_hex_strtof(*text, &endptr);
+                        if (errno == ERANGE) {
+                                vr_error_message("Could not parse as float");
+                                return false;
+                        }
+                        *((float *) data) = value;
+                        goto handled;
                 }
-                *((float *) data) = value;
-                break;
-        }
-        case VR_VBO_TYPE_DOUBLE: {
-                double value = vr_hex_strtod(*text, &endptr);
-                if (errno == ERANGE) {
-                        vr_error_message("Could not parse as double");
-                        return false;
+                case 64: {
+                        double value = vr_hex_strtod(*text, &endptr);
+                        if (errno == ERANGE) {
+                                vr_error_message("Could not parse as double");
+                                return false;
+                        }
+                        *((double *) data) = value;
+                        goto handled;
                 }
-                *((double *) data) = value;
-                break;
-        }
-        case VR_VBO_TYPE_BYTE: {
-                long value = vr_hex_strtol(*text, &endptr);
-                if (errno == ERANGE || value < INT8_MIN || value > INT8_MAX) {
-                        vr_error_message("Could not parse as signed byte");
-                        return false;
                 }
-                *((int8_t *) data) = (int8_t) value;
-                break;
-        }
-        case VR_VBO_TYPE_UNSIGNED_BYTE: {
-                unsigned long value = strtoul(*text, &endptr, 0);
-                if (errno == ERANGE || value > UINT8_MAX) {
-                        vr_error_message("Could not parse as unsigned byte");
-                        return false;
+        case VR_FORMAT_MODE_UNORM:
+        case VR_FORMAT_MODE_USCALED:
+        case VR_FORMAT_MODE_UINT:
+        case VR_FORMAT_MODE_SRGB:
+                switch (bit_size) {
+                case 8: {
+                        unsigned long value = strtoul(*text, &endptr, 0);
+                        if (errno == ERANGE || value > UINT8_MAX) {
+                                vr_error_message("Could not parse as unsigned "
+                                                 "byte");
+                                return false;
+                        }
+                        *((uint8_t *) data) = (uint8_t) value;
+                        goto handled;
                 }
-                *((uint8_t *) data) = (uint8_t) value;
-                break;
-        }
-        case VR_VBO_TYPE_SHORT: {
-                long value = vr_hex_strtol(*text, &endptr);
-                if (errno == ERANGE ||
-                    value < INT16_MIN || value > INT16_MAX) {
-                        vr_error_message("Could not parse as signed short");
-                        return false;
+                case 16: {
+                        unsigned long value = strtoul(*text, &endptr, 0);
+                        if (errno == ERANGE || value > UINT16_MAX) {
+                                vr_error_message("Could not parse as unsigned "
+                                                 "short");
+                                return false;
+                        }
+                        *((uint16_t *) data) = (uint16_t) value;
+                        goto handled;
                 }
-                *((int16_t *) data) = (uint16_t) value;
-                break;
-        }
-        case VR_VBO_TYPE_UNSIGNED_SHORT: {
-                unsigned long value = strtoul(*text, &endptr, 0);
-                if (errno == ERANGE || value > UINT16_MAX) {
-                        vr_error_message("Could not parse as unsigned short");
-                        return false;
+                case 32: {
+                        unsigned long value = strtoul(*text, &endptr, 0);
+                        if (errno == ERANGE || value > UINT32_MAX) {
+                                vr_error_message("Could not parse as "
+                                                 "unsigned integer");
+                                return false;
+                        }
+                        *((uint32_t *) data) = (uint32_t) value;
+                        goto handled;
                 }
-                *((uint16_t *) data) = (uint16_t) value;
-                break;
-        }
-        case VR_VBO_TYPE_INT: {
-                long value = vr_hex_strtol(*text, &endptr);
-                if (errno == ERANGE || value < INT32_MIN || value > INT32_MAX) {
-                        vr_error_message("Could not parse as "
-                                         "signed integer");
-                        return false;
+                case 64: {
+                        unsigned long value = strtoul(*text, &endptr, 0);
+                        if (errno == ERANGE || value > UINT64_MAX) {
+                                vr_error_message("Could not parse as "
+                                                 "unsigned long");
+                                return false;
+                        }
+                        *((uint64_t *) data) = (uint64_t) value;
+                        goto handled;
                 }
-                *((int32_t *) data) = (int32_t) value;
-                break;
-        }
-        case VR_VBO_TYPE_UNSIGNED_INT: {
-                unsigned long value = strtoul(*text, &endptr, 0);
-                if (errno == ERANGE || value >= UINT32_MAX) {
-                        vr_error_message("Could not parse as "
-                                         "unsigned integer");
-                        return false;
                 }
-                *((uint32_t *) data) = (uint32_t) value;
+        case VR_FORMAT_MODE_SNORM:
+        case VR_FORMAT_MODE_SSCALED:
+        case VR_FORMAT_MODE_SINT:
+                switch (bit_size) {
+                case 8: {
+                        long value = strtol(*text, &endptr, 0);
+                        if (errno == ERANGE ||
+                            value > INT8_MAX || value < INT8_MIN) {
+                                vr_error_message("Could not parse as signed "
+                                                 "byte");
+                                return false;
+                        }
+                        *((int8_t *) data) = (int8_t) value;
+                        goto handled;
+                }
+                case 16: {
+                        long value = strtol(*text, &endptr, 0);
+                        if (errno == ERANGE ||
+                            value > INT16_MAX || value < INT16_MIN) {
+                                vr_error_message("Could not parse as signed "
+                                                 "short");
+                                return false;
+                        }
+                        *((int16_t *) data) = (int16_t) value;
+                        goto handled;
+                }
+                case 32: {
+                        long value = strtol(*text, &endptr, 0);
+                        if (errno == ERANGE ||
+                            value > INT32_MAX || value < INT32_MIN) {
+                                vr_error_message("Could not parse as "
+                                                 "signed integer");
+                                return false;
+                        }
+                        *((int32_t *) data) = (int32_t) value;
+                        goto handled;
+                }
+                case 64: {
+                        long value = strtol(*text, &endptr, 0);
+                        if (errno == ERANGE ||
+                            value > INT64_MAX || value < INT64_MIN) {
+                                vr_error_message("Could not parse as "
+                                                 "signed long");
+                                return false;
+                        }
+                        *((int64_t *) data) = (int64_t) value;
+                        goto handled;
+                }
+                }
+        case VR_FORMAT_MODE_UFLOAT:
                 break;
         }
-        default:
-                assert(!"Unexpected data type");
-                endptr = NULL;
-                break;
-        }
+
+        vr_fatal("Unexpected format");
+
+handled:
         *text = endptr;
+
         return true;
 }
 
@@ -406,6 +405,36 @@ struct vbo_data {
 
         unsigned line_num;
 };
+
+static int
+get_alignment(const struct vr_format *format)
+{
+        if (format->packed_size)
+                return format->packed_size / 8;
+
+        int max_size = 8;
+
+        for (int i = 0; i < format->n_components; i++) {
+                if (format->components[i].bits > max_size)
+                        max_size = format->components[i].bits;
+        }
+
+        return max_size / 8;
+}
+
+static int
+get_format_size(const struct vr_format *format)
+{
+        if (format->packed_size)
+                return format->packed_size / 8;
+
+        int total_size = 0;
+
+        for (int i = 0; i < format->n_components; i++)
+                total_size += format->components[i].bits;
+
+        return total_size / 8;
+}
 
 /**
  * Populate this->attribs and compute this->stride based on column
@@ -457,11 +486,11 @@ parse_header_line(struct vbo_data *data,
                 if (!res)
                         return false;
 
-                int alignment = attrib->data_type_size;
+                int alignment = get_alignment(attrib->format);
 
                 vbo->stride = vr_align(vbo->stride, alignment);
                 attrib->offset = vbo->stride;
-                vbo->stride += attrib->rows * attrib->data_type_size;
+                vbo->stride += get_format_size(attrib->format);
                 pos = column_header_end + 1;
 
                 if (alignment > max_alignment)
@@ -498,24 +527,36 @@ parse_data_line(struct vbo_data *data,
                                      old_length +
                                      attrib->offset);
 
-                for (size_t j = 0; j < attrib->rows; ++j) {
-                        if (!parse_datum(attrib->data_type,
+                if (attrib->format->packed_size) {
+                        if (!parse_datum(VR_FORMAT_MODE_UINT,
+                                         attrib->format->packed_size,
                                          &line_ptr,
-                                         data_ptr)) {
-                                vr_error_message("At line %u of [vertex data] "
-                                                 "section. "
-                                                 "Offending text: %s",
-                                                 data->line_num,
-                                                 line_ptr);
-                                return false;
-                        }
-                        data_ptr += attrib->data_type_size;
+                                         data_ptr))
+                                goto error;
+                        continue;
+                }
+
+                for (size_t j = 0; j < attrib->format->n_components; ++j) {
+                        if (!parse_datum(attrib->format->mode,
+                                         attrib->format->components[j].bits,
+                                         &line_ptr,
+                                         data_ptr))
+                                goto error;
+
+                        data_ptr += attrib->format->components[j].bits / 8;
                 }
         }
 
         ++vbo->num_rows;
 
         return true;
+
+error:
+        vr_error_message("At line %u of [vertex data] section. "
+                         "Offending text: %s",
+                         data->line_num,
+                         line_ptr);
+        return false;
 }
 
 

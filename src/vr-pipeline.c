@@ -394,123 +394,6 @@ get_topology(const struct vr_script *script)
         return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 }
 
-static VkFormat
-get_attrib_format(const struct vr_vbo_attrib *attrib)
-{
-        switch (attrib->data_type) {
-        case VR_VBO_TYPE_BYTE:
-                switch (attrib->rows) {
-                case 1:
-                        return VK_FORMAT_R8_SINT;
-                case 2:
-                        return VK_FORMAT_R8G8_SINT;
-                case 3:
-                        return VK_FORMAT_R8G8B8_SINT;
-                case 4:
-                        return VK_FORMAT_R8G8B8A8_SINT;
-                }
-                break;
-        case VR_VBO_TYPE_UNSIGNED_BYTE:
-                switch (attrib->rows) {
-                case 1:
-                        return VK_FORMAT_R8_UINT;
-                case 2:
-                        return VK_FORMAT_R8G8_UINT;
-                case 3:
-                        return VK_FORMAT_R8G8B8_UINT;
-                case 4:
-                        return VK_FORMAT_R8G8B8A8_UINT;
-                }
-                break;
-        case VR_VBO_TYPE_SHORT:
-                switch (attrib->rows) {
-                case 1:
-                        return VK_FORMAT_R16_SINT;
-                case 2:
-                        return VK_FORMAT_R16G16_SINT;
-                case 3:
-                        return VK_FORMAT_R16G16B16_SINT;
-                case 4:
-                        return VK_FORMAT_R16G16B16A16_SINT;
-                }
-                break;
-        case VR_VBO_TYPE_UNSIGNED_SHORT:
-                switch (attrib->rows) {
-                case 1:
-                        return VK_FORMAT_R16_UINT;
-                case 2:
-                        return VK_FORMAT_R16G16_UINT;
-                case 3:
-                        return VK_FORMAT_R16G16B16_UINT;
-                case 4:
-                        return VK_FORMAT_R16G16B16A16_UINT;
-                }
-                break;
-        case VR_VBO_TYPE_INT:
-                switch (attrib->rows) {
-                case 1:
-                        return VK_FORMAT_R32_SINT;
-                case 2:
-                        return VK_FORMAT_R32G32_SINT;
-                case 3:
-                        return VK_FORMAT_R32G32B32_SINT;
-                case 4:
-                        return VK_FORMAT_R32G32B32A32_SINT;
-                }
-                break;
-        case VR_VBO_TYPE_UNSIGNED_INT:
-                switch (attrib->rows) {
-                case 1:
-                        return VK_FORMAT_R32_UINT;
-                case 2:
-                        return VK_FORMAT_R32G32_UINT;
-                case 3:
-                        return VK_FORMAT_R32G32B32_UINT;
-                case 4:
-                        return VK_FORMAT_R32G32B32A32_UINT;
-                }
-                break;
-        case VR_VBO_TYPE_HALF_FLOAT:
-                switch (attrib->rows) {
-                case 1:
-                        return VK_FORMAT_R16_SFLOAT;
-                case 2:
-                        return VK_FORMAT_R16G16_SFLOAT;
-                case 3:
-                        return VK_FORMAT_R16G16B16_SFLOAT;
-                case 4:
-                        return VK_FORMAT_R16G16B16A16_SFLOAT;
-                }
-                break;
-        case VR_VBO_TYPE_FLOAT:
-                switch (attrib->rows) {
-                case 1:
-                        return VK_FORMAT_R32_SFLOAT;
-                case 2:
-                        return VK_FORMAT_R32G32_SFLOAT;
-                case 3:
-                        return VK_FORMAT_R32G32B32_SFLOAT;
-                case 4:
-                        return VK_FORMAT_R32G32B32A32_SFLOAT;
-                }
-                break;
-        case VR_VBO_TYPE_DOUBLE:
-                switch (attrib->rows) {
-                case 1:
-                        return VK_FORMAT_R64_SFLOAT;
-                case 2:
-                        return VK_FORMAT_R64G64_SFLOAT;
-                case 3:
-                        return VK_FORMAT_R64G64B64_SFLOAT;
-                case 4:
-                        return VK_FORMAT_R64G64B64A64_SFLOAT;
-                }
-                break;
-        }
-
-        vr_fatal("Unknown attrib format");
-}
-
 static void
 set_vertex_input_state(const struct vr_script *script,
                        VkPipelineVertexInputStateCreateInfo *state)
@@ -557,7 +440,7 @@ set_vertex_input_state(const struct vr_script *script,
         vr_list_for_each(attrib, &script->vertex_data->attribs, link) {
                 attrib_desc->location = attrib->location;
                 attrib_desc->binding = 0;
-                attrib_desc->format = get_attrib_format(attrib);
+                attrib_desc->format = attrib->format->vk_format,
                 attrib_desc->offset = attrib->offset;
                 attrib_desc++;
         };

@@ -28,41 +28,12 @@
 #include <stdbool.h>
 
 #include "vr-list.h"
-
-enum vr_vbo_type {
-        VR_VBO_TYPE_BYTE,
-        VR_VBO_TYPE_DOUBLE,
-        VR_VBO_TYPE_HALF_FLOAT,
-        VR_VBO_TYPE_FLOAT,
-        VR_VBO_TYPE_INT,
-        VR_VBO_TYPE_SHORT,
-        VR_VBO_TYPE_UNSIGNED_BYTE,
-        VR_VBO_TYPE_UNSIGNED_INT,
-        VR_VBO_TYPE_UNSIGNED_SHORT,
-};
+#include "vr-format.h"
 
 struct vr_vbo_attrib {
         struct vr_list link;
 
-        /**
-         * GL data type of this attribute.
-         */
-        enum vr_vbo_type data_type;
-
-        /**
-         * Size of the GL data type of this attribute.
-         */
-        size_t data_type_size;
-
-        /**
-         * GLSL data type of this attribute.
-         */
-        enum vr_vbo_type glsl_data_type;
-
-        /**
-         * Number of rows of the GLSL data type of this attribute.
-         */
-        size_t rows;
+        const struct vr_format *format;
 
         /**
          * Vertex location

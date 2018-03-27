@@ -18,6 +18,9 @@ vkrunner_SOURCES = \
 	vr-feature-offsets.h \
 	vr-flush-memory.c \
 	vr-flush-memory.h \
+	vr-format-table.h \
+	vr-format.h \
+	vr-format.c \
 	vr-half-float.c \
 	vr-half-float.h \
 	vr-hex.c \
@@ -48,4 +51,8 @@ vkrunner_SOURCES = \
 
 vkrunner_LDADD = \
 	$(EXTRA_LIBS) \
+	$(NULL)
+
+EXTRA_DIST = \
+	make-formats.py \
 	$(NULL)
