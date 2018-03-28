@@ -46,7 +46,9 @@ struct test_data {
         struct vr_window *window;
         struct vr_pipeline *pipeline;
         struct vr_list buffers;
+        const struct vr_script *script;
         float clear_color[4];
+        struct test_buffer *vbo_buffer;
 };
 
 static const float
@@ -253,6 +255,13 @@ end_paint(struct test_data *data)
         return true;
 }
 
+static void
+print_command_fail(const struct vr_script_command *command)
+{
+        printf("Command failed at line %i\n",
+               command->line_num);
+}
+
 static bool
 draw_rect(struct test_data *data,
           const struct vr_script_command *command)
@@ -317,6 +326,52 @@ draw_rect(struct test_data *data,
 }
 
 static bool
+draw_arrays(struct test_data *data,
+            const struct vr_script_command *command)
+{
+        struct vr_vbo *vbo = data->script->vertex_data;
+
+        if (vbo == NULL) {
+                print_command_fail(command);
+                vr_error_message("draw arrays command used with no vertex "
+                                 "data section");
+                return false;
+        }
+
+        if (data->vbo_buffer == NULL) {
+                data->vbo_buffer =
+                        allocate_test_buffer(data,
+                                             vbo->stride *
+                                             vbo->num_rows,
+                                             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+                if (data->vbo_buffer == NULL)
+                        return false;
+
+                memcpy(data->vbo_buffer->memory_map,
+                       vbo->raw_data,
+                       vbo->stride * vbo->num_rows);
+
+                vr_flush_memory(data->window,
+                                data->vbo_buffer->memory_type_index,
+                                data->vbo_buffer->memory,
+                                VK_WHOLE_SIZE);
+        }
+
+        vr_vk.vkCmdBindVertexBuffers(data->window->command_buffer,
+                                     0, /* firstBinding */
+                                     1, /* bindingCount */
+                                     &data->vbo_buffer->buffer,
+                                     (VkDeviceSize[]) { 0 });
+        vr_vk.vkCmdDraw(data->window->command_buffer,
+                        command->draw_arrays.vertex_count,
+                        command->draw_arrays.instance_count,
+                        command->draw_arrays.first_vertex,
+                        command->draw_arrays.first_instance);
+
+        return true;
+}
+
+static bool
 compare_pixels(const float *color1,
                const float *color2,
                const float *tolerance,
@@ -335,13 +390,6 @@ print_components_float(const float *pixel,
         int p;
         for (p = 0; p < n_components; ++p)
                 printf(" %f", pixel[p]);
-}
-
-static void
-print_command_fail(const struct vr_script_command *command)
-{
-        printf("Command failed at line %i\n",
-               command->line_num);
 }
 
 static void
@@ -475,7 +523,8 @@ vr_test_run(struct vr_window *window,
 {
         struct test_data data = {
                 .window = window,
-                .pipeline = pipeline
+                .pipeline = pipeline,
+                .script = script
         };
         bool ret = true;
 
@@ -490,6 +539,10 @@ vr_test_run(struct vr_window *window,
                 switch (command->op) {
                 case VR_SCRIPT_OP_DRAW_RECT:
                         if (!draw_rect(&data, command))
+                                ret = false;
+                        break;
+                case VR_SCRIPT_OP_DRAW_ARRAYS:
+                        if (!draw_arrays(&data, command))
                                 ret = false;
                         break;
                 case VR_SCRIPT_OP_PROBE_RECT:

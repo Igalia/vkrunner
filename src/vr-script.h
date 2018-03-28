@@ -28,6 +28,7 @@
 
 #include "vr-list.h"
 #include "vr-vk.h"
+#include "vr-vbo.h"
 
 enum vr_script_shader_stage {
         VR_SCRIPT_SHADER_STAGE_VERTEX,
@@ -42,6 +43,7 @@ enum vr_script_shader_stage {
 
 enum vr_script_op {
         VR_SCRIPT_OP_DRAW_RECT,
+        VR_SCRIPT_OP_DRAW_ARRAYS,
         VR_SCRIPT_OP_PROBE_RECT,
         VR_SCRIPT_OP_SET_PUSH_CONSTANT,
         VR_SCRIPT_OP_CLEAR_COLOR,
@@ -110,6 +112,14 @@ struct vr_script_command {
                 struct {
                         float color[4];
                 } clear_color;
+
+                struct {
+                        VkPrimitiveTopology topology;
+                        uint32_t vertex_count;
+                        uint32_t instance_count;
+                        uint32_t first_vertex;
+                        uint32_t first_instance;
+                } draw_arrays;
         };
 };
 
@@ -119,6 +129,7 @@ struct vr_script {
         size_t n_commands;
         struct vr_script_command *commands;
         VkPhysicalDeviceFeatures required_features;
+        struct vr_vbo *vertex_data;
 };
 
 struct vr_script *

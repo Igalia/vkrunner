@@ -383,8 +383,72 @@ build_stage(const struct vr_config *config,
         vr_fatal("should not be reached");
 }
 
+static VkPrimitiveTopology
+get_topology(const struct vr_script *script)
+{
+        for (int i = 0; i < script->n_commands; i++) {
+                if (script->commands[i].op == VR_SCRIPT_OP_DRAW_ARRAYS)
+                        return script->commands[i].draw_arrays.topology;
+        }
+
+        return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+}
+
+static void
+set_vertex_input_state(const struct vr_script *script,
+                       VkPipelineVertexInputStateCreateInfo *state)
+{
+        VkVertexInputBindingDescription *input_binding =
+                vr_calloc(sizeof *input_binding);
+
+        input_binding[0].binding = 0;
+        input_binding[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        memset(state, 0, sizeof *state);
+
+        state->sType =
+                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        state->vertexBindingDescriptionCount = 1;
+        state->pVertexBindingDescriptions = input_binding;
+
+        if (script->vertex_data == NULL) {
+                VkVertexInputAttributeDescription *attrib =
+                        vr_calloc(sizeof *attrib);
+                state->vertexAttributeDescriptionCount = 1;
+                state->pVertexAttributeDescriptions = attrib;
+
+                input_binding[0].stride =
+                        sizeof (struct vr_pipeline_vertex);
+
+                attrib->location = 0;
+                attrib->binding = 0;
+                attrib->format = VK_FORMAT_R32G32B32_SFLOAT;
+                attrib->offset = offsetof(struct vr_pipeline_vertex, x);
+
+                return;
+        }
+
+        int n_attribs = vr_list_length(&script->vertex_data->attribs);
+        VkVertexInputAttributeDescription *attrib_desc =
+                vr_calloc((sizeof *attrib_desc) * n_attribs);
+        const struct vr_vbo_attrib *attrib;
+
+        state->vertexAttributeDescriptionCount = n_attribs;
+        state->pVertexAttributeDescriptions = attrib_desc;
+        input_binding[0].stride = script->vertex_data->stride;
+
+        vr_list_for_each(attrib, &script->vertex_data->attribs, link) {
+                attrib_desc->location = attrib->location;
+                attrib_desc->binding = 0;
+                attrib_desc->format = attrib->format->vk_format,
+                attrib_desc->offset = attrib->offset;
+                attrib_desc++;
+        };
+}
+
 static VkPipeline
-create_vk_pipeline(struct vr_pipeline *pipeline)
+create_vk_pipeline(struct vr_pipeline *pipeline,
+                   const struct vr_script *script)
 {
         struct vr_window *window = pipeline->window;
         VkResult res;
@@ -403,37 +467,15 @@ create_vk_pipeline(struct vr_pipeline *pipeline)
                 num_stages++;
         }
 
-        VkVertexInputBindingDescription input_binding_descriptions[] = {
-                {
-                        .binding = 0,
-                        .stride = sizeof (struct vr_pipeline_vertex),
-                        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX
-                },
-        };
-        VkVertexInputAttributeDescription attribute_descriptions[] = {
-                {
-                        .location = 0,
-                        .binding = 0,
-                        .format = VK_FORMAT_R32G32B32_SFLOAT,
-                        .offset = offsetof(struct vr_pipeline_vertex, x)
-                },
-        };
-        VkPipelineVertexInputStateCreateInfo vertex_input_state = {
-                .sType =
-                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-                .vertexBindingDescriptionCount =
-                VR_N_ELEMENTS(input_binding_descriptions),
-                .pVertexBindingDescriptions = input_binding_descriptions,
-                .vertexAttributeDescriptionCount =
-                VR_N_ELEMENTS(attribute_descriptions),
-                .pVertexAttributeDescriptions = attribute_descriptions
-        };
         VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {
                 .sType =
                 VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-                .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                .topology = get_topology(script),
                 .primitiveRestartEnable = false
         };
+
+        VkPipelineVertexInputStateCreateInfo vertex_input_state;
+        set_vertex_input_state(script, &vertex_input_state);
 
         VkGraphicsPipelineCreateInfo info = {
                 .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -462,6 +504,9 @@ create_vk_pipeline(struct vr_pipeline *pipeline)
                                               &info,
                                               NULL, /* allocator */
                                               &vk_pipeline);
+
+        vr_free((void *) vertex_input_state.pVertexBindingDescriptions);
+        vr_free((void *) vertex_input_state.pVertexAttributeDescriptions);
 
         if (res != VK_SUCCESS) {
                 vr_error_message("Error creating VkPipeline");
@@ -579,7 +624,7 @@ vr_pipeline_create(const struct vr_config *config,
         if (pipeline->layout == NULL)
                 goto error;
 
-        pipeline->pipeline = create_vk_pipeline(pipeline);
+        pipeline->pipeline = create_vk_pipeline(pipeline, script);
         if (pipeline->pipeline == NULL)
                 goto error;
 

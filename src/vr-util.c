@@ -89,6 +89,23 @@ vr_strdup(const char *str)
         return vr_memdup(str, strlen(str) + 1);
 }
 
+char *
+vr_strndup(const char *str, size_t size)
+{
+        const char *end = str;
+
+        while (end - str < size && *end != '\0')
+                end++;
+
+        size = end - str;
+
+        char *ret = vr_alloc(size + 1);
+        memcpy(ret, str, size);
+        ret[size] = '\0';
+
+        return ret;
+}
+
 void *
 vr_memdup(const void *data, size_t size)
 {

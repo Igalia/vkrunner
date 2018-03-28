@@ -3,4 +3,6 @@ EXTRA_DIST = \
 	push-constants.shader_test \
 	frexp.shader_test \
 	spirv.shader_test \
+	vertex-data.shader_test \
+	vertex-data-piglit.shader_test \
 	$(NULL)
