@@ -5,4 +5,5 @@ EXTRA_DIST = \
 	spirv.shader_test \
 	vertex-data.shader_test \
 	vertex-data-piglit.shader_test \
+	float-framebuffer.shader_test \
 	$(NULL)
