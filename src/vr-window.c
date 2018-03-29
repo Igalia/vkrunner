@@ -34,8 +34,6 @@
 #include "vr-allocate-store.h"
 #include "vr-feature-offsets.h"
 
-#define COLOR_IMAGE_FORMAT VK_FORMAT_B8G8R8A8_UNORM
-
 static int
 find_queue_family(struct vr_window *window,
                   VkPhysicalDevice physical_device)
@@ -123,7 +121,7 @@ init_framebuffer_resources(struct vr_window *window)
         VkImageCreateInfo image_create_info = {
                 .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                 .imageType = VK_IMAGE_TYPE_2D,
-                .format = COLOR_IMAGE_FORMAT,
+                .format = window->framebuffer_format->vk_format,
                 .extent = {
                         .width = VR_WINDOW_WIDTH,
                         .height = VR_WINDOW_HEIGHT,
@@ -212,7 +210,7 @@ init_framebuffer_resources(struct vr_window *window)
                 .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                 .image = window->color_image,
                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                .format = COLOR_IMAGE_FORMAT,
+                .format = window->framebuffer_format->vk_format,
                 .components = {
                         .r = VK_COMPONENT_SWIZZLE_R,
                         .g = VK_COMPONENT_SWIZZLE_G,
@@ -464,6 +462,29 @@ init_vk(struct vr_window *window,
         vr_vk.vkGetPhysicalDeviceFeatures(window->physical_device,
                                           &window->features);
 
+        VkFormatProperties format_properties;
+        VkFormat framebuffer_format = window->framebuffer_format->vk_format;
+        vr_vk.vkGetPhysicalDeviceFormatProperties(window->physical_device,
+                                                  framebuffer_format,
+                                                  &format_properties);
+        if ((format_properties.optimalTilingFeatures &
+             (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+              VK_FORMAT_FEATURE_BLIT_SRC_BIT)) !=
+             (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+              VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
+                vr_error_message("Format %s is not supported as a color "
+                                 "attachment and blit source",
+                                 window->framebuffer_format->name);
+                goto error;
+        }
+        if ((format_properties.linearTilingFeatures &
+             VK_FORMAT_FEATURE_BLIT_DST_BIT) == 0) {
+                vr_error_message("Format %s is not supported as a linear "
+                                 "blit destination",
+                                 window->framebuffer_format->name);
+                goto error;
+        }
+
         VkDeviceCreateInfo device_create_info = {
                 .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
                 .queueCreateInfoCount = 1,
@@ -546,7 +567,7 @@ init_vk(struct vr_window *window,
 
         VkAttachmentDescription attachment_descriptions[] = {
                 {
-                        .format = COLOR_IMAGE_FORMAT,
+                        .format = window->framebuffer_format->vk_format,
                         .samples = VK_SAMPLE_COUNT_1_BIT,
                         .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                         .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -606,7 +627,8 @@ error:
 }
 
 struct vr_window *
-vr_window_new(const VkPhysicalDeviceFeatures *requires)
+vr_window_new(const VkPhysicalDeviceFeatures *requires,
+              const struct vr_format *framebuffer_format)
 {
         struct vr_window *window = vr_calloc(sizeof *window);
 
@@ -614,6 +636,7 @@ vr_window_new(const VkPhysicalDeviceFeatures *requires)
                 goto error;
 
         window->libvulkan_loaded = true;
+        window->framebuffer_format = framebuffer_format;
 
         if (!init_vk(window, requires))
                 goto error;

@@ -390,6 +390,36 @@ process_require_line(struct load_state *data)
                 return true;
         }
 
+        if (looking_at(&p, "framebuffer ")) {
+                while (isspace(*p))
+                        p++;
+                const char *end = p;
+                while (*end && !isspace(*end))
+                        end++;
+
+                if (is_end(end)) {
+                        char *format_name = vr_strndup(p, end - p);
+                        const struct vr_format *format =
+                                vr_format_lookup_by_name(format_name);
+                        bool ret;
+
+                        if (format == NULL) {
+                                vr_error_message("%s:%i: Unknown format: %s",
+                                                 data->filename,
+                                                 data->line_num,
+                                                 format_name);
+                                ret = false;
+                        } else {
+                                data->script->framebuffer_format = format;
+                                ret = true;
+                        }
+
+                        vr_free(format_name);
+
+                        return ret;
+                }
+        }
+
         vr_error_message("%s:%i: Invalid require line",
                          data->filename,
                          data->line_num);
@@ -809,6 +839,9 @@ load_script_from_stream(const char *filename,
         int stage;
 
         data.script->filename = vr_strdup(filename);
+        data.script->framebuffer_format =
+                vr_format_lookup_by_vk_format(VK_FORMAT_B8G8R8A8_UNORM);
+        assert(data.script->framebuffer_format != NULL);
 
         for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++)
                 vr_list_init(&data.script->stages[stage]);

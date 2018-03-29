@@ -2,6 +2,7 @@
  * vkrunner
  *
  * Copyright (C) 2018 Neil Roberts
+ * Copyright (C) 2018 Intel Coporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -33,6 +34,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <assert.h>
 
 struct test_buffer {
         struct vr_list link;
@@ -408,13 +410,198 @@ print_bad_pixel(int x, int y,
         printf("\n");
 }
 
+static int32_t
+sign_extend(uint32_t part, int bits)
+{
+        if (part & (1 << (bits - 1)))
+                return (UINT32_MAX << bits) | part;
+        else
+                return part;
+}
+
+static float
+load_packed_part(uint32_t part,
+                 int bits,
+                 enum vr_format_mode mode)
+{
+        assert(bits < 32);
+
+        switch (mode) {
+        case VR_FORMAT_MODE_SRGB:
+        case VR_FORMAT_MODE_UNORM:
+                return part / (float) ((1 << bits) - 1);
+        case VR_FORMAT_MODE_SNORM:
+                return (sign_extend(part, bits) /
+                        (float) ((1 << (bits - 1)) - 1));
+        case VR_FORMAT_MODE_UINT:
+        case VR_FORMAT_MODE_USCALED:
+                return part;
+        case VR_FORMAT_MODE_SSCALED:
+        case VR_FORMAT_MODE_SINT:
+                return sign_extend(part, bits);
+        case VR_FORMAT_MODE_UFLOAT:
+                vr_fatal("FIXME: load from packed UFLOAT format");
+        case VR_FORMAT_MODE_SFLOAT:
+                vr_fatal("Unexpected packed SFLOAT format");
+        }
+
+        vr_fatal("Unknown packed format");
+}
+
 static void
-load_pixel(const uint8_t *fb,
+load_packed_parts(const struct vr_format *format,
+                  const uint8_t *fb,
+                  float *parts)
+{
+        uint64_t packed_parts;
+
+        switch (format->packed_size) {
+        case 8:
+                packed_parts = *fb;
+                break;
+        case 16:
+                packed_parts = *(uint16_t *) fb;
+                break;
+        case 32:
+                packed_parts = *(uint32_t *) fb;
+                break;
+        default:
+                vr_fatal("Unknown packed bit size: %i", format->packed_size);
+        }
+
+        for (int i = format->n_components - 1; i >= 0; i--) {
+                int bits = format->components[i].bits;
+                uint32_t part = packed_parts & ((1 << bits) - 1);
+
+                parts[i] = load_packed_part(part, bits, format->mode);
+                packed_parts >>= bits;
+        }
+}
+
+static float
+load_part(const struct vr_format *format,
+          int bits,
+          const uint8_t *fb)
+{
+        switch (format->mode) {
+        case VR_FORMAT_MODE_SRGB:
+        case VR_FORMAT_MODE_UNORM:
+                switch (bits) {
+                case 8:
+                        return *fb / (float) UINT8_MAX;
+                case 16:
+                        return (*(uint16_t *) fb) / (float) UINT16_MAX;
+                case 32:
+                        return (*(uint32_t *) fb) / (float) UINT32_MAX;
+                case 64:
+                        return (*(uint64_t *) fb) / (float) UINT64_MAX;
+                }
+                break;
+        case VR_FORMAT_MODE_SNORM:
+                switch (bits) {
+                case 8:
+                        return (*(int8_t *) fb) / (float) INT8_MAX;
+                case 16:
+                        return (*(int16_t *) fb) / (float) INT16_MAX;
+                case 32:
+                        return (*(int32_t *) fb) / (float) INT32_MAX;
+                case 64:
+                        return (*(int64_t *) fb) / (float) INT64_MAX;
+                }
+                break;
+        case VR_FORMAT_MODE_UINT:
+        case VR_FORMAT_MODE_USCALED:
+                switch (bits) {
+                case 8:
+                        return *fb;
+                case 16:
+                        return *(uint16_t *) fb;
+                case 32:
+                        return *(uint32_t *) fb;
+                case 64:
+                        return *(uint64_t *) fb;
+                }
+                break;
+        case VR_FORMAT_MODE_SINT:
+        case VR_FORMAT_MODE_SSCALED:
+                switch (bits) {
+                case 8:
+                        return *(int8_t *) fb;
+                case 16:
+                        return *(int16_t *) fb;
+                case 32:
+                        return *(int32_t *) fb;
+                case 64:
+                        return *(int64_t *) fb;
+                }
+                break;
+        case VR_FORMAT_MODE_UFLOAT:
+                break;
+        case VR_FORMAT_MODE_SFLOAT:
+                switch (bits) {
+                case 16:
+                        vr_fatal("FIXME: load pixel from half-float format");
+                case 32:
+                        return *(float *) fb;
+                case 64:
+                        return *(double *) fb;
+                }
+                break;
+        }
+
+        vr_fatal("Unknown format bit size combination");
+}
+
+static void
+load_pixel(const struct vr_format *format,
+           const uint8_t *fb,
            float *pixel)
 {
-        for (int i = 0; i < 3; i++)
-                pixel[2 - i] = fb[i] / 255.0f;
-        pixel[3] = fb[3] / 255.0f;
+        float parts[4] = { 0.0f };
+
+        /* Alpha component defaults to 1.0 if not contained in the format */
+        switch (format->swizzle) {
+        case VR_FORMAT_SWIZZLE_BGRA:
+        case VR_FORMAT_SWIZZLE_RGBA:
+                parts[3] = 1.0f;
+                break;
+        case VR_FORMAT_SWIZZLE_ARGB:
+        case VR_FORMAT_SWIZZLE_ABGR:
+                parts[0] = 1.0f;
+                break;
+        }
+
+        if (format->packed_size) {
+                load_packed_parts(format, fb, parts);
+        } else {
+                for (int i = 0; i < format->n_components; i++) {
+                        int bits = format->components[i].bits;
+                        parts[i] = load_part(format, bits, fb);
+                        fb += bits / 8;
+                }
+        }
+
+        switch (format->swizzle) {
+        case VR_FORMAT_SWIZZLE_RGBA:
+                memcpy(pixel, parts, sizeof parts);
+                break;
+        case VR_FORMAT_SWIZZLE_ARGB:
+                memcpy(pixel, parts + 1, sizeof (float) * 3);
+                pixel[2] = parts[0];
+                break;
+        case VR_FORMAT_SWIZZLE_BGRA:
+                pixel[0] = parts[2];
+                pixel[1] = parts[1];
+                pixel[2] = parts[0];
+                pixel[3] = parts[3];
+                break;
+        case VR_FORMAT_SWIZZLE_ABGR:
+                pixel[0] = parts[3];
+                pixel[1] = parts[2];
+                pixel[2] = parts[1];
+                pixel[3] = parts[0];
+                break;
+        }
 }
 
 static bool
@@ -422,6 +609,8 @@ probe_rect(struct test_data *data,
            const struct vr_script_command *command)
 {
         int n_components = command->probe_rect.n_components;
+        const struct vr_format *format = data->window->framebuffer_format;
+        int format_size = vr_format_get_size(format);
         bool ret = true;
 
         /* End the paint to copy the framebuffer into the linear buffer */
@@ -432,12 +621,12 @@ probe_rect(struct test_data *data,
                 const uint8_t *p =
                         ((y + command->probe_rect.y) *
                          data->window->linear_memory_stride +
-                         command->probe_rect.x * 4 +
+                         command->probe_rect.x * format_size +
                          (uint8_t *) data->window->linear_memory_map);
                 for (int x = 0; x < command->probe_rect.w; x++) {
                         float pixel[4];
-                        load_pixel(p, pixel);
-                        p += 4;
+                        load_pixel(format, p, pixel);
+                        p += format_size;
 
                         if (!compare_pixels(pixel,
                                             command->probe_rect.color,

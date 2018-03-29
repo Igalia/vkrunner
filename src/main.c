@@ -88,7 +88,8 @@ process_script(struct vr_config *config,
                 goto out;
         }
 
-        window = vr_window_new(&script->required_features);
+        window = vr_window_new(&script->required_features,
+                               script->framebuffer_format);
         if (window == NULL) {
                 ret = false;
                 goto out;
