@@ -68,6 +68,9 @@ const struct vr_format *
 vr_format_lookup_by_name(const char *name);
 
 const struct vr_format *
+vr_format_lookup_by_vk_format(VkFormat vk_format);
+
+const struct vr_format *
 vr_format_lookup_by_details(int bit_size,
                             enum vr_format_mode mode,
                             int n_components);

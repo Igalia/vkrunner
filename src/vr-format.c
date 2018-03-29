@@ -44,6 +44,17 @@ vr_format_lookup_by_name(const char *name)
 }
 
 const struct vr_format *
+vr_format_lookup_by_vk_format(VkFormat vk_format)
+{
+        for (int i = 0; i < VR_N_ELEMENTS(formats); i++) {
+                if (formats[i].vk_format == vk_format)
+                        return formats + i;
+        }
+
+        return NULL;
+}
+
+const struct vr_format *
 vr_format_lookup_by_details(int bit_size,
                             enum vr_format_mode mode,
                             int n_components)
