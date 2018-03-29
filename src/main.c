@@ -132,6 +132,8 @@ main(int argc, char **argv)
 
         struct vr_config_script *script;
         vr_list_for_each(script, &config->scripts, link) {
+                if (config->scripts.next->next != &config->scripts)
+                        printf("%s\n", script->filename);
                 if (!process_script(config, script->filename)) {
                         ret = EXIT_FAILURE;
                         break;
