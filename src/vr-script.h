@@ -102,7 +102,7 @@ struct vr_script_command {
                 struct {
                         int n_components;
                         int x, y, w, h;
-                        float color[4];
+                        double color[4];
                 } probe_rect;
 
                 struct {

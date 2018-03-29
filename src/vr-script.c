@@ -459,10 +459,10 @@ process_probe_command(const char **p,
         if (region_type == ALL) {
                 if (relative)
                         return false;
-                if (!parse_floats(p,
-                                  command->probe_rect.color,
-                                  n_components,
-                                  NULL))
+                if (!parse_doubles(p,
+                                   command->probe_rect.color,
+                                   n_components,
+                                   NULL))
                         return false;
                 if (!is_end(*p))
                         return false;
@@ -519,7 +519,7 @@ process_probe_command(const char **p,
                 return false;
         (*p)++;
 
-        if (!parse_floats(p, command->probe_rect.color, n_components, ","))
+        if (!parse_doubles(p, command->probe_rect.color, n_components, ","))
                 return false;
 
         while (isspace(**p))

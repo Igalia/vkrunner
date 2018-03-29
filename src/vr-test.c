@@ -53,8 +53,8 @@ struct test_data {
         struct test_buffer *vbo_buffer;
 };
 
-static const float
-tolerance[4] = { 0.01f, 0.01f, 0.01f, 0.01f };
+static const double
+tolerance[4] = { 0.01, 0.01, 0.01, 0.01 };
 
 static struct test_buffer *
 allocate_test_buffer(struct test_data *data,
@@ -374,9 +374,9 @@ draw_arrays(struct test_data *data,
 }
 
 static bool
-compare_pixels(const float *color1,
-               const float *color2,
-               const float *tolerance,
+compare_pixels(const double *color1,
+               const double *color2,
+               const double *tolerance,
                int n_components)
 {
         for (int p = 0; p < n_components; ++p)
@@ -386,8 +386,8 @@ compare_pixels(const float *color1,
 }
 
 static void
-print_components_float(const float *pixel,
-                       int n_components)
+print_components_double(const double *pixel,
+                        int n_components)
 {
         int p;
         for (p = 0; p < n_components; ++p)
@@ -397,16 +397,16 @@ print_components_float(const float *pixel,
 static void
 print_bad_pixel(int x, int y,
                 int n_components,
-                const float *expected,
-                const float *observed)
+                const double *expected,
+                const double *observed)
 {
         printf("Probe color at (%i,%i)\n"
                "  Expected:",
                x, y);
-        print_components_float(expected, n_components);
+        print_components_double(expected, n_components);
         printf("\n"
                "  Observed:");
-        print_components_float(observed, n_components);
+        print_components_double(observed, n_components);
         printf("\n");
 }
 
@@ -419,7 +419,7 @@ sign_extend(uint32_t part, int bits)
                 return part;
 }
 
-static float
+static double
 load_packed_part(uint32_t part,
                  int bits,
                  enum vr_format_mode mode)
@@ -429,10 +429,10 @@ load_packed_part(uint32_t part,
         switch (mode) {
         case VR_FORMAT_MODE_SRGB:
         case VR_FORMAT_MODE_UNORM:
-                return part / (float) ((1 << bits) - 1);
+                return part / (double) ((1 << bits) - 1);
         case VR_FORMAT_MODE_SNORM:
                 return (sign_extend(part, bits) /
-                        (float) ((1 << (bits - 1)) - 1));
+                        (double) ((1 << (bits - 1)) - 1));
         case VR_FORMAT_MODE_UINT:
         case VR_FORMAT_MODE_USCALED:
                 return part;
@@ -451,7 +451,7 @@ load_packed_part(uint32_t part,
 static void
 load_packed_parts(const struct vr_format *format,
                   const uint8_t *fb,
-                  float *parts)
+                  double *parts)
 {
         uint64_t packed_parts;
 
@@ -478,7 +478,7 @@ load_packed_parts(const struct vr_format *format,
         }
 }
 
-static float
+static double
 load_part(const struct vr_format *format,
           int bits,
           const uint8_t *fb)
@@ -488,25 +488,25 @@ load_part(const struct vr_format *format,
         case VR_FORMAT_MODE_UNORM:
                 switch (bits) {
                 case 8:
-                        return *fb / (float) UINT8_MAX;
+                        return *fb / (double) UINT8_MAX;
                 case 16:
-                        return (*(uint16_t *) fb) / (float) UINT16_MAX;
+                        return (*(uint16_t *) fb) / (double) UINT16_MAX;
                 case 32:
-                        return (*(uint32_t *) fb) / (float) UINT32_MAX;
+                        return (*(uint32_t *) fb) / (double) UINT32_MAX;
                 case 64:
-                        return (*(uint64_t *) fb) / (float) UINT64_MAX;
+                        return (*(uint64_t *) fb) / (double) UINT64_MAX;
                 }
                 break;
         case VR_FORMAT_MODE_SNORM:
                 switch (bits) {
                 case 8:
-                        return (*(int8_t *) fb) / (float) INT8_MAX;
+                        return (*(int8_t *) fb) / (double) INT8_MAX;
                 case 16:
-                        return (*(int16_t *) fb) / (float) INT16_MAX;
+                        return (*(int16_t *) fb) / (double) INT16_MAX;
                 case 32:
-                        return (*(int32_t *) fb) / (float) INT32_MAX;
+                        return (*(int32_t *) fb) / (double) INT32_MAX;
                 case 64:
-                        return (*(int64_t *) fb) / (float) INT64_MAX;
+                        return (*(int64_t *) fb) / (double) INT64_MAX;
                 }
                 break;
         case VR_FORMAT_MODE_UINT:
@@ -555,9 +555,9 @@ load_part(const struct vr_format *format,
 static void
 load_pixel(const struct vr_format *format,
            const uint8_t *fb,
-           float *pixel)
+           double *pixel)
 {
-        float parts[4] = { 0.0f };
+        double parts[4] = { 0.0f };
 
         /* Alpha component defaults to 1.0 if not contained in the format */
         switch (format->swizzle) {
@@ -586,7 +586,7 @@ load_pixel(const struct vr_format *format,
                 memcpy(pixel, parts, sizeof parts);
                 break;
         case VR_FORMAT_SWIZZLE_ARGB:
-                memcpy(pixel, parts + 1, sizeof (float) * 3);
+                memcpy(pixel, parts + 1, sizeof (double) * 3);
                 pixel[2] = parts[0];
                 break;
         case VR_FORMAT_SWIZZLE_BGRA:
@@ -624,7 +624,7 @@ probe_rect(struct test_data *data,
                          command->probe_rect.x * format_size +
                          (uint8_t *) data->window->linear_memory_map);
                 for (int x = 0; x < command->probe_rect.w; x++) {
-                        float pixel[4];
+                        double pixel[4];
                         load_pixel(format, p, pixel);
                         p += format_size;
 
