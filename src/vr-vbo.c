@@ -414,20 +414,6 @@ get_alignment(const struct vr_format *format)
         return max_size / 8;
 }
 
-static int
-get_format_size(const struct vr_format *format)
-{
-        if (format->packed_size)
-                return format->packed_size / 8;
-
-        int total_size = 0;
-
-        for (int i = 0; i < format->n_components; i++)
-                total_size += format->components[i].bits;
-
-        return total_size / 8;
-}
-
 /**
  * Populate this->attribs and compute this->stride based on column
  * headers.
@@ -482,7 +468,7 @@ parse_header_line(struct vbo_data *data,
 
                 vbo->stride = vr_align(vbo->stride, alignment);
                 attrib->offset = vbo->stride;
-                vbo->stride += get_format_size(attrib->format);
+                vbo->stride += vr_format_get_size(attrib->format);
                 pos = column_header_end + 1;
 
                 if (alignment > max_alignment)

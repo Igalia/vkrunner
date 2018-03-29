@@ -75,4 +75,7 @@ vr_format_lookup_by_details(int bit_size,
                             enum vr_format_mode mode,
                             int n_components);
 
+int
+vr_format_get_size(const struct vr_format *format);
+
 #endif /* VR_FORMAT_H */

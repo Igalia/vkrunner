@@ -79,3 +79,17 @@ vr_format_lookup_by_details(int bit_size,
 
         return NULL;
 }
+
+int
+vr_format_get_size(const struct vr_format *format)
+{
+        if (format->packed_size)
+                return format->packed_size / 8;
+
+        int total_size = 0;
+
+        for (int i = 0; i < format->n_components; i++)
+                total_size += format->components[i].bits;
+
+        return total_size / 8;
+}
