@@ -78,4 +78,9 @@ vr_format_lookup_by_details(int bit_size,
 int
 vr_format_get_size(const struct vr_format *format);
 
+void
+vr_format_load_pixel(const struct vr_format *format,
+                     const uint8_t *p,
+                     double *pixel);
+
 #endif /* VR_FORMAT_H */
