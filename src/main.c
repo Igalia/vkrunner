@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <errno.h>
+#include <math.h>
 
 #include "vr-vk.h"
 #include "vr-window.h"
@@ -42,6 +43,8 @@ static bool
 write_ppm(struct vr_window *window,
           const char *filename)
 {
+        const struct vr_format *format = window->framebuffer_format;
+        int format_size = vr_format_get_size(format);
         FILE *out = fopen(filename, "w");
 
         if (out == NULL) {
@@ -56,16 +59,27 @@ write_ppm(struct vr_window *window,
                 VR_WINDOW_WIDTH,
                 VR_WINDOW_HEIGHT);
 
-        const uint8_t *p = window->linear_memory_map;
-
         for (int y = 0; y < VR_WINDOW_HEIGHT; y++) {
+                const uint8_t *p = ((uint8_t *) window->linear_memory_map +
+                                    y * window->linear_memory_stride);
+
                 for (int x = 0; x < VR_WINDOW_WIDTH; x++) {
-                        fputc(p[2], out);
-                        fputc(p[1], out);
-                        fputc(p[0], out);
-                        p += 4;
+                        double pixel[4];
+
+                        vr_format_load_pixel(format, p, pixel);
+
+                        for (int i = 0; i < 3; i++) {
+                                double v = pixel[i];
+
+                                if (v < 0.0)
+                                        v = 0.0;
+                                else if (v > 1.0)
+                                        v = 1.0;
+
+                                fputc(round(v * 255.0), out);
+                        }
+                        p += format_size;
                 }
-                p += window->linear_memory_stride - VR_WINDOW_WIDTH * 4;
         }
 
         fclose(out);
