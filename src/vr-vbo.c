@@ -549,7 +549,7 @@ parse_line(struct vbo_data *data,
            const char *line,
            const char *text_end)
 {
-        while (line < text_end && isspace(*line))
+        while (line < text_end && *line != '\n' && isspace(*line))
                 line++;
 
         const char *line_end;
