@@ -87,42 +87,40 @@ write_ppm(struct vr_window *window,
         return true;
 }
 
-static bool
+static enum vr_result
 process_script(struct vr_config *config,
                const char *filename)
 {
-        bool ret = true;
+        enum vr_result res = VR_RESULT_PASS;
         struct vr_script *script = NULL;
         struct vr_window *window = NULL;
         struct vr_pipeline *pipeline = NULL;
 
         script = vr_script_load(filename);
         if (script == NULL) {
-                ret = false;
+                res = VR_RESULT_FAIL;
                 goto out;
         }
 
-        enum vr_result res = vr_window_new(&script->required_features,
-                                           script->framebuffer_format,
-                                           &window);
-        if (res != VR_RESULT_PASS) {
-                ret = false;
+        res = vr_window_new(&script->required_features,
+                            script->framebuffer_format,
+                            &window);
+        if (res != VR_RESULT_PASS)
                 goto out;
-        }
 
         pipeline = vr_pipeline_create(config, window, script);
 
         if (pipeline == NULL) {
-                ret = false;
+                res = VR_RESULT_FAIL;
                 goto out;
         }
 
         if (!vr_test_run(window, pipeline, script))
-                ret = false;
+                res = VR_RESULT_FAIL;
 
         if (config->image_filename) {
                 if (!write_ppm(window, config->image_filename))
-                        ret = false;
+                        res = VR_RESULT_FAIL;
         }
 
 out:
@@ -133,13 +131,13 @@ out:
         if (script)
                 vr_script_free(script);
 
-        return ret;
+        return res;
 }
 
 int
 main(int argc, char **argv)
 {
-        int ret = EXIT_SUCCESS;
+        enum vr_result overall_result = VR_RESULT_SKIP;
 
         struct vr_config *config = vr_config_new(argc, argv);
         if (config == NULL)
@@ -149,13 +147,12 @@ main(int argc, char **argv)
         vr_list_for_each(script, &config->scripts, link) {
                 if (config->scripts.next->next != &config->scripts)
                         printf("%s\n", script->filename);
-                if (!process_script(config, script->filename)) {
-                        ret = EXIT_FAILURE;
-                        break;
-                }
+
+                enum vr_result res = process_script(config, script->filename);
+                overall_result = vr_result_merge(res, overall_result);
         }
 
         vr_config_free(config);
 
-        return ret;
+        return overall_result == VR_RESULT_FAIL ? EXIT_FAILURE : EXIT_SUCCESS;
 }
