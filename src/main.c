@@ -154,5 +154,8 @@ main(int argc, char **argv)
 
         vr_config_free(config);
 
+        printf("PIGLIT: {\"result\": \"%s\" }\n",
+               vr_result_to_string(overall_result));
+
         return overall_result == VR_RESULT_FAIL ? EXIT_FAILURE : EXIT_SUCCESS;
 }
