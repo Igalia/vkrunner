@@ -378,7 +378,7 @@ check_features(const VkPhysicalDeviceFeatures *features,
         return true;
 }
 
-static bool
+static enum vr_result
 find_physical_device(struct vr_window *window,
                      const VkPhysicalDeviceFeatures *requires)
 {
@@ -392,7 +392,7 @@ find_physical_device(struct vr_window *window,
                                                NULL);
         if (res != VK_SUCCESS) {
                 vr_error_message("Error enumerating VkPhysicalDevices");
-                return false;
+                return VR_RESULT_FAIL;
         }
 
         devices = alloca(count * sizeof *devices);
@@ -402,7 +402,7 @@ find_physical_device(struct vr_window *window,
                                                devices);
         if (res != VK_SUCCESS) {
                 vr_error_message("Error enumerating VkPhysicalDevices");
-                return false;
+                return VR_RESULT_FAIL;
         }
 
         for (i = 0; i < count; i++) {
@@ -418,19 +418,21 @@ find_physical_device(struct vr_window *window,
                 window->physical_device = devices[i];
                 window->queue_family = queue_family;
 
-                return true;
+                return VR_RESULT_PASS;
         }
 
         vr_error_message("No suitable device and queue family found");
-        return false;
+
+        return VR_RESULT_SKIP;
 }
 
-static bool
+static enum vr_result
 init_vk(struct vr_window *window,
         const VkPhysicalDeviceFeatures *requires)
 {
         VkPhysicalDeviceMemoryProperties *memory_properties =
                 &window->memory_properties;
+        enum vr_result vres = VR_RESULT_PASS;
         VkResult res;
 
         struct VkInstanceCreateInfo instance_create_info = {
@@ -447,12 +449,14 @@ init_vk(struct vr_window *window,
 
         if (res != VK_SUCCESS) {
                 vr_error_message("Failed to create VkInstance");
+                vres = VR_RESULT_FAIL;
                 goto error;
         }
 
         vr_vk_init_instance(window->vk_instance);
 
-        if (!find_physical_device(window, requires))
+        vres = find_physical_device(window, requires);
+        if (vres != VR_RESULT_PASS)
                 goto error;
 
         vr_vk.vkGetPhysicalDeviceProperties(window->physical_device,
@@ -470,11 +474,12 @@ init_vk(struct vr_window *window,
         if ((format_properties.optimalTilingFeatures &
              (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
               VK_FORMAT_FEATURE_BLIT_SRC_BIT)) !=
-             (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-              VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
+            (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+             VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
                 vr_error_message("Format %s is not supported as a color "
                                  "attachment and blit source",
                                  window->framebuffer_format->name);
+                vres = VR_RESULT_FAIL;
                 goto error;
         }
         if ((format_properties.linearTilingFeatures &
@@ -482,6 +487,7 @@ init_vk(struct vr_window *window,
                 vr_error_message("Format %s is not supported as a linear "
                                  "blit destination",
                                  window->framebuffer_format->name);
+                vres = VR_RESULT_FAIL;
                 goto error;
         }
 
@@ -506,6 +512,7 @@ init_vk(struct vr_window *window,
                                    &window->device);
         if (res != VK_SUCCESS) {
                 vr_error_message("Error creating VkDevice");
+                vres = VR_RESULT_FAIL;
                 goto error;
         }
 
@@ -527,6 +534,7 @@ init_vk(struct vr_window *window,
                                         &window->command_pool);
         if (res != VK_SUCCESS) {
                 vr_error_message("Error creating VkCommandPool");
+                vres = VR_RESULT_FAIL;
                 goto error;
         }
 
@@ -542,6 +550,7 @@ init_vk(struct vr_window *window,
 
         if (res != VK_SUCCESS) {
                 vr_error_message("Error creating command buffer");
+                vres = VR_RESULT_FAIL;
                 goto error;
         }
 
@@ -562,6 +571,7 @@ init_vk(struct vr_window *window,
                                            &window->descriptor_pool);
         if (res != VK_SUCCESS) {
                 vr_error_message("Error creating VkDescriptorPool");
+                vres = VR_RESULT_FAIL;
                 goto error;
         }
 
@@ -601,6 +611,7 @@ init_vk(struct vr_window *window,
                                        &window->render_pass);
         if (res != VK_SUCCESS) {
                 vr_error_message("Error creating render pass");
+                vres = VR_RESULT_FAIL;
                 goto error;
         }
 
@@ -613,39 +624,48 @@ init_vk(struct vr_window *window,
                                   &window->vk_fence);
         if (res != VK_SUCCESS) {
                 vr_error_message("Error creating fence");
+                vres = VR_RESULT_FAIL;
                 goto error;
         }
 
-        if (!init_framebuffer_resources(window))
+        if (!init_framebuffer_resources(window)) {
+                vres = VR_RESULT_FAIL;
                 goto error;
+        }
 
-        return true;
+        return VR_RESULT_PASS;
 
 error:
         deinit_vk(window);
-        return false;
+        return vres;
 }
 
-struct vr_window *
+enum vr_result
 vr_window_new(const VkPhysicalDeviceFeatures *requires,
-              const struct vr_format *framebuffer_format)
+              const struct vr_format *framebuffer_format,
+              struct vr_window **window_out)
 {
         struct vr_window *window = vr_calloc(sizeof *window);
+        enum vr_result vres;
 
-        if (!vr_vk_load_libvulkan())
+        if (!vr_vk_load_libvulkan()) {
+                vres = VR_RESULT_FAIL;
                 goto error;
+        }
 
         window->libvulkan_loaded = true;
         window->framebuffer_format = framebuffer_format;
 
-        if (!init_vk(window, requires))
+        vres = init_vk(window, requires);
+        if (vres != VR_RESULT_PASS)
                 goto error;
 
-        return window;
+        *window_out = window;
+        return VR_RESULT_PASS;
 
 error:
         vr_window_free(window);
-        return NULL;
+        return vres;
 }
 
 void

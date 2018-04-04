@@ -102,9 +102,10 @@ process_script(struct vr_config *config,
                 goto out;
         }
 
-        window = vr_window_new(&script->required_features,
-                               script->framebuffer_format);
-        if (window == NULL) {
+        enum vr_result res = vr_window_new(&script->required_features,
+                                           script->framebuffer_format,
+                                           &window);
+        if (res != VR_RESULT_PASS) {
                 ret = false;
                 goto out;
         }
