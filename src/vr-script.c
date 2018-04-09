@@ -426,6 +426,36 @@ process_require_line(struct load_state *data)
 }
 
 static bool
+process_draw_rect_command(const char *p,
+                          struct vr_script_command *command)
+{
+        if (!looking_at(&p, "draw rect "))
+                return false;
+
+        bool ortho = false;
+
+        if (looking_at(&p, "ortho "))
+                ortho = true;
+
+        if (!parse_floats(&p, &command->draw_rect.x, 4, NULL) ||
+            !is_end(p))
+                return false;
+
+        command->op = VR_SCRIPT_OP_DRAW_RECT;
+
+        if (ortho) {
+                command->draw_rect.x = (command->draw_rect.x * 2.0f /
+                                        VR_WINDOW_WIDTH) - 1.0f;
+                command->draw_rect.y = (command->draw_rect.y * 2.0f /
+                                        VR_WINDOW_HEIGHT) - 1.0f;
+                command->draw_rect.w *= 2.0f / VR_WINDOW_WIDTH;
+                command->draw_rect.h *= 2.0f / VR_WINDOW_HEIGHT;
+        }
+
+        return true;
+}
+
+static bool
 process_probe_command(const char *p,
                       struct vr_script_command *command)
 {
@@ -635,13 +665,8 @@ process_test_line(struct load_state *data)
 
         command->line_num = data->line_num;
 
-        if (looking_at(&p, "draw rect ")) {
-                if (!parse_floats(&p, &command->draw_rect.x, 4, NULL) ||
-                    !is_end(p))
-                        goto error;
-                command->op = VR_SCRIPT_OP_DRAW_RECT;
+        if (process_draw_rect_command(p, command))
                 return true;
-        }
 
         if (process_probe_command(p, command))
                 return true;
