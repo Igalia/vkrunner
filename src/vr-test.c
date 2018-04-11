@@ -34,6 +34,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 struct test_buffer {
         struct vr_list link;

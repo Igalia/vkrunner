@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <math.h>
+#include <string.h>
 
 #include "vr-vk.h"
 #include "vr-window.h"
