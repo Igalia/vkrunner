@@ -24,15 +24,93 @@
 #include "config.h"
 #include "vr-subprocess.h"
 #include "vr-error-message.h"
+#include "vr-buffer.h"
 
-#include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+
+#ifdef WIN32
+
+#include <windows.h>
+
+static bool
+needs_quotes(const char *arg)
+{
+        if (*arg == '\0')
+                return true;
+
+        while (*arg) {
+                if (!isalnum(*arg) && *arg != '-' && *arg != '.')
+                        return true;
+                arg++;
+        }
+
+        return false;
+}
+
+bool
+vr_subprocess_command(char * const *arguments)
+{
+        BOOL res;
+
+        struct vr_buffer buffer = VR_BUFFER_STATIC_INIT;
+
+        for (char * const *arg = arguments; *arg; arg++) {
+                if (buffer.length > 0)
+                        vr_buffer_append_c(&buffer, ' ');
+
+                if (needs_quotes(*arg)) {
+                        vr_buffer_append_c(&buffer, '"');
+                        vr_buffer_append_string(&buffer, *arg);
+                        vr_buffer_append_c(&buffer, '"');
+                } else {
+                        vr_buffer_append_string(&buffer, *arg);
+                }
+        }
+
+        vr_buffer_append_c(&buffer, '\0');
+
+        STARTUPINFO startup_info = {
+                .cb = sizeof startup_info,
+        };
+        PROCESS_INFORMATION process_info;
+
+        res = CreateProcess(NULL, /* lpApplicationName */
+                            (char *) buffer.data,
+                            NULL, /* lpProcessAttributes */
+                            NULL, /* lpThreadAttributes */
+                            FALSE, /* bInheritHandles */
+                            0, /* dwCreationFlags */
+                            NULL, /* lpEnvironment */
+                            NULL, /* lpCurrentDirectory */
+                            &startup_info,
+                            &process_info);
+
+        vr_buffer_destroy(&buffer);
+
+        if (!res) {
+                vr_error_message("%s: CreateProcess failed", arguments[0]);
+                return false;
+        }
+
+        DWORD exit_code;
+        bool result = (WaitForSingleObject(process_info.hProcess,
+                                           INFINITE) == WAIT_OBJECT_0 &&
+                       GetExitCodeProcess(process_info.hProcess, &exit_code) &&
+                       exit_code == 0);
+
+        CloseHandle(process_info.hProcess);
+        CloseHandle(process_info.hThread);
+
+        return result;
+}
+
+#else /* WIN32 */
+
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <poll.h>
-#include <limits.h>
 
 bool
 vr_subprocess_command(char * const *arguments)
@@ -60,3 +138,5 @@ vr_subprocess_command(char * const *arguments)
 
         return true;
 }
+
+#endif /* WIN32 */
