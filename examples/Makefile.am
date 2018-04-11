@@ -1,4 +1,6 @@
-EXTRA_DIST = \
+shader_testdir = $(datadir)/vkrunner/examples
+
+dist_shader_test_DATA = \
 	tricolore.shader_test \
 	push-constants.shader_test \
 	frexp.shader_test \
