@@ -28,6 +28,8 @@
 
 #include <stdbool.h>
 #include "vr-vk.h"
+#include "vr-format.h"
+#include "vr-result.h"
 
 #define VR_WINDOW_WIDTH 250
 #define VR_WINDOW_HEIGHT 250
@@ -56,12 +58,15 @@ struct vr_window {
         VkDeviceSize linear_memory_stride;
         VkImageView color_image_view;
         VkFramebuffer framebuffer;
+        const struct vr_format *framebuffer_format;
 
         bool libvulkan_loaded;
 };
 
-struct vr_window *
-vr_window_new(const struct VkPhysicalDeviceFeatures *requires);
+enum vr_result
+vr_window_new(const VkPhysicalDeviceFeatures *requires,
+              const struct vr_format *framebuffer_format,
+              struct vr_window **window_out);
 
 void
 vr_window_free(struct vr_window *window);

@@ -2,6 +2,7 @@
  * vkrunner
  *
  * Copyright (C) 2018 Neil Roberts
+ * Copyright (C) 2018 Intel Coporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -33,6 +34,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 struct test_buffer {
         struct vr_list link;
@@ -51,8 +53,8 @@ struct test_data {
         struct test_buffer *vbo_buffer;
 };
 
-static const float
-tolerance[4] = { 0.01f, 0.01f, 0.01f, 0.01f };
+static const double
+tolerance[4] = { 0.01, 0.01, 0.01, 0.01 };
 
 static struct test_buffer *
 allocate_test_buffer(struct test_data *data,
@@ -372,9 +374,9 @@ draw_arrays(struct test_data *data,
 }
 
 static bool
-compare_pixels(const float *color1,
-               const float *color2,
-               const float *tolerance,
+compare_pixels(const double *color1,
+               const double *color2,
+               const double *tolerance,
                int n_components)
 {
         for (int p = 0; p < n_components; ++p)
@@ -384,8 +386,8 @@ compare_pixels(const float *color1,
 }
 
 static void
-print_components_float(const float *pixel,
-                       int n_components)
+print_components_double(const double *pixel,
+                        int n_components)
 {
         int p;
         for (p = 0; p < n_components; ++p)
@@ -395,26 +397,17 @@ print_components_float(const float *pixel,
 static void
 print_bad_pixel(int x, int y,
                 int n_components,
-                const float *expected,
-                const float *observed)
+                const double *expected,
+                const double *observed)
 {
         printf("Probe color at (%i,%i)\n"
                "  Expected:",
                x, y);
-        print_components_float(expected, n_components);
+        print_components_double(expected, n_components);
         printf("\n"
                "  Observed:");
-        print_components_float(observed, n_components);
+        print_components_double(observed, n_components);
         printf("\n");
-}
-
-static void
-load_pixel(const uint8_t *fb,
-           float *pixel)
-{
-        for (int i = 0; i < 3; i++)
-                pixel[2 - i] = fb[i] / 255.0f;
-        pixel[3] = fb[3] / 255.0f;
 }
 
 static bool
@@ -422,6 +415,8 @@ probe_rect(struct test_data *data,
            const struct vr_script_command *command)
 {
         int n_components = command->probe_rect.n_components;
+        const struct vr_format *format = data->window->framebuffer_format;
+        int format_size = vr_format_get_size(format);
         bool ret = true;
 
         /* End the paint to copy the framebuffer into the linear buffer */
@@ -432,12 +427,12 @@ probe_rect(struct test_data *data,
                 const uint8_t *p =
                         ((y + command->probe_rect.y) *
                          data->window->linear_memory_stride +
-                         command->probe_rect.x * 4 +
+                         command->probe_rect.x * format_size +
                          (uint8_t *) data->window->linear_memory_map);
                 for (int x = 0; x < command->probe_rect.w; x++) {
-                        float pixel[4];
-                        load_pixel(p, pixel);
-                        p += 4;
+                        double pixel[4];
+                        vr_format_load_pixel(format, p, pixel);
+                        p += format_size;
 
                         if (!compare_pixels(pixel,
                                             command->probe_rect.color,

@@ -1,0 +1,27 @@
+[require]
+# Use a floating-point framebuffer format. This format is required to
+# be supported by the Vulkan driver. We can use this to get more
+# information when probing values by directly storing the results in
+# the framebuffer.
+framebuffer R32G32B32A32_SFLOAT
+
+[vertex shader passthrough]
+
+[fragment shader]
+#version 430
+
+layout(location = 0) out vec4 color;
+
+void
+main()
+{
+        color = vec4(atan(0.0, -1.0),
+                     42.0,
+                     length(vec2(1.0, 1.0)),
+                     fma(2.0, 3.0, 1.0));
+}
+
+[test]
+clear
+draw rect -1 -1 2 2
+probe all rgba 3.141592653589793 42.0 1.4142135623730951 7.0

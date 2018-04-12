@@ -27,6 +27,8 @@ vkrunner_SOURCES = \
 	vr-hex.h \
 	vr-list.c \
 	vr-list.h \
+	vr-result.c \
+	vr-result.h \
 	vr-script.c \
 	vr-script.h \
 	vr-util.c \

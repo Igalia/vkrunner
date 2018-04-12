@@ -29,6 +29,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <errno.h>
+#include <math.h>
+#include <string.h>
 
 #include "vr-vk.h"
 #include "vr-window.h"
@@ -42,6 +44,8 @@ static bool
 write_ppm(struct vr_window *window,
           const char *filename)
 {
+        const struct vr_format *format = window->framebuffer_format;
+        int format_size = vr_format_get_size(format);
         FILE *out = fopen(filename, "w");
 
         if (out == NULL) {
@@ -56,16 +60,27 @@ write_ppm(struct vr_window *window,
                 VR_WINDOW_WIDTH,
                 VR_WINDOW_HEIGHT);
 
-        const uint8_t *p = window->linear_memory_map;
-
         for (int y = 0; y < VR_WINDOW_HEIGHT; y++) {
+                const uint8_t *p = ((uint8_t *) window->linear_memory_map +
+                                    y * window->linear_memory_stride);
+
                 for (int x = 0; x < VR_WINDOW_WIDTH; x++) {
-                        fputc(p[2], out);
-                        fputc(p[1], out);
-                        fputc(p[0], out);
-                        p += 4;
+                        double pixel[4];
+
+                        vr_format_load_pixel(format, p, pixel);
+
+                        for (int i = 0; i < 3; i++) {
+                                double v = pixel[i];
+
+                                if (v < 0.0)
+                                        v = 0.0;
+                                else if (v > 1.0)
+                                        v = 1.0;
+
+                                fputc(round(v * 255.0), out);
+                        }
+                        p += format_size;
                 }
-                p += window->linear_memory_stride - VR_WINDOW_WIDTH * 4;
         }
 
         fclose(out);
@@ -73,40 +88,40 @@ write_ppm(struct vr_window *window,
         return true;
 }
 
-static bool
+static enum vr_result
 process_script(struct vr_config *config,
                const char *filename)
 {
-        bool ret = true;
+        enum vr_result res = VR_RESULT_PASS;
         struct vr_script *script = NULL;
         struct vr_window *window = NULL;
         struct vr_pipeline *pipeline = NULL;
 
         script = vr_script_load(filename);
         if (script == NULL) {
-                ret = false;
+                res = VR_RESULT_FAIL;
                 goto out;
         }
 
-        window = vr_window_new(&script->required_features);
-        if (window == NULL) {
-                ret = false;
+        res = vr_window_new(&script->required_features,
+                            script->framebuffer_format,
+                            &window);
+        if (res != VR_RESULT_PASS)
                 goto out;
-        }
 
         pipeline = vr_pipeline_create(config, window, script);
 
         if (pipeline == NULL) {
-                ret = false;
+                res = VR_RESULT_FAIL;
                 goto out;
         }
 
         if (!vr_test_run(window, pipeline, script))
-                ret = false;
+                res = VR_RESULT_FAIL;
 
         if (config->image_filename) {
                 if (!write_ppm(window, config->image_filename))
-                        ret = false;
+                        res = VR_RESULT_FAIL;
         }
 
 out:
@@ -117,13 +132,13 @@ out:
         if (script)
                 vr_script_free(script);
 
-        return ret;
+        return res;
 }
 
 int
 main(int argc, char **argv)
 {
-        int ret = EXIT_SUCCESS;
+        enum vr_result overall_result = VR_RESULT_SKIP;
 
         struct vr_config *config = vr_config_new(argc, argv);
         if (config == NULL)
@@ -131,13 +146,17 @@ main(int argc, char **argv)
 
         struct vr_config_script *script;
         vr_list_for_each(script, &config->scripts, link) {
-                if (!process_script(config, script->filename)) {
-                        ret = EXIT_FAILURE;
-                        break;
-                }
+                if (config->scripts.next->next != &config->scripts)
+                        printf("%s\n", script->filename);
+
+                enum vr_result res = process_script(config, script->filename);
+                overall_result = vr_result_merge(res, overall_result);
         }
 
         vr_config_free(config);
 
-        return ret;
+        printf("PIGLIT: {\"result\": \"%s\" }\n",
+               vr_result_to_string(overall_result));
+
+        return overall_result == VR_RESULT_FAIL ? EXIT_FAILURE : EXIT_SUCCESS;
 }

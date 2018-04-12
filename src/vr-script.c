@@ -54,9 +54,7 @@ struct load_state {
         int line_num;
         struct vr_script *script;
         struct vr_buffer buffer;
-        char *line;
-        size_t len;
-        ssize_t nread;
+        struct vr_buffer line;
         enum vr_script_shader_stage current_stage;
         enum vr_script_source_type current_source_type;
         enum section current_section;
@@ -355,7 +353,7 @@ parse_value(const char **p,
 static bool
 process_none_line(struct load_state *data)
 {
-        const char *start = data->line;
+        const char *start = (char *) data->line.data;
 
         while (*start && isspace(*start))
                 start++;
@@ -373,7 +371,7 @@ process_none_line(struct load_state *data)
 static bool
 process_require_line(struct load_state *data)
 {
-        const char *start = data->line, *p;
+        const char *start = (char *) data->line.data, *p = start;
 
         while (*start && isspace(*start))
                 start++;
@@ -388,6 +386,36 @@ process_require_line(struct load_state *data)
                 *(VkBool32 *) ((uint8_t *) &data->script->required_features +
                                vr_feature_offsets[i].offset) = true;
                 return true;
+        }
+
+        if (looking_at(&p, "framebuffer ")) {
+                while (isspace(*p))
+                        p++;
+                const char *end = p;
+                while (*end && !isspace(*end))
+                        end++;
+
+                if (is_end(end)) {
+                        char *format_name = vr_strndup(p, end - p);
+                        const struct vr_format *format =
+                                vr_format_lookup_by_name(format_name);
+                        bool ret;
+
+                        if (format == NULL) {
+                                vr_error_message("%s:%i: Unknown format: %s",
+                                                 data->filename,
+                                                 data->line_num,
+                                                 format_name);
+                                ret = false;
+                        } else {
+                                data->script->framebuffer_format = format;
+                                ret = true;
+                        }
+
+                        vr_free(format_name);
+
+                        return ret;
+                }
         }
 
         vr_error_message("%s:%i: Invalid require line",
@@ -429,10 +457,10 @@ process_probe_command(const char **p,
         if (region_type == ALL) {
                 if (relative)
                         return false;
-                if (!parse_floats(p,
-                                  command->probe_rect.color,
-                                  n_components,
-                                  NULL))
+                if (!parse_doubles(p,
+                                   command->probe_rect.color,
+                                   n_components,
+                                   NULL))
                         return false;
                 if (!is_end(*p))
                         return false;
@@ -489,7 +517,7 @@ process_probe_command(const char **p,
                 return false;
         (*p)++;
 
-        if (!parse_floats(p, command->probe_rect.color, n_components, ","))
+        if (!parse_doubles(p, command->probe_rect.color, n_components, ","))
                 return false;
 
         while (isspace(**p))
@@ -588,7 +616,7 @@ found_topology:
 static bool
 process_test_line(struct load_state *data)
 {
-        const char *p = data->line;
+        const char *p = (char *) data->line.data;
 
         while (*p && isspace(*p))
                 p++;
@@ -701,7 +729,7 @@ process_section_header(struct load_state *data)
         if (!end_section(data))
                 return false;
 
-        const char *start = data->line + 1;
+        const char *start = (char *) data->line.data + 1;
         const char *end = strchr(start, ']');
         if (end == NULL) {
                 vr_error_message("%s:%i: Missing ']'",
@@ -768,7 +796,7 @@ process_section_header(struct load_state *data)
 static bool
 process_line(struct load_state *data)
 {
-        if (data->line[0] == '[')
+        if (*data->line.data == '[')
                 return process_section_header(data);
 
         switch (data->current_section) {
@@ -780,7 +808,9 @@ process_line(struct load_state *data)
 
         case SECTION_SHADER:
         case SECTION_VERTEX_DATA:
-                vr_buffer_append(&data->buffer, data->line, data->nread);
+                vr_buffer_append(&data->buffer,
+                                 data->line.data,
+                                 data->line.length);
                 return true;
 
         case SECTION_TEST:
@@ -788,6 +818,29 @@ process_line(struct load_state *data)
         }
 
         return true;
+}
+
+static bool
+read_line(FILE *f,
+          struct vr_buffer *buffer)
+{
+        buffer->length = 0;
+
+        while (true) {
+                vr_buffer_ensure_size(buffer, buffer->length + 128);
+
+                char *read_start = (char *) buffer->data + buffer->length;
+
+                if (!fgets(read_start, buffer->size - buffer->length, f))
+                        break;
+
+                buffer->length += strlen(read_start);
+
+                if (strchr(read_start, '\n'))
+                        break;
+        }
+
+        return buffer->length > 0;
 }
 
 static struct vr_script *
@@ -798,8 +851,7 @@ load_script_from_stream(const char *filename,
                 .filename = filename,
                 .line_num = 1,
                 .script = vr_calloc(sizeof (struct vr_script)),
-                .line = NULL,
-                .len = 0,
+                .line = VR_BUFFER_STATIC_INIT,
                 .buffer = VR_BUFFER_STATIC_INIT,
                 .commands = VR_BUFFER_STATIC_INIT,
                 .current_stage = -1,
@@ -809,13 +861,15 @@ load_script_from_stream(const char *filename,
         int stage;
 
         data.script->filename = vr_strdup(filename);
+        data.script->framebuffer_format =
+                vr_format_lookup_by_vk_format(VK_FORMAT_B8G8R8A8_UNORM);
+        assert(data.script->framebuffer_format != NULL);
 
         for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++)
                 vr_list_init(&data.script->stages[stage]);
 
         do {
-                data.nread = getline(&data.line, &data.len, f);
-                if (data.nread == -1)
+                if (!read_line(f, &data.line))
                         break;
 
                 res = process_line(&data);
@@ -833,7 +887,7 @@ load_script_from_stream(const char *filename,
 
         vr_buffer_destroy(&data.commands);
         vr_buffer_destroy(&data.buffer);
-        free(data.line);
+        vr_buffer_destroy(&data.line);
 
         if (res) {
                 return data.script;

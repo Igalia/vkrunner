@@ -29,6 +29,7 @@
 #include "vr-list.h"
 #include "vr-vk.h"
 #include "vr-vbo.h"
+#include "vr-format.h"
 
 enum vr_script_shader_stage {
         VR_SCRIPT_SHADER_STAGE_VERTEX,
@@ -101,7 +102,7 @@ struct vr_script_command {
                 struct {
                         int n_components;
                         int x, y, w, h;
-                        float color[4];
+                        double color[4];
                 } probe_rect;
 
                 struct {
@@ -129,6 +130,7 @@ struct vr_script {
         size_t n_commands;
         struct vr_script_command *commands;
         VkPhysicalDeviceFeatures required_features;
+        const struct vr_format *framebuffer_format;
         struct vr_vbo *vertex_data;
 };
 

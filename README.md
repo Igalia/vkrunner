@@ -64,10 +64,17 @@ Take a look in the examples directory for examples.
 
 ## [require] section
 
+> _feature_
+
 The `[require]` section can contain names of members from
 VkPhysicalDeviceFeatures. These will be searched for when deciding
 which physical device to open. If no physical device with the
 corresponding requirements can be found then it will report an error.
+
+> framebuffer _format_
+
+Use this to specify the format of the framebuffer using a format from
+VkFormat minus the VK_FORMAT prefix.
 
 ## Shader sections
 
