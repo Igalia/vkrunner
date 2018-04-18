@@ -65,6 +65,7 @@ struct vr_script_shader {
 
 enum vr_script_type {
         VR_SCRIPT_TYPE_INT,
+        VR_SCRIPT_TYPE_UINT,
         VR_SCRIPT_TYPE_FLOAT,
         VR_SCRIPT_TYPE_DOUBLE,
         VR_SCRIPT_TYPE_VEC2,
@@ -76,17 +77,22 @@ enum vr_script_type {
         VR_SCRIPT_TYPE_IVEC2,
         VR_SCRIPT_TYPE_IVEC3,
         VR_SCRIPT_TYPE_IVEC4,
+        VR_SCRIPT_TYPE_UVEC2,
+        VR_SCRIPT_TYPE_UVEC3,
+        VR_SCRIPT_TYPE_UVEC4,
 };
 
 struct vr_script_value {
         enum vr_script_type type;
         union {
                 int i;
+                unsigned u;
                 float f;
                 double d;
                 float vec[4];
                 double dvec[4];
                 int ivec[4];
+                unsigned uvec[4];
         };
 };
 
