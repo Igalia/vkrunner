@@ -1,0 +1,696 @@
+# Tests the various OpFUnord* comparisons. These opcodes are not
+# available in GLSL so they are interesting to test in SPIR-V. They
+# are supposed to evaluate to true if the operands are unordered (ie,
+# they are NaN). Apparently GLSL implementations are not required to
+# generate NaN values so to cope with implementations that don’t this
+# test tries to generates a NaN value by takning the square root of -1
+# and then checking whether it actually did generate a NaN with
+# isnan().
+
+[vertex shader passthrough]
+
+[fragment shader spirv]
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 6
+; Bound: 179
+; Schema: 0
+               OpCapability Shader
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint Fragment %main "main" %color_out
+               OpExecutionMode %main OriginUpperLeft
+               OpSource GLSL 450
+               OpName %main "main"
+               OpName %i "i"
+               OpName %operands "operands"
+               OpName %block "block"
+               OpMemberName %block 0 "operands_squared"
+               OpMemberName %block 1 "operator"
+               OpMemberName %block 2 "expected_value"
+               OpName %_ ""
+               OpName %result "result"
+               OpName %test_passes "test_passes"
+               OpName %color_out "color_out"
+               OpDecorate %_arr_float_uint_2_0 ArrayStride 16
+               OpMemberDecorate %block 0 Offset 0
+               OpMemberDecorate %block 1 Offset 32
+               OpMemberDecorate %block 2 Offset 36
+               OpDecorate %block Block
+               OpDecorate %color_out Location 0
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+        %int = OpTypeInt 32 1
+%_ptr_Function_int = OpTypePointer Function %int
+      %int_0 = OpConstant %int 0
+      %int_2 = OpConstant %int 2
+       %bool = OpTypeBool
+      %float = OpTypeFloat 32
+       %uint = OpTypeInt 32 0
+     %uint_2 = OpConstant %uint 2
+%_arr_float_uint_2 = OpTypeArray %float %uint_2
+%_ptr_Function__arr_float_uint_2 = OpTypePointer Function %_arr_float_uint_2
+%_arr_float_uint_2_0 = OpTypeArray %float %uint_2
+      %block = OpTypeStruct %_arr_float_uint_2_0 %uint %uint
+%_ptr_PushConstant_block = OpTypePointer PushConstant %block
+          %_ = OpVariable %_ptr_PushConstant_block PushConstant
+%_ptr_PushConstant_float = OpTypePointer PushConstant %float
+%_ptr_Function_float = OpTypePointer Function %float
+      %int_1 = OpConstant %int 1
+%_ptr_Function_bool = OpTypePointer Function %bool
+       %true = OpConstantTrue %bool
+%_ptr_PushConstant_uint = OpTypePointer PushConstant %uint
+      %false = OpConstantFalse %bool
+    %float_0 = OpConstant %float 0
+     %uint_0 = OpConstant %uint 0
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+  %color_out = OpVariable %_ptr_Output_v4float Output
+    %float_1 = OpConstant %float 1
+        %176 = OpConstantComposite %v4float %float_0 %float_1 %float_0 %float_1
+        %178 = OpConstantComposite %v4float %float_1 %float_0 %float_0 %float_1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+          %i = OpVariable %_ptr_Function_int Function
+   %operands = OpVariable %_ptr_Function__arr_float_uint_2 Function
+     %result = OpVariable %_ptr_Function_bool Function
+%test_passes = OpVariable %_ptr_Function_bool Function
+               OpStore %i %int_0
+               OpBranch %10
+         %10 = OpLabel
+               OpLoopMerge %12 %13 None
+               OpBranch %14
+         %14 = OpLabel
+         %15 = OpLoad %int %i
+         %18 = OpSLessThan %bool %15 %int_2
+               OpBranchConditional %18 %11 %12
+         %11 = OpLabel
+         %25 = OpLoad %int %i
+         %30 = OpLoad %int %i
+         %32 = OpAccessChain %_ptr_PushConstant_float %_ %int_0 %30
+         %33 = OpLoad %float %32
+         %34 = OpExtInst %float %1 Sqrt %33
+         %36 = OpAccessChain %_ptr_Function_float %operands %25
+               OpStore %36 %34
+               OpBranch %13
+         %13 = OpLabel
+         %37 = OpLoad %int %i
+         %39 = OpIAdd %int %37 %int_1
+               OpStore %i %39
+               OpBranch %10
+         %12 = OpLabel
+               OpStore %result %true
+         %44 = OpAccessChain %_ptr_PushConstant_uint %_ %int_1
+         %45 = OpLoad %uint %44
+               OpSelectionMerge %58 None
+               OpSwitch %45 %58 0 %46 1 %47 2 %48 3 %49 4 %50 5 %51 6 %52 7 %53 8 %54 9 %55 10 %56 11 %57
+         %46 = OpLabel
+         %59 = OpAccessChain %_ptr_Function_float %operands %int_0
+         %60 = OpLoad %float %59
+         %61 = OpAccessChain %_ptr_Function_float %operands %int_1
+         %62 = OpLoad %float %61
+         %63 = OpFOrdEqual %bool %60 %62
+               OpStore %result %63
+               OpBranch %58
+         %47 = OpLabel
+         %65 = OpAccessChain %_ptr_Function_float %operands %int_0
+         %66 = OpLoad %float %65
+         %67 = OpAccessChain %_ptr_Function_float %operands %int_1
+         %68 = OpLoad %float %67
+         %69 = OpFOrdNotEqual %bool %66 %68
+               OpStore %result %69
+               OpBranch %58
+         %48 = OpLabel
+         %71 = OpAccessChain %_ptr_Function_float %operands %int_0
+         %72 = OpLoad %float %71
+         %73 = OpAccessChain %_ptr_Function_float %operands %int_1
+         %74 = OpLoad %float %73
+         %75 = OpFOrdLessThan %bool %72 %74
+               OpStore %result %75
+               OpBranch %58
+         %49 = OpLabel
+         %77 = OpAccessChain %_ptr_Function_float %operands %int_0
+         %78 = OpLoad %float %77
+         %79 = OpAccessChain %_ptr_Function_float %operands %int_1
+         %80 = OpLoad %float %79
+         %81 = OpFOrdGreaterThan %bool %78 %80
+               OpStore %result %81
+               OpBranch %58
+         %50 = OpLabel
+         %83 = OpAccessChain %_ptr_Function_float %operands %int_0
+         %84 = OpLoad %float %83
+         %85 = OpAccessChain %_ptr_Function_float %operands %int_1
+         %86 = OpLoad %float %85
+         %87 = OpFOrdLessThanEqual %bool %84 %86
+               OpStore %result %87
+               OpBranch %58
+         %51 = OpLabel
+         %89 = OpAccessChain %_ptr_Function_float %operands %int_0
+         %90 = OpLoad %float %89
+         %91 = OpAccessChain %_ptr_Function_float %operands %int_1
+         %92 = OpLoad %float %91
+         %93 = OpFOrdGreaterThanEqual %bool %90 %92
+               OpStore %result %93
+               OpBranch %58
+         %52 = OpLabel
+         %95 = OpAccessChain %_ptr_Function_float %operands %int_0
+         %96 = OpLoad %float %95
+         %97 = OpAccessChain %_ptr_Function_float %operands %int_1
+         %98 = OpLoad %float %97
+         %99 = OpFUnordEqual %bool %96 %98
+               OpStore %result %99
+               OpBranch %58
+         %53 = OpLabel
+        %101 = OpAccessChain %_ptr_Function_float %operands %int_0
+        %102 = OpLoad %float %101
+        %103 = OpAccessChain %_ptr_Function_float %operands %int_1
+        %104 = OpLoad %float %103
+        %105 = OpFUnordNotEqual %bool %102 %104
+               OpStore %result %105
+               OpBranch %58
+         %54 = OpLabel
+        %107 = OpAccessChain %_ptr_Function_float %operands %int_0
+        %108 = OpLoad %float %107
+        %109 = OpAccessChain %_ptr_Function_float %operands %int_1
+        %110 = OpLoad %float %109
+        %111 = OpFUnordLessThan %bool %108 %110
+               OpStore %result %111
+               OpBranch %58
+         %55 = OpLabel
+        %113 = OpAccessChain %_ptr_Function_float %operands %int_0
+        %114 = OpLoad %float %113
+        %115 = OpAccessChain %_ptr_Function_float %operands %int_1
+        %116 = OpLoad %float %115
+        %117 = OpFUnordGreaterThan %bool %114 %116
+               OpStore %result %117
+               OpBranch %58
+         %56 = OpLabel
+        %119 = OpAccessChain %_ptr_Function_float %operands %int_0
+        %120 = OpLoad %float %119
+        %121 = OpAccessChain %_ptr_Function_float %operands %int_1
+        %122 = OpLoad %float %121
+        %123 = OpFUnordLessThanEqual %bool %120 %122
+               OpStore %result %123
+               OpBranch %58
+         %57 = OpLabel
+        %125 = OpAccessChain %_ptr_Function_float %operands %int_0
+        %126 = OpLoad %float %125
+        %127 = OpAccessChain %_ptr_Function_float %operands %int_1
+        %128 = OpLoad %float %127
+        %129 = OpFUnordGreaterThanEqual %bool %126 %128
+               OpStore %result %129
+               OpBranch %58
+         %58 = OpLabel
+               OpStore %test_passes %false
+        %134 = OpAccessChain %_ptr_PushConstant_float %_ %int_0 %int_0
+        %135 = OpLoad %float %134
+        %137 = OpFOrdLessThan %bool %135 %float_0
+               OpSelectionMerge %139 None
+               OpBranchConditional %137 %138 %139
+        %138 = OpLabel
+        %140 = OpAccessChain %_ptr_Function_float %operands %int_0
+        %141 = OpLoad %float %140
+        %142 = OpIsNan %bool %141
+        %143 = OpLogicalNot %bool %142
+               OpBranch %139
+        %139 = OpLabel
+        %144 = OpPhi %bool %137 %58 %143 %138
+               OpSelectionMerge %146 None
+               OpBranchConditional %144 %145 %147
+        %145 = OpLabel
+               OpStore %test_passes %true
+               OpBranch %146
+        %147 = OpLabel
+        %148 = OpAccessChain %_ptr_PushConstant_float %_ %int_0 %int_1
+        %149 = OpLoad %float %148
+        %150 = OpFOrdLessThan %bool %149 %float_0
+               OpSelectionMerge %152 None
+               OpBranchConditional %150 %151 %152
+        %151 = OpLabel
+        %153 = OpAccessChain %_ptr_Function_float %operands %int_1
+        %154 = OpLoad %float %153
+        %155 = OpIsNan %bool %154
+        %156 = OpLogicalNot %bool %155
+               OpBranch %152
+        %152 = OpLabel
+        %157 = OpPhi %bool %150 %147 %156 %151
+               OpSelectionMerge %159 None
+               OpBranchConditional %157 %158 %160
+        %158 = OpLabel
+               OpStore %test_passes %true
+               OpBranch %159
+        %160 = OpLabel
+        %161 = OpLoad %bool %result
+        %162 = OpAccessChain %_ptr_PushConstant_uint %_ %int_2
+        %163 = OpLoad %uint %162
+        %165 = OpINotEqual %bool %163 %uint_0
+        %166 = OpLogicalEqual %bool %161 %165
+               OpSelectionMerge %168 None
+               OpBranchConditional %166 %167 %168
+        %167 = OpLabel
+               OpStore %test_passes %true
+               OpBranch %168
+        %168 = OpLabel
+               OpBranch %159
+        %159 = OpLabel
+               OpBranch %146
+        %146 = OpLabel
+        %169 = OpLoad %bool %test_passes
+               OpSelectionMerge %171 None
+               OpBranchConditional %169 %170 %177
+        %170 = OpLabel
+               OpStore %color_out %176
+               OpBranch %171
+        %177 = OpLabel
+               OpStore %color_out %178
+               OpBranch %171
+        %171 = OpLabel
+               OpReturn
+               OpFunctionEnd
+
+[test]
+clear color 0.8 0.0 0.0 0.0
+clear
+
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFOrdEqual
+uniform int 32 0
+uniform int 36 0
+draw rect ortho 0 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFOrdEqual
+uniform int 32 0
+uniform int 36 0
+draw rect ortho 4 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFOrdEqual
+uniform int 32 0
+uniform int 36 1
+draw rect ortho 8 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFOrdEqual
+uniform int 32 0
+uniform int 36 0
+draw rect ortho 12 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFOrdEqual
+uniform int 32 0
+uniform int 36 0
+draw rect ortho 16 0 4 250
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFOrdNotEqual
+uniform int 32 1
+uniform int 36 1
+draw rect ortho 20 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFOrdNotEqual
+uniform int 32 1
+uniform int 36 1
+draw rect ortho 24 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFOrdNotEqual
+uniform int 32 1
+uniform int 36 0
+draw rect ortho 28 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFOrdNotEqual
+uniform int 32 1
+uniform int 36 0
+draw rect ortho 32 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFOrdNotEqual
+uniform int 32 1
+uniform int 36 0
+draw rect ortho 36 0 4 250
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFOrdLessThan
+uniform int 32 2
+uniform int 36 1
+draw rect ortho 40 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFOrdLessThan
+uniform int 32 2
+uniform int 36 0
+draw rect ortho 44 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFOrdLessThan
+uniform int 32 2
+uniform int 36 0
+draw rect ortho 48 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFOrdLessThan
+uniform int 32 2
+uniform int 36 0
+draw rect ortho 52 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFOrdLessThan
+uniform int 32 2
+uniform int 36 0
+draw rect ortho 56 0 4 250
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFOrdGreaterThan
+uniform int 32 3
+uniform int 36 0
+draw rect ortho 60 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFOrdGreaterThan
+uniform int 32 3
+uniform int 36 1
+draw rect ortho 64 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFOrdGreaterThan
+uniform int 32 3
+uniform int 36 0
+draw rect ortho 68 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFOrdGreaterThan
+uniform int 32 3
+uniform int 36 0
+draw rect ortho 72 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFOrdGreaterThan
+uniform int 32 3
+uniform int 36 0
+draw rect ortho 76 0 4 250
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFOrdLessThanEqual
+uniform int 32 4
+uniform int 36 1
+draw rect ortho 80 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFOrdLessThanEqual
+uniform int 32 4
+uniform int 36 0
+draw rect ortho 84 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFOrdLessThanEqual
+uniform int 32 4
+uniform int 36 1
+draw rect ortho 88 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFOrdLessThanEqual
+uniform int 32 4
+uniform int 36 0
+draw rect ortho 92 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFOrdLessThanEqual
+uniform int 32 4
+uniform int 36 0
+draw rect ortho 96 0 4 250
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFOrdGreaterThanEqual
+uniform int 32 5
+uniform int 36 0
+draw rect ortho 100 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFOrdGreaterThanEqual
+uniform int 32 5
+uniform int 36 1
+draw rect ortho 104 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFOrdGreaterThanEqual
+uniform int 32 5
+uniform int 36 1
+draw rect ortho 108 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFOrdGreaterThanEqual
+uniform int 32 5
+uniform int 36 0
+draw rect ortho 112 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFOrdGreaterThanEqual
+uniform int 32 5
+uniform int 36 0
+draw rect ortho 116 0 4 250
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFUnordEqual
+uniform int 32 6
+uniform int 36 0
+draw rect ortho 120 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFUnordEqual
+uniform int 32 6
+uniform int 36 0
+draw rect ortho 124 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFUnordEqual
+uniform int 32 6
+uniform int 36 1
+draw rect ortho 128 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFUnordEqual
+uniform int 32 6
+uniform int 36 1
+draw rect ortho 132 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFUnordEqual
+uniform int 32 6
+uniform int 36 1
+draw rect ortho 136 0 4 250
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFUnordNotEqual
+uniform int 32 7
+uniform int 36 1
+draw rect ortho 140 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFUnordNotEqual
+uniform int 32 7
+uniform int 36 1
+draw rect ortho 144 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFUnordNotEqual
+uniform int 32 7
+uniform int 36 0
+draw rect ortho 148 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFUnordNotEqual
+uniform int 32 7
+uniform int 36 1
+draw rect ortho 152 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFUnordNotEqual
+uniform int 32 7
+uniform int 36 1
+draw rect ortho 156 0 4 250
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFUnordLessThan
+uniform int 32 8
+uniform int 36 1
+draw rect ortho 160 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFUnordLessThan
+uniform int 32 8
+uniform int 36 0
+draw rect ortho 164 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFUnordLessThan
+uniform int 32 8
+uniform int 36 0
+draw rect ortho 168 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFUnordLessThan
+uniform int 32 8
+uniform int 36 1
+draw rect ortho 172 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFUnordLessThan
+uniform int 32 8
+uniform int 36 1
+draw rect ortho 176 0 4 250
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFUnordGreaterThan
+uniform int 32 9
+uniform int 36 0
+draw rect ortho 180 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFUnordGreaterThan
+uniform int 32 9
+uniform int 36 1
+draw rect ortho 184 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFUnordGreaterThan
+uniform int 32 9
+uniform int 36 0
+draw rect ortho 188 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFUnordGreaterThan
+uniform int 32 9
+uniform int 36 1
+draw rect ortho 192 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFUnordGreaterThan
+uniform int 32 9
+uniform int 36 1
+draw rect ortho 196 0 4 250
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFUnordLessThanEqual
+uniform int 32 10
+uniform int 36 1
+draw rect ortho 200 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFUnordLessThanEqual
+uniform int 32 10
+uniform int 36 0
+draw rect ortho 204 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFUnordLessThanEqual
+uniform int 32 10
+uniform int 36 1
+draw rect ortho 208 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFUnordLessThanEqual
+uniform int 32 10
+uniform int 36 1
+draw rect ortho 212 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFUnordLessThanEqual
+uniform int 32 10
+uniform int 36 1
+draw rect ortho 216 0 4 250
+# a is less than b
+uniform float 0 4
+uniform float 16 16
+# OpFUnordGreaterThanEqual
+uniform int 32 11
+uniform int 36 0
+draw rect ortho 220 0 4 250
+# a is greater than b
+uniform float 0 16
+uniform float 16 4
+# OpFUnordGreaterThanEqual
+uniform int 32 11
+uniform int 36 1
+draw rect ortho 224 0 4 250
+# a is equal to b
+uniform float 0 4
+uniform float 16 4
+# OpFUnordGreaterThanEqual
+uniform int 32 11
+uniform int 36 1
+draw rect ortho 228 0 4 250
+# a is Nan
+uniform float 0 -1
+uniform float 16 4
+# OpFUnordGreaterThanEqual
+uniform int 32 11
+uniform int 36 1
+draw rect ortho 232 0 4 250
+# b is Nan
+uniform float 0 4
+uniform float 16 -1
+# OpFUnordGreaterThanEqual
+uniform int 32 11
+uniform int 36 1
+draw rect ortho 236 0 14 250
+
+probe all rgba 0.0 1.0 0.0 1.0
