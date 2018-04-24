@@ -268,6 +268,90 @@
                OpReturn
                OpFunctionEnd
 
+[comment]
+#version 450
+/* This is the original fragment shader used to generate the SPIR-V.
+ * The SPIR-V was then manually edited to replace the second set of
+ * comparisons with the OpFUnord* equivalents.
+ */
+
+layout(std140, push_constant) uniform block {
+        float operands_squared[2];
+        uint operator;
+        bool expected_value;
+};
+
+layout(location = 0) out vec4 color_out;
+
+void
+main()
+{
+        float operands[2];
+
+        for (int i = 0; i < 2; i++)
+                operands[i] = sqrt(operands_squared[i]);
+
+        bool result = true;
+
+        switch (operator) {
+        case 0:
+                result = operands[0] == operands[1];
+                break;
+        case 1:
+                result = operands[0] != operands[1];
+                break;
+        case 2:
+                result = operands[0] < operands[1];
+                break;
+        case 3:
+                result = operands[0] > operands[1];
+                break;
+        case 4:
+                result = operands[0] <= operands[1];
+                break;
+        case 5:
+                result = operands[0] >= operands[1];
+                break;
+        case 6:
+                result = operands[0] == operands[1];
+                break;
+        case 7:
+                result = operands[0] != operands[1];
+                break;
+        case 8:
+                result = operands[0] < operands[1];
+                break;
+        case 9:
+                result = operands[0] > operands[1];
+                break;
+        case 10:
+                result = operands[0] <= operands[1];
+                break;
+        case 11:
+                result = operands[0] >= operands[1];
+                break;
+        }
+
+        bool test_passes = false;
+
+        /* If the operand is meant to be NaN but NaN wasn’t generated
+         * then we don’t really know what the expected result should
+         * be so let’s just assume the test passes
+         */
+        if (operands_squared[0] < 0.0 && !isnan(operands[0])) {
+                test_passes = true;
+        } else if (operands_squared[1] < 0.0 && !isnan(operands[1])) {
+                test_passes = true;
+        } else if (result == expected_value) {
+                test_passes = true;
+        }
+
+        if (test_passes)
+                color_out = vec4(0.0, 1.0, 0.0, 1.0);
+        else
+                color_out = vec4(1.0, 0.0, 0.0, 1.0);
+}
+
 [test]
 clear color 0.8 0.0 0.0 0.0
 clear
