@@ -43,6 +43,7 @@
 
 enum section {
         SECTION_NONE,
+        SECTION_COMMENT,
         SECTION_REQUIRE,
         SECTION_SHADER,
         SECTION_VERTEX_DATA,
@@ -124,6 +125,9 @@ end_section(struct load_state *data)
 {
         switch (data->current_section) {
         case SECTION_NONE:
+                break;
+
+        case SECTION_COMMENT:
                 break;
 
         case SECTION_REQUIRE:
@@ -788,6 +792,11 @@ process_section_header(struct load_state *data)
                 return true;
         }
 
+        if (is_string("comment", start, end)) {
+                data->current_section = SECTION_COMMENT;
+                return true;
+        }
+
         if (is_string("require", start, end)) {
                 data->current_section = SECTION_REQUIRE;
                 return true;
@@ -827,6 +836,9 @@ process_line(struct load_state *data)
         switch (data->current_section) {
         case SECTION_NONE:
                 return process_none_line(data);
+
+        case SECTION_COMMENT:
+                return true;
 
         case SECTION_REQUIRE:
                 return process_require_line(data);
