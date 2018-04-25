@@ -554,16 +554,22 @@ init_vk(struct vr_window *window,
                 goto error;
         }
 
-        VkDescriptorPoolSize pool_size = {
-                .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .descriptorCount = 4
+        VkDescriptorPoolSize pool_sizes[] = {
+                {
+                        .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        .descriptorCount = 4
+                },
+                {
+                        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                        .descriptorCount = 4
+                },
         };
         VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
                 .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
                 .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
                 .maxSets = 4,
-                .poolSizeCount = 1,
-                .pPoolSizes = &pool_size
+                .poolSizeCount = VR_N_ELEMENTS(pool_sizes),
+                .pPoolSizes = pool_sizes
         };
         res = vr_vk.vkCreateDescriptorPool(window->device,
                                            &descriptor_pool_create_info,
