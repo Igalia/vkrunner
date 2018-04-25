@@ -33,6 +33,7 @@
 struct vr_pipeline {
         struct vr_window *window;
         VkPipelineLayout layout;
+        VkDescriptorSetLayout descriptor_set_layout;
         VkPipeline pipeline;
         VkPipelineCache pipeline_cache;
         VkShaderModule modules[VR_SCRIPT_N_STAGES];

@@ -564,8 +564,7 @@ create_vk_layout(struct vr_pipeline *pipeline,
                 .size = get_push_constant_size(script)
         };
         VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-                .setLayoutCount = 0
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO
         };
 
         if (push_constant_range.size > 0) {
@@ -574,17 +573,82 @@ create_vk_layout(struct vr_pipeline *pipeline,
                         &push_constant_range;
         }
 
+        if (pipeline->descriptor_set_layout) {
+                pipeline_layout_create_info.setLayoutCount = 1;
+                pipeline_layout_create_info.pSetLayouts =
+                        &pipeline->descriptor_set_layout;
+        }
+
         VkPipelineLayout layout;
         res = vr_vk.vkCreatePipelineLayout(pipeline->window->device,
                                            &pipeline_layout_create_info,
                                            NULL, /* allocator */
                                            &layout);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating empty layout");
+                vr_error_message("Error creating pipeline layout");
                 return NULL;
         }
 
         return layout;
+}
+
+static unsigned
+get_used_ubo_bindings(const struct vr_script *script)
+{
+        unsigned used = 0;
+
+        for (int i = 0; i < script->n_commands; i++) {
+                const struct vr_script_command *command =
+                        script->commands + i;
+                if (command->op != VR_SCRIPT_OP_SET_UBO_UNIFORM)
+                        continue;
+
+                used |= 1UL << command->set_ubo_uniform.ubo;
+        }
+
+        return used;
+}
+
+static VkDescriptorSetLayout
+create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
+                                unsigned used_ubos)
+{
+        VkResult res;
+        int n_ubos = vr_util_popcount(used_ubos);
+        VkDescriptorSetLayoutBinding *bindings =
+                vr_calloc(sizeof (*bindings) * n_ubos);
+        int i = 0;
+
+        while (used_ubos) {
+                bindings[i].binding = vr_util_ffsl(used_ubos) - 1;
+                bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                bindings[i].descriptorCount = 1;
+                bindings[i].stageFlags = pipeline->stages;
+                used_ubos &= ~(1 << bindings[i].binding);
+                i++;
+        }
+
+        VkDescriptorSetLayoutCreateInfo create_info = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                .bindingCount = n_ubos,
+                .pBindings = bindings
+        };
+
+        VkDescriptorSetLayout descriptor_set_layout;
+
+        res = vr_vk.vkCreateDescriptorSetLayout(pipeline->window->device,
+                                                &create_info,
+                                                NULL, /* allocator */
+                                                &descriptor_set_layout);
+
+        vr_free(bindings);
+
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error creating descriptor set layout");
+                return NULL;
+        }
+
+        return descriptor_set_layout;
 }
 
 struct vr_pipeline *
@@ -619,6 +683,15 @@ vr_pipeline_create(const struct vr_config *config,
         }
 
         pipeline->stages = get_script_stages(script);
+
+        unsigned ubo_bindings = get_used_ubo_bindings(script);
+
+        if (ubo_bindings != 0) {
+                pipeline->descriptor_set_layout =
+                        create_vk_descriptor_set_layout(pipeline, ubo_bindings);
+                if (pipeline->descriptor_set_layout == NULL)
+                        goto error;
+        }
 
         pipeline->layout = create_vk_layout(pipeline, script);
         if (pipeline->layout == NULL)
@@ -656,6 +729,13 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
                 vr_vk.vkDestroyPipelineLayout(window->device,
                                               pipeline->layout,
                                               NULL /* allocator */);
+        }
+
+        if (pipeline->descriptor_set_layout) {
+                VkDescriptorSetLayout dsl = pipeline->descriptor_set_layout;
+                vr_vk.vkDestroyDescriptorSetLayout(window->device,
+                                                   dsl,
+                                                   NULL /* allocator */);
         }
 
         for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
