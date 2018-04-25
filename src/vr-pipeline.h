@@ -30,11 +30,23 @@
 #include "vr-window.h"
 #include "vr-config.h"
 
+enum vr_pipeline_source {
+        VR_PIPELINE_SOURCE_RECTANGLE,
+        VR_PIPELINE_SOURCE_VERTEX_DATA
+};
+
+struct vr_pipeline_key {
+        enum vr_pipeline_source source;
+        VkPrimitiveTopology topology;
+};
+
 struct vr_pipeline {
         struct vr_window *window;
         VkPipelineLayout layout;
         VkDescriptorSetLayout descriptor_set_layout;
-        VkPipeline pipeline;
+        struct vr_pipeline_key *keys;
+        int n_pipelines;
+        VkPipeline *pipelines;
         VkPipelineCache pipeline_cache;
         VkShaderModule modules[VR_SCRIPT_N_STAGES];
         VkShaderStageFlagBits stages;
@@ -48,6 +60,10 @@ struct vr_pipeline *
 vr_pipeline_create(const struct vr_config *config,
                    struct vr_window *window,
                    const struct vr_script *script);
+
+VkPipeline
+vr_pipeline_for_command(struct vr_pipeline *pipeline,
+                        const struct vr_script_command *command);
 
 void
 vr_pipeline_free(struct vr_pipeline *pipeline);

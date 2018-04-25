@@ -60,6 +60,7 @@ struct test_data {
         struct test_buffer *vbo_buffer;
         bool ubo_descriptor_set_bound;
         VkDescriptorSet ubo_descriptor_set;
+        VkPipeline bound_pipeline;
 };
 
 static const double
@@ -174,10 +175,7 @@ begin_paint(struct test_data *data)
                                    &render_pass_begin_info,
                                    VK_SUBPASS_CONTENTS_INLINE);
 
-        vr_vk.vkCmdBindPipeline(data->window->command_buffer,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                data->pipeline->pipeline);
-
+        data->bound_pipeline = NULL;
         data->ubo_descriptor_set_bound = false;
 
         return true;
@@ -288,6 +286,21 @@ bind_ubo_descriptor_set(struct test_data *data)
 }
 
 static void
+bind_pipeline_for_command(struct test_data *data,
+                          const struct vr_script_command *command)
+{
+        VkPipeline pipeline = vr_pipeline_for_command(data->pipeline, command);
+
+        if (pipeline == data->bound_pipeline)
+                return;
+
+        vr_vk.vkCmdBindPipeline(data->window->command_buffer,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                pipeline);
+        data->bound_pipeline = pipeline;
+}
+
+static void
 print_command_fail(const struct vr_script_command *command)
 {
         printf("Command failed at line %i\n",
@@ -345,6 +358,7 @@ draw_rect(struct test_data *data,
                         VK_WHOLE_SIZE);
 
         bind_ubo_descriptor_set(data);
+        bind_pipeline_for_command(data, command);
 
         vr_vk.vkCmdBindVertexBuffers(data->window->command_buffer,
                                      0, /* firstBinding */
@@ -394,6 +408,7 @@ draw_arrays(struct test_data *data,
         }
 
         bind_ubo_descriptor_set(data);
+        bind_pipeline_for_command(data, command);
 
         vr_vk.vkCmdBindVertexBuffers(data->window->command_buffer,
                                      0, /* firstBinding */

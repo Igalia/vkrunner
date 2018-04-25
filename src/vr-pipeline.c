@@ -30,6 +30,7 @@
 #include "vr-util.h"
 #include "vr-script.h"
 #include "vr-error-message.h"
+#include "vr-buffer.h"
 
 #include <stdio.h>
 #include <errno.h>
@@ -383,20 +384,10 @@ build_stage(const struct vr_config *config,
         vr_fatal("should not be reached");
 }
 
-static VkPrimitiveTopology
-get_topology(const struct vr_script *script)
-{
-        for (int i = 0; i < script->n_commands; i++) {
-                if (script->commands[i].op == VR_SCRIPT_OP_DRAW_ARRAYS)
-                        return script->commands[i].draw_arrays.topology;
-        }
-
-        return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-}
-
 static void
 set_vertex_input_state(const struct vr_script *script,
-                       VkPipelineVertexInputStateCreateInfo *state)
+                       VkPipelineVertexInputStateCreateInfo *state,
+                       const struct vr_pipeline_key *key)
 {
         VkVertexInputBindingDescription *input_binding =
                 vr_calloc(sizeof *input_binding);
@@ -411,7 +402,7 @@ set_vertex_input_state(const struct vr_script *script,
         state->vertexBindingDescriptionCount = 1;
         state->pVertexBindingDescriptions = input_binding;
 
-        if (script->vertex_data == NULL) {
+        if (key->source == VR_PIPELINE_SOURCE_RECTANGLE) {
                 VkVertexInputAttributeDescription *attrib =
                         vr_calloc(sizeof *attrib);
                 state->vertexAttributeDescriptionCount = 1;
@@ -448,7 +439,10 @@ set_vertex_input_state(const struct vr_script *script,
 
 static VkPipeline
 create_vk_pipeline(struct vr_pipeline *pipeline,
-                   const struct vr_script *script)
+                   const struct vr_script *script,
+                   const struct vr_pipeline_key *key,
+                   bool allow_derivatives,
+                   VkPipeline parent_pipeline)
 {
         struct vr_window *window = pipeline->window;
         VkResult res;
@@ -470,12 +464,12 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
         VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {
                 .sType =
                 VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-                .topology = get_topology(script),
+                .topology = key->topology,
                 .primitiveRestartEnable = false
         };
 
         VkPipelineVertexInputStateCreateInfo vertex_input_state;
-        set_vertex_input_state(script, &vertex_input_state);
+        set_vertex_input_state(script, &vertex_input_state, key);
 
         VkGraphicsPipelineCreateInfo info = {
                 .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -485,7 +479,7 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                 .pDepthStencilState = &base_depth_stencil_state,
                 .pColorBlendState = &base_color_blend_state,
                 .subpass = 0,
-                .basePipelineHandle = NULL,
+                .basePipelineHandle = parent_pipeline,
                 .basePipelineIndex = -1,
 
                 .stageCount = num_stages,
@@ -493,8 +487,13 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                 .pVertexInputState = &vertex_input_state,
                 .pInputAssemblyState = &input_assembly_state,
                 .layout = pipeline->layout,
-                .renderPass = window->render_pass
+                .renderPass = window->render_pass,
         };
+
+        if (allow_derivatives)
+                info.flags |= VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT;
+        if (parent_pipeline)
+                info.flags |= VK_PIPELINE_CREATE_DERIVATIVE_BIT;
 
         VkPipeline vk_pipeline;
 
@@ -651,6 +650,99 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
         return descriptor_set_layout;
 }
 
+static int
+find_key(size_t haystack_size,
+         const struct vr_pipeline_key *haystack,
+         const struct vr_pipeline_key *needle)
+{
+        for (int i = 0; i < haystack_size; i++) {
+                if (haystack[i].topology == needle->topology &&
+                    haystack[i].source == needle->source)
+                        return i;
+        }
+
+        return -1;
+}
+
+static bool
+set_key_for_command(struct vr_pipeline_key *key,
+                    const struct vr_script_command *command)
+{
+        if (command->op == VR_SCRIPT_OP_DRAW_RECT) {
+                key->topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+                key->source = VR_PIPELINE_SOURCE_RECTANGLE;
+                return true;
+        } else if (command->op == VR_SCRIPT_OP_DRAW_ARRAYS) {
+                key->topology = command->draw_arrays.topology;
+                key->source = VR_PIPELINE_SOURCE_VERTEX_DATA;
+                return true;
+        } else {
+                return false;
+        }
+}
+
+static void
+get_keys(const struct vr_script *script,
+         struct vr_pipeline_key **keys_out,
+         int *n_keys_out)
+{
+        int n_keys = 0;
+        struct vr_buffer buffer = VR_BUFFER_STATIC_INIT;
+
+        for (int i = 0; i < script->n_commands; i++) {
+                const struct vr_script_command *command = script->commands + i;
+                struct vr_pipeline_key current_key;
+
+                if (!set_key_for_command(&current_key, command))
+                        continue;
+
+                int key_index = find_key(n_keys,
+                                         (struct vr_pipeline_key *) buffer.data,
+                                         &current_key);
+                if (key_index != -1)
+                        continue;
+
+                vr_buffer_set_length(&buffer,
+                                     buffer.length +
+                                     sizeof (struct vr_pipeline_key));
+                struct vr_pipeline_key *key =
+                        (struct vr_pipeline_key *) (buffer.data +
+                                                    buffer.length) - 1;
+                *key = current_key;
+                n_keys++;
+        }
+
+        if (n_keys == 0) {
+                /* Always create at least one pipeline */
+                static const struct vr_pipeline_key default_key = {
+                        .source = VR_PIPELINE_SOURCE_RECTANGLE,
+                        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST
+                };
+                *keys_out = vr_memdup(&default_key, sizeof default_key);
+                *n_keys_out = 1;
+        } else {
+                *keys_out = (struct vr_pipeline_key *) buffer.data;
+                *n_keys_out = n_keys;
+        }
+}
+
+VkPipeline
+vr_pipeline_for_command(struct vr_pipeline *pipeline,
+                        const struct vr_script_command *command)
+{
+        struct vr_pipeline_key key;
+
+        bool res = set_key_for_command(&key, command);
+        assert(res);
+
+        int key_index = find_key(pipeline->n_pipelines,
+                                 pipeline->keys,
+                                 &key);
+        assert(key_index != -1);
+
+        return pipeline->pipelines[key_index];
+}
+
 struct vr_pipeline *
 vr_pipeline_create(const struct vr_config *config,
                    struct vr_window *window,
@@ -697,9 +789,23 @@ vr_pipeline_create(const struct vr_config *config,
         if (pipeline->layout == NULL)
                 goto error;
 
-        pipeline->pipeline = create_vk_pipeline(pipeline, script);
-        if (pipeline->pipeline == NULL)
-                goto error;
+        get_keys(script, &pipeline->keys, &pipeline->n_pipelines);
+
+        pipeline->pipelines = vr_calloc(sizeof (VkPipeline) *
+                                        pipeline->n_pipelines);
+
+        bool use_derivatives = pipeline->n_pipelines > 1;
+
+        for (int i = 0; i < pipeline->n_pipelines; i++) {
+                pipeline->pipelines[i] =
+                        create_vk_pipeline(pipeline,
+                                           script,
+                                           pipeline->keys + i,
+                                           i == 0 && use_derivatives,
+                                           pipeline->pipelines[0]);
+                if (pipeline->pipelines[i] == NULL)
+                        goto error;
+        }
 
         return pipeline;
 
@@ -713,11 +819,15 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
 {
         struct vr_window *window = pipeline->window;
 
-        if (pipeline->pipeline) {
-                vr_vk.vkDestroyPipeline(window->device,
-                                        pipeline->pipeline,
-                                        NULL /* allocator */);
+        for (int i = 0; i < pipeline->n_pipelines; i++) {
+                if (pipeline->pipelines[i]) {
+                        vr_vk.vkDestroyPipeline(window->device,
+                                                pipeline->pipelines[i],
+                                                NULL /* allocator */);
+                }
         }
+        vr_free(pipeline->pipelines);
+        vr_free(pipeline->keys);
 
         if (pipeline->pipeline_cache) {
                 vr_vk.vkDestroyPipelineCache(window->device,
