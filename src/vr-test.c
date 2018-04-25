@@ -44,13 +44,22 @@ struct test_buffer {
         int memory_type_index;
 };
 
+struct ubo_buffer {
+        struct vr_list link;
+        int binding;
+        struct test_buffer *buffer;
+};
+
 struct test_data {
         struct vr_window *window;
         struct vr_pipeline *pipeline;
         struct vr_list buffers;
+        struct vr_list ubo_buffers;
         const struct vr_script *script;
         float clear_color[4];
         struct test_buffer *vbo_buffer;
+        bool ubo_descriptor_set_bound;
+        VkDescriptorSet ubo_descriptor_set;
 };
 
 static const double
@@ -169,6 +178,8 @@ begin_paint(struct test_data *data)
                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 data->pipeline->pipeline);
 
+        data->ubo_descriptor_set_bound = false;
+
         return true;
 }
 
@@ -258,6 +269,25 @@ end_paint(struct test_data *data)
 }
 
 static void
+bind_ubo_descriptor_set(struct test_data *data)
+{
+        if (data->ubo_descriptor_set_bound ||
+            data->ubo_descriptor_set == NULL)
+                return;
+
+        vr_vk.vkCmdBindDescriptorSets(data->window->command_buffer,
+                                      VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                      data->pipeline->layout,
+                                      0, /* firstSet */
+                                      1, /* descriptorSetCount */
+                                      &data->ubo_descriptor_set,
+                                      0, /* dynamicOffsetCount */
+                                      NULL /* pDynamicOffsets */);
+
+        data->ubo_descriptor_set_bound = true;
+}
+
+static void
 print_command_fail(const struct vr_script_command *command)
 {
         printf("Command failed at line %i\n",
@@ -314,6 +344,8 @@ draw_rect(struct test_data *data,
                         0, /* offset */
                         VK_WHOLE_SIZE);
 
+        bind_ubo_descriptor_set(data);
+
         vr_vk.vkCmdBindVertexBuffers(data->window->command_buffer,
                                      0, /* firstBinding */
                                      1, /* bindingCount */
@@ -360,6 +392,8 @@ draw_arrays(struct test_data *data,
                                 0, /* offset */
                                 VK_WHOLE_SIZE);
         }
+
+        bind_ubo_descriptor_set(data);
 
         vr_vk.vkCmdBindVertexBuffers(data->window->command_buffer,
                                      0, /* firstBinding */
@@ -476,6 +510,115 @@ set_push_constant(struct test_data *data,
         return true;
 }
 
+static struct ubo_buffer *
+get_ubo_buffer_for_binding(struct test_data *data,
+                           int binding)
+{
+        VkResult res;
+        struct ubo_buffer *ubo_buffer;
+
+        vr_list_for_each(ubo_buffer, &data->ubo_buffers, link) {
+                if (ubo_buffer->binding == binding)
+                        return ubo_buffer;
+        }
+
+        size_t buffer_size = 0;
+
+        for (int i = 0; i < data->script->n_commands; i++) {
+                const struct vr_script_command *command =
+                        data->script->commands + i;
+                if (command->op != VR_SCRIPT_OP_SET_UBO_UNIFORM ||
+                    command->set_ubo_uniform.ubo != binding)
+                        continue;
+
+                enum vr_script_type type = command->set_ubo_uniform.value.type;
+                size_t end = (command->set_ubo_uniform.offset +
+                              vr_script_type_size(type));
+                if (end > buffer_size)
+                        buffer_size = end;
+        }
+
+        struct test_buffer *buffer =
+                allocate_test_buffer(data,
+                                     buffer_size,
+                                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+
+        if (buffer == NULL)
+                return NULL;
+
+        ubo_buffer = vr_alloc(sizeof *ubo_buffer);
+        ubo_buffer->buffer = buffer;
+        ubo_buffer->binding = binding;
+        vr_list_insert(&data->ubo_buffers, &ubo_buffer->link);
+
+        if (data->ubo_descriptor_set == NULL) {
+                VkDescriptorSetAllocateInfo allocate_info = {
+                        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                        .descriptorPool = data->window->descriptor_pool,
+                        .descriptorSetCount = 1,
+                        .pSetLayouts = &data->pipeline->descriptor_set_layout
+                };
+                res = vr_vk.vkAllocateDescriptorSets(data->window->device,
+                                                     &allocate_info,
+                                                     &data->ubo_descriptor_set);
+                if (res != VK_SUCCESS) {
+                        data->ubo_descriptor_set = NULL;
+                        vr_error_message("Error allocationg descriptor set");
+                        return NULL;
+                }
+        }
+
+        VkDescriptorBufferInfo buffer_info = {
+                .buffer = buffer->buffer,
+                .offset = 0,
+                .range = VK_WHOLE_SIZE
+        };
+        VkWriteDescriptorSet write = {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = data->ubo_descriptor_set,
+                .dstBinding = binding,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .pBufferInfo = &buffer_info
+        };
+        vr_vk.vkUpdateDescriptorSets(data->window->device,
+                                     1, /* descriptorWriteCount */
+                                     &write,
+                                     0, /* descriptorCopyCount */
+                                     NULL /* pDescriptorCopies */);
+
+        return ubo_buffer;
+}
+
+static bool
+set_ubo_uniform(struct test_data *data,
+                const struct vr_script_command *command)
+{
+        struct ubo_buffer *ubo_buffer =
+                get_ubo_buffer_for_binding(data, command->set_ubo_uniform.ubo);
+
+        if (ubo_buffer == NULL)
+                return false;
+
+        struct test_buffer *buffer = ubo_buffer->buffer;
+        const struct vr_script_value *value =
+                &command->set_ubo_uniform.value;
+        size_t value_size = vr_script_type_size(value->type);
+
+        memcpy((uint8_t *) buffer->memory_map +
+               command->set_ubo_uniform.offset,
+               &value->i,
+               value_size);
+        vr_flush_memory(data->window,
+                        buffer->memory_type_index,
+                        buffer->memory,
+                        command->set_push_constant.offset,
+                        value_size);
+
+        return true;
+}
+
 static bool
 clear_color(struct test_data *data,
             const struct vr_script_command *command)
@@ -526,6 +669,7 @@ vr_test_run(struct vr_window *window,
         bool ret = true;
 
         vr_list_init(&data.buffers);
+        vr_list_init(&data.ubo_buffers);
 
         if (!begin_paint(&data))
                 ret = false;
@@ -550,6 +694,10 @@ vr_test_run(struct vr_window *window,
                         if (!set_push_constant(&data, command))
                                 ret = false;
                         break;
+                case VR_SCRIPT_OP_SET_UBO_UNIFORM:
+                        if (!set_ubo_uniform(&data, command))
+                                ret = false;
+                        break;
                 case VR_SCRIPT_OP_CLEAR_COLOR:
                         if (!clear_color(&data, command))
                                 ret = false;
@@ -567,6 +715,18 @@ vr_test_run(struct vr_window *window,
         struct test_buffer *buffer, *tmp;
         vr_list_for_each_safe(buffer, tmp, &data.buffers, link) {
                 free_test_buffer(&data, buffer);
+        }
+
+        struct ubo_buffer *ubo_buffer, *ubo_tmp;
+        vr_list_for_each_safe(ubo_buffer, ubo_tmp, &data.ubo_buffers, link) {
+                vr_free(ubo_buffer);
+        }
+
+        if (data.ubo_descriptor_set) {
+                vr_vk.vkFreeDescriptorSets(window->device,
+                                           window->descriptor_pool,
+                                           1, /* descriptorSetCount */
+                                           &data.ubo_descriptor_set);
         }
 
         return ret;
