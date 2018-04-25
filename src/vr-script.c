@@ -60,6 +60,7 @@ struct load_state {
         enum vr_script_source_type current_source_type;
         enum section current_section;
         struct vr_buffer commands;
+        unsigned patch_size;
 };
 
 static const char *
@@ -821,6 +822,7 @@ found_topology:
         command->draw_arrays.vertex_count = args[1];
         command->draw_arrays.first_instance = 0;
         command->draw_arrays.instance_count = args[2];
+        command->draw_arrays.patch_size = data->patch_size;
 
         return true;
 }
@@ -835,6 +837,14 @@ process_test_line(struct load_state *data)
 
         if (*p == '#' || *p == '\0')
                 return true;
+
+        if (looking_at(&p, "patch parameter vertices ")) {
+                if (!parse_uints(&p, &data->patch_size, 1, NULL))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                return true;
+        }
 
         vr_buffer_set_length(&data->commands,
                              data->commands.length +
@@ -1094,7 +1104,8 @@ load_script_from_stream(const char *filename,
                 .buffer = VR_BUFFER_STATIC_INIT,
                 .commands = VR_BUFFER_STATIC_INIT,
                 .current_stage = -1,
-                .current_section = SECTION_NONE
+                .current_section = SECTION_NONE,
+                .patch_size = 3
         };
         bool res = true;
         int stage;

@@ -153,6 +153,7 @@ struct vr_script_command {
                         uint32_t instance_count;
                         uint32_t first_vertex;
                         uint32_t first_instance;
+                        unsigned patch_size;
                 } draw_arrays;
         };
 };

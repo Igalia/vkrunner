@@ -471,6 +471,12 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
         VkPipelineVertexInputStateCreateInfo vertex_input_state;
         set_vertex_input_state(script, &vertex_input_state, key);
 
+        VkPipelineTessellationStateCreateInfo tessellation_state = {
+                .sType =
+                VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
+                .patchControlPoints = key->patch_size
+        };
+
         VkGraphicsPipelineCreateInfo info = {
                 .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
                 .pViewportState = &base_viewport_state,
@@ -494,6 +500,10 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                 info.flags |= VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT;
         if (parent_pipeline)
                 info.flags |= VK_PIPELINE_CREATE_DERIVATIVE_BIT;
+
+        if ((pipeline->stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                 VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)))
+                info.pTessellationState = &tessellation_state;
 
         VkPipeline vk_pipeline;
 
@@ -657,7 +667,8 @@ find_key(size_t haystack_size,
 {
         for (int i = 0; i < haystack_size; i++) {
                 if (haystack[i].topology == needle->topology &&
-                    haystack[i].source == needle->source)
+                    haystack[i].source == needle->source &&
+                    haystack[i].patch_size == needle->patch_size)
                         return i;
         }
 
@@ -671,10 +682,12 @@ set_key_for_command(struct vr_pipeline_key *key,
         if (command->op == VR_SCRIPT_OP_DRAW_RECT) {
                 key->topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
                 key->source = VR_PIPELINE_SOURCE_RECTANGLE;
+                key->patch_size = 4;
                 return true;
         } else if (command->op == VR_SCRIPT_OP_DRAW_ARRAYS) {
                 key->topology = command->draw_arrays.topology;
                 key->source = VR_PIPELINE_SOURCE_VERTEX_DATA;
+                key->patch_size = command->draw_arrays.patch_size;
                 return true;
         } else {
                 return false;

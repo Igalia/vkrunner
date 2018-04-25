@@ -38,6 +38,7 @@ enum vr_pipeline_source {
 struct vr_pipeline_key {
         enum vr_pipeline_source source;
         VkPrimitiveTopology topology;
+        unsigned patch_size;
 };
 
 struct vr_pipeline {

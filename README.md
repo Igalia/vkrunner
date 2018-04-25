@@ -78,6 +78,11 @@ zeros.
 
 Clears the entire framebuffer to the previously set clear color.
 
+> patch parameter vertices _vertices_
+
+Sets the number of control points for tessellation patches in
+subsequent draw calls. Defaults to 3.
+
 Take a look in the examples directory for examples.
 
 ## [require] section
