@@ -856,6 +856,30 @@ process_test_line(struct load_state *data)
         if (looking_at(&p, "draw arrays "))
                 return process_draw_arrays_command(data, p, command);
 
+        if (looking_at(&p, "uniform ubo ")) {
+                if (!parse_uints(&p, &command->set_ubo_uniform.ubo, 1, NULL))
+                        goto error;
+                if (command->set_ubo_uniform.ubo >= sizeof (unsigned) * 8) {
+                        vr_error_message("%s:%i: UBO binding number is "
+                                         "too large",
+                                         data->filename,
+                                         data->line_num);
+                        return false;
+                }
+                while (isspace(*p))
+                        p++;
+                if (!parse_value_type(&p, &command->set_ubo_uniform.value.type))
+                        goto error;
+                if (!parse_size_t(&p, &command->set_ubo_uniform.offset))
+                        goto error;
+                if (!parse_value(&p, &command->set_ubo_uniform.value))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                command->op = VR_SCRIPT_OP_SET_UBO_UNIFORM;
+                return true;
+        }
+
         if (looking_at(&p, "uniform ")) {
                 while (isspace(*p))
                         p++;

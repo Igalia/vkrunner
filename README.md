@@ -56,6 +56,19 @@ vec[234], dvec[234], ivec[234], uvec[234], mat[234]x[234] or
 dmat[234]x[234]. If matrices are specified they are assumed to have a
 stride according to the std140 layout rules.
 
+> uniform ubo _binding_ _type_ _offset_ _values_…
+
+Sets a value within a uniform buffer. The first time a value is set
+within a buffer it will be created with the minimum size needed to
+contain all of the values set on it via test commands. It will then be
+bound to the descriptor set at the given binding point. The rest of
+the arguments are the same as for the `uniform` command. Note that the
+buffer is just updated by writing into a memory mapped view of it
+which means that if you do an update, draw call, update and then
+another draw call both draws will use the values from the second
+update. This is because the draws are not flushed until the next probe
+command or the test completes.
+
 > clear color _r_ _g_ _b_ _a_
 
 Sets the color to use for subsequent clear commands. Defaults to all
