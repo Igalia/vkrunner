@@ -680,7 +680,7 @@ set_key_for_command(struct vr_pipeline_key *key,
                     const struct vr_script_command *command)
 {
         if (command->op == VR_SCRIPT_OP_DRAW_RECT) {
-                key->topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+                key->topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
                 key->source = VR_PIPELINE_SOURCE_RECTANGLE;
                 key->patch_size = 4;
                 return true;
