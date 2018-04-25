@@ -620,6 +620,8 @@ process_draw_rect_command(const char *p,
         if (looking_at(&p, "ortho "))
                 ortho = true;
 
+        command->draw_rect.use_patches = looking_at(&p, "patch ");
+
         if (!parse_floats(&p, &command->draw_rect.x, 4, NULL) ||
             !is_end(p))
                 return false;

@@ -124,6 +124,7 @@ struct vr_script_command {
         union {
                 struct {
                         float x, y, w, h;
+                        bool use_patches;
                 } draw_rect;
 
                 struct {
