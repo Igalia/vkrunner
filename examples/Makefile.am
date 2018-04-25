@@ -8,4 +8,5 @@ dist_shader_test_DATA = \
 	vertex-data.shader_test \
 	vertex-data-piglit.shader_test \
 	float-framebuffer.shader_test \
+	ubo.shader_test \
 	$(NULL)
