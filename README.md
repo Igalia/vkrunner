@@ -17,11 +17,14 @@ from [here](https://github.com/KhronosGroup/glslang/).
 
 The `[test]` currently only supports the following commands:
 
-> draw rect _x_ _y_ _width_ _height_
+> draw rect [ortho] _x_ _y_ _width_ _height_
 
 Draws a rectangle at the given normalised coordinates. The vertices
 will be uploaded at vertex input location 0 as a vec3. Remember that
-Vulkan’s normalised coordinate system is different from OpenGL’s.
+Vulkan’s normalised coordinate system is different from OpenGL’s. If
+`ortho` is specified then the coordinates are scaled from the range
+[0,window size] to [-1,1] to make it easier to specify the positions
+in pixels.
 
 > draw arrays [instanced] _topology_ _firstVertex_ _vertexCount_ [_instanceCount_]
 
