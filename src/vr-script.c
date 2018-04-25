@@ -181,6 +181,61 @@ is_end(const char *p)
         return *p == '\0';
 }
 
+static int
+type_columns(enum vr_script_type type)
+{
+        if (type >= VR_SCRIPT_TYPE_MAT2 && type <= VR_SCRIPT_TYPE_MAT4)
+                return (type - VR_SCRIPT_TYPE_MAT2) / 3 + 2;
+        if (type >= VR_SCRIPT_TYPE_DMAT2 && type <= VR_SCRIPT_TYPE_DMAT4)
+                return (type - VR_SCRIPT_TYPE_DMAT2) / 3 + 2;
+        return 1;
+}
+
+static int
+type_rows(enum vr_script_type type)
+{
+        if (type >= VR_SCRIPT_TYPE_VEC2 && type <= VR_SCRIPT_TYPE_VEC4)
+                return type - VR_SCRIPT_TYPE_VEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_DVEC2 && type <= VR_SCRIPT_TYPE_DVEC4)
+                return type - VR_SCRIPT_TYPE_DVEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_IVEC2 && type <= VR_SCRIPT_TYPE_IVEC4)
+                return type - VR_SCRIPT_TYPE_IVEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_UVEC2 && type <= VR_SCRIPT_TYPE_UVEC4)
+                return type - VR_SCRIPT_TYPE_UVEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_MAT2 && type <= VR_SCRIPT_TYPE_MAT4)
+                return (type - VR_SCRIPT_TYPE_MAT2) % 3 + 2;
+        if (type >= VR_SCRIPT_TYPE_DMAT2 && type <= VR_SCRIPT_TYPE_DMAT4)
+                return (type - VR_SCRIPT_TYPE_DMAT2) % 3 + 2;
+        return 1;
+}
+
+/**
+ * Calculates the matrix stride of a type assuming std140 rules.
+ */
+static size_t
+type_matrix_stride(enum vr_script_type type)
+{
+        int component_size;
+
+        if (type >= VR_SCRIPT_TYPE_MAT2 && type <= VR_SCRIPT_TYPE_MAT4)
+                component_size = 4;
+        else if (type >= VR_SCRIPT_TYPE_DMAT2 && type <= VR_SCRIPT_TYPE_DMAT4)
+                component_size = 8;
+        else
+                vr_fatal("Matrix size requested for non-matrix type");
+
+        int rows = type_rows(type);
+        int base_alignment;
+
+        if (rows == 3)
+                base_alignment = component_size * 4;
+        else
+                base_alignment = component_size * rows;
+
+        /* according to std140 the size is rounded up to a vec4 */
+        return vr_align(base_alignment, 16);
+}
+
 static bool
 parse_floats(const char **p,
              float *out,
@@ -320,6 +375,42 @@ parse_size_t(const char **p,
 }
 
 static bool
+parse_mat(const char **p,
+          float *out,
+          enum vr_script_type type)
+{
+        int num_rows = type_rows(type);
+        int num_cols = type_columns(type);
+        int stride = type_matrix_stride(type);
+
+        for (int col = 0; col < num_cols; col++) {
+                if (!parse_floats(p, out, num_rows, NULL))
+                        return false;
+                out += stride / sizeof *out;
+        }
+
+        return true;
+}
+
+static bool
+parse_dmat(const char **p,
+           double *out,
+           enum vr_script_type type)
+{
+        int num_rows = type_rows(type);
+        int num_cols = type_columns(type);
+        int stride = type_matrix_stride(type);
+
+        for (int col = 0; col < num_cols; col++) {
+                if (!parse_doubles(p, out, num_rows, NULL))
+                        return false;
+                out += stride / sizeof *out;
+        }
+
+        return true;
+}
+
+static bool
 parse_value_type(const char **p,
                  enum vr_script_type *type)
 {
@@ -343,6 +434,30 @@ parse_value_type(const char **p,
                 { "uvec2 ", VR_SCRIPT_TYPE_UVEC2 },
                 { "uvec3 ", VR_SCRIPT_TYPE_UVEC3 },
                 { "uvec4 ", VR_SCRIPT_TYPE_UVEC4 },
+                { "mat2 ", VR_SCRIPT_TYPE_MAT2 },
+                { "mat2x2 ", VR_SCRIPT_TYPE_MAT2 },
+                { "mat2x3 ", VR_SCRIPT_TYPE_MAT2X3 },
+                { "mat2x4 ", VR_SCRIPT_TYPE_MAT2X4 },
+                { "mat3x2 ", VR_SCRIPT_TYPE_MAT3X2 },
+                { "mat3 ", VR_SCRIPT_TYPE_MAT3 },
+                { "mat3x3 ", VR_SCRIPT_TYPE_MAT3 },
+                { "mat3x4 ", VR_SCRIPT_TYPE_MAT3X4 },
+                { "mat4x2 ", VR_SCRIPT_TYPE_MAT4X2 },
+                { "mat4x3 ", VR_SCRIPT_TYPE_MAT4X3 },
+                { "mat4 ", VR_SCRIPT_TYPE_MAT4 },
+                { "mat4x4 ", VR_SCRIPT_TYPE_MAT4 },
+                { "dmat2 ", VR_SCRIPT_TYPE_DMAT2 },
+                { "dmat2x2 ", VR_SCRIPT_TYPE_DMAT2 },
+                { "dmat2x3 ", VR_SCRIPT_TYPE_DMAT2X3 },
+                { "dmat2x4 ", VR_SCRIPT_TYPE_DMAT2X4 },
+                { "dmat3x2 ", VR_SCRIPT_TYPE_DMAT3X2 },
+                { "dmat3 ", VR_SCRIPT_TYPE_DMAT3 },
+                { "dmat3x3 ", VR_SCRIPT_TYPE_DMAT3 },
+                { "dmat3x4 ", VR_SCRIPT_TYPE_DMAT3X4 },
+                { "dmat4x2 ", VR_SCRIPT_TYPE_DMAT4X2 },
+                { "dmat4x3 ", VR_SCRIPT_TYPE_DMAT4X3 },
+                { "dmat4 ", VR_SCRIPT_TYPE_DMAT4 },
+                { "dmat4x4 ", VR_SCRIPT_TYPE_DMAT4 },
         };
 
         for (int i = 0; i < VR_N_ELEMENTS(types); i++) {
@@ -392,6 +507,26 @@ parse_value(const char **p,
                 return parse_uints(p, value->uvec, 3, NULL);
         case VR_SCRIPT_TYPE_UVEC4:
                 return parse_uints(p, value->uvec, 4, NULL);
+        case VR_SCRIPT_TYPE_MAT2:
+        case VR_SCRIPT_TYPE_MAT2X3:
+        case VR_SCRIPT_TYPE_MAT2X4:
+        case VR_SCRIPT_TYPE_MAT3X2:
+        case VR_SCRIPT_TYPE_MAT3:
+        case VR_SCRIPT_TYPE_MAT3X4:
+        case VR_SCRIPT_TYPE_MAT4X2:
+        case VR_SCRIPT_TYPE_MAT4X3:
+        case VR_SCRIPT_TYPE_MAT4:
+                return parse_mat(p, value->mat, value->type);
+        case VR_SCRIPT_TYPE_DMAT2:
+        case VR_SCRIPT_TYPE_DMAT2X3:
+        case VR_SCRIPT_TYPE_DMAT2X4:
+        case VR_SCRIPT_TYPE_DMAT3X2:
+        case VR_SCRIPT_TYPE_DMAT3:
+        case VR_SCRIPT_TYPE_DMAT3X4:
+        case VR_SCRIPT_TYPE_DMAT4X2:
+        case VR_SCRIPT_TYPE_DMAT4X3:
+        case VR_SCRIPT_TYPE_DMAT4:
+                return parse_dmat(p, value->dmat, value->type);
         }
 
         vr_fatal("should not be reached");
@@ -1048,6 +1183,25 @@ vr_script_type_size(enum vr_script_type type)
                 return 8 * 3;
         case VR_SCRIPT_TYPE_DVEC4:
                 return 8 * 4;
+        case VR_SCRIPT_TYPE_MAT2:
+        case VR_SCRIPT_TYPE_MAT2X3:
+        case VR_SCRIPT_TYPE_MAT2X4:
+        case VR_SCRIPT_TYPE_MAT3X2:
+        case VR_SCRIPT_TYPE_MAT3:
+        case VR_SCRIPT_TYPE_MAT3X4:
+        case VR_SCRIPT_TYPE_MAT4X2:
+        case VR_SCRIPT_TYPE_MAT4X3:
+        case VR_SCRIPT_TYPE_MAT4:
+        case VR_SCRIPT_TYPE_DMAT2:
+        case VR_SCRIPT_TYPE_DMAT2X3:
+        case VR_SCRIPT_TYPE_DMAT2X4:
+        case VR_SCRIPT_TYPE_DMAT3X2:
+        case VR_SCRIPT_TYPE_DMAT3:
+        case VR_SCRIPT_TYPE_DMAT3X4:
+        case VR_SCRIPT_TYPE_DMAT4X2:
+        case VR_SCRIPT_TYPE_DMAT4X3:
+        case VR_SCRIPT_TYPE_DMAT4:
+                return type_matrix_stride(type) * type_columns(type);
         }
 
         vr_fatal("should not be reached");

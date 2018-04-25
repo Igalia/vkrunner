@@ -52,7 +52,9 @@ The same as above except that it probes the entire window.
 Sets a push constant at the given offset. Note that unlike Piglit, the
 offset is a byte offset into the push constant buffer rather than a
 uniform location. The type can be one of int, uint, float, double,
-vec[234], dvec[234], ivec[234] or uvec[234].
+vec[234], dvec[234], ivec[234], uvec[234], mat[234]x[234] or
+dmat[234]x[234]. If matrices are specified they are assumed to have a
+stride according to the std140 layout rules.
 
 > clear color _r_ _g_ _b_ _a_
 

@@ -80,6 +80,24 @@ enum vr_script_type {
         VR_SCRIPT_TYPE_UVEC2,
         VR_SCRIPT_TYPE_UVEC3,
         VR_SCRIPT_TYPE_UVEC4,
+        VR_SCRIPT_TYPE_MAT2,
+        VR_SCRIPT_TYPE_MAT2X3,
+        VR_SCRIPT_TYPE_MAT2X4,
+        VR_SCRIPT_TYPE_MAT3X2,
+        VR_SCRIPT_TYPE_MAT3,
+        VR_SCRIPT_TYPE_MAT3X4,
+        VR_SCRIPT_TYPE_MAT4X2,
+        VR_SCRIPT_TYPE_MAT4X3,
+        VR_SCRIPT_TYPE_MAT4,
+        VR_SCRIPT_TYPE_DMAT2,
+        VR_SCRIPT_TYPE_DMAT2X3,
+        VR_SCRIPT_TYPE_DMAT2X4,
+        VR_SCRIPT_TYPE_DMAT3X2,
+        VR_SCRIPT_TYPE_DMAT3,
+        VR_SCRIPT_TYPE_DMAT3X4,
+        VR_SCRIPT_TYPE_DMAT4X2,
+        VR_SCRIPT_TYPE_DMAT4X3,
+        VR_SCRIPT_TYPE_DMAT4,
 };
 
 struct vr_script_value {
@@ -93,6 +111,8 @@ struct vr_script_value {
                 double dvec[4];
                 int ivec[4];
                 unsigned uvec[4];
+                float mat[16];
+                double dmat[16];
         };
 };
 
