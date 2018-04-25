@@ -32,6 +32,7 @@ VkResult
 vr_flush_memory(struct vr_window *window,
                 int memory_type_index,
                 VkDeviceMemory memory,
+                VkDeviceSize offset,
                 VkDeviceSize size);
 
 #endif /* VR_FLUSH_MEMORY_H */

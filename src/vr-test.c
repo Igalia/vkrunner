@@ -311,6 +311,7 @@ draw_rect(struct test_data *data,
         vr_flush_memory(data->window,
                         buffer->memory_type_index,
                         buffer->memory,
+                        0, /* offset */
                         VK_WHOLE_SIZE);
 
         vr_vk.vkCmdBindVertexBuffers(data->window->command_buffer,
@@ -356,6 +357,7 @@ draw_arrays(struct test_data *data,
                 vr_flush_memory(data->window,
                                 data->vbo_buffer->memory_type_index,
                                 data->vbo_buffer->memory,
+                                0, /* offset */
                                 VK_WHOLE_SIZE);
         }
 
