@@ -203,6 +203,10 @@ type_rows(enum vr_script_type type)
                 return type - VR_SCRIPT_TYPE_IVEC2 + 2;
         if (type >= VR_SCRIPT_TYPE_UVEC2 && type <= VR_SCRIPT_TYPE_UVEC4)
                 return type - VR_SCRIPT_TYPE_UVEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_I64VEC2 && type <= VR_SCRIPT_TYPE_I64VEC4)
+                return type - VR_SCRIPT_TYPE_I64VEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_U64VEC2 && type <= VR_SCRIPT_TYPE_U64VEC4)
+                return type - VR_SCRIPT_TYPE_U64VEC2 + 2;
         if (type >= VR_SCRIPT_TYPE_MAT2 && type <= VR_SCRIPT_TYPE_MAT4)
                 return (type - VR_SCRIPT_TYPE_MAT2) % 3 + 2;
         if (type >= VR_SCRIPT_TYPE_DMAT2 && type <= VR_SCRIPT_TYPE_DMAT4)
@@ -359,6 +363,69 @@ parse_uints(const char **p,
 }
 
 static bool
+parse_int64s(const char **p,
+             int64_t *out,
+             int n_ints,
+             const char *sep)
+{
+        long long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtoll(*p, &tail, 10);
+                if (errno != 0 || tail == *p ||
+                    v < INT64_MIN || v > INT64_MAX)
+                        return false;
+                *(out++) = (int64_t) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
+parse_uint64s(const char **p,
+              uint64_t *out,
+              int n_ints,
+              const char *sep)
+{
+        unsigned long long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtoull(*p, &tail, 10);
+                if (errno != 0 || tail == *p || v > UINT64_MAX)
+                        return false;
+                *(out++) = (uint64_t) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
 parse_size_t(const char **p,
              size_t *out)
 {
@@ -421,6 +488,8 @@ parse_value_type(const char **p,
         } types[] = {
                 { "int ", VR_SCRIPT_TYPE_INT },
                 { "uint ", VR_SCRIPT_TYPE_UINT },
+                { "int64_t ", VR_SCRIPT_TYPE_INT64 },
+                { "uint64_t ", VR_SCRIPT_TYPE_UINT64 },
                 { "float ", VR_SCRIPT_TYPE_FLOAT },
                 { "double ", VR_SCRIPT_TYPE_DOUBLE },
                 { "vec2 ", VR_SCRIPT_TYPE_VEC2 },
@@ -435,6 +504,12 @@ parse_value_type(const char **p,
                 { "uvec2 ", VR_SCRIPT_TYPE_UVEC2 },
                 { "uvec3 ", VR_SCRIPT_TYPE_UVEC3 },
                 { "uvec4 ", VR_SCRIPT_TYPE_UVEC4 },
+                { "i64vec2 ", VR_SCRIPT_TYPE_I64VEC2 },
+                { "i64vec3 ", VR_SCRIPT_TYPE_I64VEC3 },
+                { "i64vec4 ", VR_SCRIPT_TYPE_I64VEC4 },
+                { "u64vec2 ", VR_SCRIPT_TYPE_U64VEC2 },
+                { "u64vec3 ", VR_SCRIPT_TYPE_U64VEC3 },
+                { "u64vec4 ", VR_SCRIPT_TYPE_U64VEC4 },
                 { "mat2 ", VR_SCRIPT_TYPE_MAT2 },
                 { "mat2x2 ", VR_SCRIPT_TYPE_MAT2 },
                 { "mat2x3 ", VR_SCRIPT_TYPE_MAT2X3 },
@@ -480,6 +555,10 @@ parse_value(const char **p,
                 return parse_ints(p, &value->i, 1, NULL);
         case VR_SCRIPT_TYPE_UINT:
                 return parse_uints(p, &value->u, 1, NULL);
+        case VR_SCRIPT_TYPE_INT64:
+                return parse_int64s(p, &value->i64, 1, NULL);
+        case VR_SCRIPT_TYPE_UINT64:
+                return parse_uint64s(p, &value->u64, 1, NULL);
         case VR_SCRIPT_TYPE_FLOAT:
                 return parse_floats(p, &value->f, 1, NULL);
         case VR_SCRIPT_TYPE_DOUBLE:
@@ -508,6 +587,18 @@ parse_value(const char **p,
                 return parse_uints(p, value->uvec, 3, NULL);
         case VR_SCRIPT_TYPE_UVEC4:
                 return parse_uints(p, value->uvec, 4, NULL);
+        case VR_SCRIPT_TYPE_I64VEC2:
+                return parse_int64s(p, value->i64vec, 2, NULL);
+        case VR_SCRIPT_TYPE_I64VEC3:
+                return parse_int64s(p, value->i64vec, 3, NULL);
+        case VR_SCRIPT_TYPE_I64VEC4:
+                return parse_int64s(p, value->i64vec, 4, NULL);
+        case VR_SCRIPT_TYPE_U64VEC2:
+                return parse_uint64s(p, value->u64vec, 2, NULL);
+        case VR_SCRIPT_TYPE_U64VEC3:
+                return parse_uint64s(p, value->u64vec, 3, NULL);
+        case VR_SCRIPT_TYPE_U64VEC4:
+                return parse_uint64s(p, value->u64vec, 4, NULL);
         case VR_SCRIPT_TYPE_MAT2:
         case VR_SCRIPT_TYPE_MAT2X3:
         case VR_SCRIPT_TYPE_MAT2X4:
@@ -1200,6 +1291,8 @@ vr_script_type_size(enum vr_script_type type)
         case VR_SCRIPT_TYPE_UINT:
         case VR_SCRIPT_TYPE_FLOAT:
                 return 4;
+        case VR_SCRIPT_TYPE_INT64:
+        case VR_SCRIPT_TYPE_UINT64:
         case VR_SCRIPT_TYPE_DOUBLE:
                 return 8;
         case VR_SCRIPT_TYPE_VEC2:
@@ -1215,10 +1308,16 @@ vr_script_type_size(enum vr_script_type type)
         case VR_SCRIPT_TYPE_UVEC4:
                 return 4 * 4;
         case VR_SCRIPT_TYPE_DVEC2:
+        case VR_SCRIPT_TYPE_I64VEC2:
+        case VR_SCRIPT_TYPE_U64VEC2:
                 return 8 * 2;
         case VR_SCRIPT_TYPE_DVEC3:
+        case VR_SCRIPT_TYPE_I64VEC3:
+        case VR_SCRIPT_TYPE_U64VEC3:
                 return 8 * 3;
         case VR_SCRIPT_TYPE_DVEC4:
+        case VR_SCRIPT_TYPE_I64VEC4:
+        case VR_SCRIPT_TYPE_U64VEC4:
                 return 8 * 4;
         case VR_SCRIPT_TYPE_MAT2:
         case VR_SCRIPT_TYPE_MAT2X3:
