@@ -378,9 +378,61 @@ check_features(const VkPhysicalDeviceFeatures *features,
         return true;
 }
 
+static bool
+find_extension(uint32_t property_count,
+               const VkExtensionProperties *props,
+               const char *extension)
+{
+        for (uint32_t i = 0; i < property_count; i++) {
+                if (!strcmp(extension, props[i].extensionName))
+                        return true;
+        }
+
+        return false;
+}
+
+static bool
+check_extensions(VkPhysicalDevice device,
+                 const char *const *extensions)
+{
+        VkResult res;
+        uint32_t property_count;
+
+        res = vr_vk.vkEnumerateDeviceExtensionProperties(device,
+                                                         NULL, /* layerName */
+                                                         &property_count,
+                                                         NULL /* properties */);
+        if (res != VK_SUCCESS)
+                return false;
+
+        VkExtensionProperties *props = vr_alloc(property_count * sizeof *props);
+        bool ret = true;
+
+        res = vr_vk.vkEnumerateDeviceExtensionProperties(device,
+                                                         NULL, /* layerName */
+                                                         &property_count,
+                                                         props);
+        if (res == VK_SUCCESS) {
+                for (const char * const *ext = extensions; *ext; ext++) {
+                        if (!find_extension(property_count, props, *ext)) {
+                                ret = false;
+                                break;
+                        }
+                }
+        } else {
+                ret = false;
+        }
+
+        vr_free(props);
+
+        return ret;
+}
+
 static enum vr_result
 find_physical_device(struct vr_window *window,
-                     const VkPhysicalDeviceFeatures *requires)
+                     const VkPhysicalDeviceFeatures *requires,
+                     const char *const *extensions)
+
 {
         VkResult res;
         uint32_t count;
@@ -411,6 +463,9 @@ find_physical_device(struct vr_window *window,
                 if (!check_features(&features, requires))
                         continue;
 
+                if (!check_extensions(devices[i], extensions))
+                        continue;
+
                 queue_family = find_queue_family(window, devices[i]);
                 if (queue_family == -1)
                         continue;
@@ -428,7 +483,8 @@ find_physical_device(struct vr_window *window,
 
 static enum vr_result
 init_vk(struct vr_window *window,
-        const VkPhysicalDeviceFeatures *requires)
+        const VkPhysicalDeviceFeatures *requires,
+        const char *const *extensions)
 {
         VkPhysicalDeviceMemoryProperties *memory_properties =
                 &window->memory_properties;
@@ -455,7 +511,7 @@ init_vk(struct vr_window *window,
 
         vr_vk_init_instance(window->vk_instance);
 
-        vres = find_physical_device(window, requires);
+        vres = find_physical_device(window, requires, extensions);
         if (vres != VR_RESULT_PASS)
                 goto error;
 
@@ -491,6 +547,10 @@ init_vk(struct vr_window *window,
                 goto error;
         }
 
+        int n_extensions = 0;
+        for (const char * const *ext = extensions; *ext; ext++)
+                n_extensions++;
+
         VkDeviceCreateInfo device_create_info = {
                 .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
                 .queueCreateInfoCount = 1,
@@ -500,10 +560,8 @@ init_vk(struct vr_window *window,
                         .queueCount = 1,
                         .pQueuePriorities = (float[]) { 1.0f }
                 },
-                .enabledExtensionCount = 1,
-                .ppEnabledExtensionNames = (const char * const []) {
-                        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-                },
+                .enabledExtensionCount = n_extensions,
+                .ppEnabledExtensionNames = n_extensions ? extensions : NULL,
                 .pEnabledFeatures = requires
         };
         res = vr_vk.vkCreateDevice(window->physical_device,
@@ -648,6 +706,7 @@ error:
 
 enum vr_result
 vr_window_new(const VkPhysicalDeviceFeatures *requires,
+              const char *const *extensions,
               const struct vr_format *framebuffer_format,
               struct vr_window **window_out)
 {
@@ -662,7 +721,7 @@ vr_window_new(const VkPhysicalDeviceFeatures *requires,
         window->libvulkan_loaded = true;
         window->framebuffer_format = framebuffer_format;
 
-        vres = init_vk(window, requires);
+        vres = init_vk(window, requires, extensions);
         if (vres != VR_RESULT_PASS)
                 goto error;
 
