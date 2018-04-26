@@ -177,6 +177,7 @@ struct vr_script {
         size_t n_commands;
         struct vr_script_command *commands;
         VkPhysicalDeviceFeatures required_features;
+        const char *const *extensions;
         const struct vr_format *framebuffer_format;
         struct vr_vbo *vertex_data;
 };

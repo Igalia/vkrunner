@@ -96,6 +96,15 @@ VkPhysicalDeviceFeatures. These will be searched for when deciding
 which physical device to open. If no physical device with the
 corresponding requirements can be found then it will report an error.
 
+> _extension_
+
+Any line that is not a feature and contains entirely alphanumeric and
+underscore characters is assumed to be a device extension name. This
+will be checked for when searching for a suitable device and if no
+device with the extension is found then the test will report that it
+was skipped. Otherwise the extension will be enabled when creating the
+device.
+
 > framebuffer _format_
 
 Use this to specify the format of the framebuffer using a format from
