@@ -162,6 +162,7 @@ struct vr_script_command {
 
                 struct {
                         VkPrimitiveTopology topology;
+                        bool indexed;
                         uint32_t vertex_count;
                         uint32_t instance_count;
                         uint32_t first_vertex;

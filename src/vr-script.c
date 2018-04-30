@@ -874,14 +874,21 @@ process_draw_arrays_command(struct load_state *data,
                             const char *p,
                             struct vr_script_command *command)
 {
-        int args[3];
-        int n_args;
+        int args[3] = { [2] = 1 };
+        int n_args = 2;
 
-        if (looking_at(&p, "instanced ")) {
-                n_args = 3;
-        } else {
-                n_args = 2;
-                args[2] = 1;
+        command->draw_arrays.indexed = false;
+
+        while (true) {
+                if (looking_at(&p, "instanced ")) {
+                        n_args = 3;
+                        continue;
+                } else if (looking_at(&p, "indexed ")) {
+                        command->draw_arrays.indexed = true;
+                        continue;
+                }
+
+                break;
         }
 
         static const struct {

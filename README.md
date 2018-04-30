@@ -33,12 +33,18 @@ Vulkan’s normalised coordinate system is different from OpenGL’s. If
 in pixels. If `patch` is given then a patch topology will be used with
 a patch size of four.
 
-> draw arrays [instanced] _topology_ _firstVertex_ _vertexCount_ [_instanceCount_]
+> draw arrays [indexed] [instanced] _topology_ _firstVertex_ _vertexCount_ [_instanceCount_]
 
 Calls `vkCmdDraw` with the given parameters. The vertex data will be
 sourced from the `[vertex data]` section. The _topology_ should be one
 of the values of VkPrimitiveTopology minus the VK\_PRIMITIVE\_TOPOLOGY
 prefix. Alternatively it can be a GLenum value as used in Piglit.
+
+If `indexed` is specified then `vkCmdDrawIndexed` will be use to draw
+the primitive instead. The indices will be sourced from the
+`[indices]` section. _vertexCount_ will be used as the index count,
+_firstVertex_ becomes the vertex offset and _firstIndex_ will always
+be zero.
 
 > [relative] probe [rect] (rgb|rgba) (_x_, _y_[, _width_, _height_]) (_r_, _g_, _b_[, _a_])
 

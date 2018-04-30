@@ -58,6 +58,7 @@ struct test_data {
         const struct vr_script *script;
         float clear_color[4];
         struct test_buffer *vbo_buffer;
+        struct test_buffer *index_buffer;
         bool ubo_descriptor_set_bound;
         VkDescriptorSet ubo_descriptor_set;
         VkPipeline bound_pipeline;
@@ -365,6 +366,33 @@ draw_rect(struct test_data *data,
 }
 
 static bool
+ensure_index_buffer(struct test_data *data)
+{
+        if (data->index_buffer)
+                return true;
+
+        data->index_buffer =
+                allocate_test_buffer(data,
+                                     data->script->n_indices *
+                                     sizeof data->script->indices[0],
+                                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+        if (data->index_buffer == NULL)
+                return false;
+
+        memcpy(data->index_buffer->memory_map,
+               data->script->indices,
+               data->script->n_indices * sizeof data->script->indices[0]);
+
+        vr_flush_memory(data->window,
+                        data->index_buffer->memory_type_index,
+                        data->index_buffer->memory,
+                        0, /* offset */
+                        VK_WHOLE_SIZE);
+
+        return true;
+}
+
+static bool
 draw_arrays(struct test_data *data,
             const struct vr_script_command *command)
 {
@@ -405,11 +433,27 @@ draw_arrays(struct test_data *data,
                                      1, /* bindingCount */
                                      &data->vbo_buffer->buffer,
                                      (VkDeviceSize[]) { 0 });
-        vr_vk.vkCmdDraw(data->window->command_buffer,
-                        command->draw_arrays.vertex_count,
-                        command->draw_arrays.instance_count,
-                        command->draw_arrays.first_vertex,
-                        command->draw_arrays.first_instance);
+
+        if (command->draw_arrays.indexed) {
+                if (!ensure_index_buffer(data))
+                        return false;
+                vr_vk.vkCmdBindIndexBuffer(data->window->command_buffer,
+                                           data->index_buffer->buffer,
+                                           0, /* offset */
+                                           VK_INDEX_TYPE_UINT16);
+                vr_vk.vkCmdDrawIndexed(data->window->command_buffer,
+                                       command->draw_arrays.vertex_count,
+                                       command->draw_arrays.instance_count,
+                                       0, /* firstIndex */
+                                       command->draw_arrays.first_vertex,
+                                       command->draw_arrays.first_instance);
+        } else {
+                vr_vk.vkCmdDraw(data->window->command_buffer,
+                                command->draw_arrays.vertex_count,
+                                command->draw_arrays.instance_count,
+                                command->draw_arrays.first_vertex,
+                                command->draw_arrays.first_instance);
+        }
 
         return true;
 }
