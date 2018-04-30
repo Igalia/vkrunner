@@ -5,6 +5,12 @@ VkRunner is a Vulkan shader tester based on `shader_runner` in
 able to test scripts as similar to Piglit’s shader_test format as
 possible.
 
+## Building
+
+- Install [autoconf](https://www.gnu.org/software/autoconf/autoconf.html)
+- Run `./autogen.sh && make`
+- You can find `vkrunner` under `src/`
+
 ## Running
 
 VkRunner requires glslangValidator to compile GLSL to SPIR-V. It is
