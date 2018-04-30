@@ -180,6 +180,8 @@ struct vr_script {
         const char *const *extensions;
         const struct vr_format *framebuffer_format;
         struct vr_vbo *vertex_data;
+        uint16_t *indices;
+        size_t n_indices;
 };
 
 struct vr_script *

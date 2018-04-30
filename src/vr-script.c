@@ -47,6 +47,7 @@ enum section {
         SECTION_REQUIRE,
         SECTION_SHADER,
         SECTION_VERTEX_DATA,
+        SECTION_INDICES,
         SECTION_TEST
 };
 
@@ -62,6 +63,7 @@ struct load_state {
         struct vr_buffer commands;
         struct vr_buffer extensions;
         unsigned patch_size;
+        struct vr_buffer indices;
 };
 
 static const char *
@@ -141,6 +143,9 @@ end_section(struct load_state *data)
 
         case SECTION_VERTEX_DATA:
                 return end_vertex_data(data);
+
+        case SECTION_INDICES:
+                break;
 
         case SECTION_TEST:
                 break;
@@ -947,6 +952,40 @@ found_topology:
 }
 
 static bool
+process_indices_line(struct load_state *data)
+{
+        const char *p = (char *) data->line.data;
+
+        while (true) {
+                while (*p && isspace(*p))
+                        p++;
+
+                if (*p == '\0' || *p == '#')
+                        return true;
+
+                vr_buffer_set_length(&data->indices,
+                                     data->indices.length + sizeof (uint16_t));
+                errno = 0;
+                char *tail;
+                unsigned value = strtoul(p, &tail, 10);
+
+                if (errno || value > UINT16_MAX) {
+                        vr_error_message("%s:%i: Invalid index",
+                                         data->filename,
+                                         data->line_num);
+                        return false;
+                }
+
+                uint16_t *index = (uint16_t *) (data->indices.data +
+                                                data->indices.length) - 1;
+                *index = value;
+                p = tail;
+        }
+
+        return true;
+}
+
+static bool
 process_test_line(struct load_state *data)
 {
         const char *p = (char *) data->line.data;
@@ -1138,6 +1177,11 @@ process_section_header(struct load_state *data)
                 return true;
         }
 
+        if (is_string("indices", start, end)) {
+                data->current_section = SECTION_INDICES;
+                return true;
+        }
+
         if (is_string("vertex data", start, end)) {
                 if (data->script->vertex_data) {
                         vr_error_message("%s:%i: Duplicate vertex data section",
@@ -1180,6 +1224,9 @@ process_line(struct load_state *data)
                                  data->line.data,
                                  data->line.length);
                 return true;
+
+        case SECTION_INDICES:
+                return process_indices_line(data);
 
         case SECTION_TEST:
                 return process_test_line(data);
@@ -1258,6 +1305,9 @@ load_script_from_stream(const char *filename,
                                    sizeof (struct vr_script_command));
         data.script->extensions =
                 (const char *const *) data.extensions.data;
+        data.script->indices = (uint16_t *) data.indices.data;
+        data.script->n_indices =
+                data.indices.length / sizeof (uint16_t);
 
         vr_buffer_destroy(&data.buffer);
         vr_buffer_destroy(&data.line);
@@ -1305,6 +1355,8 @@ vr_script_free(struct vr_script *script)
 
         if (script->vertex_data)
                 vr_vbo_free(script->vertex_data);
+
+        vr_free(script->indices);
 
         vr_free(script->filename);
 

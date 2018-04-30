@@ -156,6 +156,12 @@ The data follows the column headers in space-separated form. “#” can
 be used for comments, as in shell scripts. See the
 `vertex-data.shader_test` file as an example.
 
+# [indices] section
+
+The `[indices]` section just contains a list of indices to use along
+with the vertices in `[vertex data]`. It will be used if the `indexed`
+option is given to the `draw arrays` test command.
+
 ## Command line arguments
 
     usage: vkrunner [OPTION]... SCRIPT...
