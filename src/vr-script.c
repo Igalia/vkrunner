@@ -87,18 +87,6 @@ vertex_shader_passthrough[] =
         "}\n";
 
 static void
-free_extensions(const char *const *extensions)
-{
-        if (extensions == NULL)
-                return;
-
-        for (const char *const *ext = extensions; *ext; ext++)
-                vr_free((char *) *ext);
-
-        vr_free((void *) extensions);
-}
-
-static void
 add_shader(struct load_state *data,
            enum vr_script_shader_stage stage,
            enum vr_script_source_type source_type,
@@ -1265,21 +1253,18 @@ load_script_from_stream(const char *filename,
         if (res)
                 res = end_section(&data);
 
-        data.script->commands = vr_memdup(data.commands.data,
-                                          data.commands.length);
+        data.script->commands = (struct vr_script_command *) data.commands.data;
         data.script->n_commands = (data.commands.length /
                                    sizeof (struct vr_script_command));
+        data.script->extensions =
+                (const char *const *) data.extensions.data;
 
-        vr_buffer_destroy(&data.commands);
         vr_buffer_destroy(&data.buffer);
         vr_buffer_destroy(&data.line);
 
         if (res) {
-                data.script->extensions =
-                        (const char *const *) data.extensions.data;
                 return data.script;
         } else {
-                free_extensions((const char *const *) data.extensions.data);
                 vr_script_free(data.script);
                 return NULL;
         }
@@ -1325,7 +1310,12 @@ vr_script_free(struct vr_script *script)
 
         vr_free(script->commands);
 
-        free_extensions(script->extensions);
+        if (script->extensions != NULL) {
+                for (const char *const *ext = script->extensions; *ext; ext++)
+                        vr_free((char *) *ext);
+
+                vr_free((void *) script->extensions);
+        }
 
         vr_free(script);
 }
