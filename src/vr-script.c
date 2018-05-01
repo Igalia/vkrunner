@@ -78,15 +78,25 @@ stage_names[VR_SCRIPT_N_STAGES] = {
 
 static const char
 vertex_shader_passthrough[] =
-        "#version 430\n"
-        "\n"
-        "layout(location = 0) in vec4 piglit_vertex;\n"
-        "\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "        gl_Position = piglit_vertex;\n"
-        "}\n";
+        "               OpCapability Shader\n"
+        "               OpMemoryModel Logical GLSL450\n"
+        "               OpEntryPoint Vertex %main \"main\" %pos_in %pos_out\n"
+        "               OpDecorate %pos_in Location 0\n"
+        "               OpDecorate %pos_out BuiltIn Position\n"
+        "       %void = OpTypeVoid\n"
+        "  %func_type = OpTypeFunction %void\n"
+        "      %float = OpTypeFloat 32\n"
+        "    %v4float = OpTypeVector %float 4\n"
+        "%_ptr_Input_v4float = OpTypePointer Input %v4float\n"
+        "%_ptr_Output_v4float = OpTypePointer Output %v4float\n"
+        "     %pos_in = OpVariable %_ptr_Input_v4float Input\n"
+        "    %pos_out = OpVariable %_ptr_Output_v4float Output\n"
+        "       %main = OpFunction %void None %func_type\n"
+        " %main_label = OpLabel\n"
+        " %pos_in_val = OpLoad %v4float %pos_in\n"
+        "               OpStore %pos_out %pos_in_val\n"
+        "               OpReturn\n"
+        "               OpFunctionEnd\n";
 
 static void
 add_shader(struct load_state *data,
@@ -1130,6 +1140,22 @@ found:
 }
 
 static bool
+start_spirv_shader(struct load_state *data,
+                   enum vr_script_shader_stage stage)
+{
+        if (!vr_list_empty(&data->script->stages[stage])) {
+                vr_error_message("%s:%i: SPIR-V source can not be "
+                                 "linked with other shaders in the "
+                                 "same stage",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        return true;
+}
+
+static bool
 process_section_header(struct load_state *data)
 {
         if (!end_section(data))
@@ -1145,25 +1171,20 @@ process_section_header(struct load_state *data)
         }
 
         if (is_stage_section(data, start, end)) {
-                const struct vr_script *script = data->script;
                 if (data->current_source_type == VR_SCRIPT_SOURCE_TYPE_SPIRV &&
-                    !vr_list_empty(&script->stages[data->current_stage])) {
-                        vr_error_message("%s:%i: SPIR-V source can not be "
-                                         "linked with other shaders in the "
-                                         "same stage",
-                                         data->filename,
-                                         data->line_num);
+                    !start_spirv_shader(data, data->current_stage))
                         return false;
-                }
 
                 return true;
         }
 
         if (is_string("vertex shader passthrough", start, end)) {
+                if (!start_spirv_shader(data, VR_SCRIPT_SHADER_STAGE_VERTEX))
+                        return false;
                 data->current_section = SECTION_NONE;
                 add_shader(data,
                            VR_SCRIPT_SHADER_STAGE_VERTEX,
-                           VR_SCRIPT_SOURCE_TYPE_GLSL,
+                           VR_SCRIPT_SOURCE_TYPE_SPIRV,
                            (sizeof vertex_shader_passthrough) - 1,
                            vertex_shader_passthrough);
                 return true;
