@@ -47,6 +47,7 @@ enum section {
         SECTION_REQUIRE,
         SECTION_SHADER,
         SECTION_VERTEX_DATA,
+        SECTION_INDICES,
         SECTION_TEST
 };
 
@@ -60,6 +61,9 @@ struct load_state {
         enum vr_script_source_type current_source_type;
         enum section current_section;
         struct vr_buffer commands;
+        struct vr_buffer extensions;
+        unsigned patch_size;
+        struct vr_buffer indices;
 };
 
 static const char *
@@ -74,15 +78,25 @@ stage_names[VR_SCRIPT_N_STAGES] = {
 
 static const char
 vertex_shader_passthrough[] =
-        "#version 430\n"
-        "\n"
-        "layout(location = 0) in vec4 piglit_vertex;\n"
-        "\n"
-        "void\n"
-        "main()\n"
-        "{\n"
-        "        gl_Position = piglit_vertex;\n"
-        "}\n";
+        "               OpCapability Shader\n"
+        "               OpMemoryModel Logical GLSL450\n"
+        "               OpEntryPoint Vertex %main \"main\" %pos_in %pos_out\n"
+        "               OpDecorate %pos_in Location 0\n"
+        "               OpDecorate %pos_out BuiltIn Position\n"
+        "       %void = OpTypeVoid\n"
+        "  %func_type = OpTypeFunction %void\n"
+        "      %float = OpTypeFloat 32\n"
+        "    %v4float = OpTypeVector %float 4\n"
+        "%_ptr_Input_v4float = OpTypePointer Input %v4float\n"
+        "%_ptr_Output_v4float = OpTypePointer Output %v4float\n"
+        "     %pos_in = OpVariable %_ptr_Input_v4float Input\n"
+        "    %pos_out = OpVariable %_ptr_Output_v4float Output\n"
+        "       %main = OpFunction %void None %func_type\n"
+        " %main_label = OpLabel\n"
+        " %pos_in_val = OpLoad %v4float %pos_in\n"
+        "               OpStore %pos_out %pos_in_val\n"
+        "               OpReturn\n"
+        "               OpFunctionEnd\n";
 
 static void
 add_shader(struct load_state *data,
@@ -140,6 +154,9 @@ end_section(struct load_state *data)
         case SECTION_VERTEX_DATA:
                 return end_vertex_data(data);
 
+        case SECTION_INDICES:
+                break;
+
         case SECTION_TEST:
                 break;
         }
@@ -179,6 +196,65 @@ is_end(const char *p)
                 p++;
 
         return *p == '\0';
+}
+
+static int
+type_columns(enum vr_script_type type)
+{
+        if (type >= VR_SCRIPT_TYPE_MAT2 && type <= VR_SCRIPT_TYPE_MAT4)
+                return (type - VR_SCRIPT_TYPE_MAT2) / 3 + 2;
+        if (type >= VR_SCRIPT_TYPE_DMAT2 && type <= VR_SCRIPT_TYPE_DMAT4)
+                return (type - VR_SCRIPT_TYPE_DMAT2) / 3 + 2;
+        return 1;
+}
+
+static int
+type_rows(enum vr_script_type type)
+{
+        if (type >= VR_SCRIPT_TYPE_VEC2 && type <= VR_SCRIPT_TYPE_VEC4)
+                return type - VR_SCRIPT_TYPE_VEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_DVEC2 && type <= VR_SCRIPT_TYPE_DVEC4)
+                return type - VR_SCRIPT_TYPE_DVEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_IVEC2 && type <= VR_SCRIPT_TYPE_IVEC4)
+                return type - VR_SCRIPT_TYPE_IVEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_UVEC2 && type <= VR_SCRIPT_TYPE_UVEC4)
+                return type - VR_SCRIPT_TYPE_UVEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_I64VEC2 && type <= VR_SCRIPT_TYPE_I64VEC4)
+                return type - VR_SCRIPT_TYPE_I64VEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_U64VEC2 && type <= VR_SCRIPT_TYPE_U64VEC4)
+                return type - VR_SCRIPT_TYPE_U64VEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_MAT2 && type <= VR_SCRIPT_TYPE_MAT4)
+                return (type - VR_SCRIPT_TYPE_MAT2) % 3 + 2;
+        if (type >= VR_SCRIPT_TYPE_DMAT2 && type <= VR_SCRIPT_TYPE_DMAT4)
+                return (type - VR_SCRIPT_TYPE_DMAT2) % 3 + 2;
+        return 1;
+}
+
+/**
+ * Calculates the matrix stride of a type assuming std140 rules.
+ */
+static size_t
+type_matrix_stride(enum vr_script_type type)
+{
+        int component_size;
+
+        if (type >= VR_SCRIPT_TYPE_MAT2 && type <= VR_SCRIPT_TYPE_MAT4)
+                component_size = 4;
+        else if (type >= VR_SCRIPT_TYPE_DMAT2 && type <= VR_SCRIPT_TYPE_DMAT4)
+                component_size = 8;
+        else
+                vr_fatal("Matrix size requested for non-matrix type");
+
+        int rows = type_rows(type);
+        int base_alignment;
+
+        if (rows == 3)
+                base_alignment = component_size * 4;
+        else
+                base_alignment = component_size * rows;
+
+        /* according to std140 the size is rounded up to a vec4 */
+        return vr_align(base_alignment, 16);
 }
 
 static bool
@@ -272,6 +348,100 @@ parse_ints(const char **p,
 }
 
 static bool
+parse_uints(const char **p,
+            unsigned *out,
+            int n_ints,
+            const char *sep)
+{
+        unsigned long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtoul(*p, &tail, 10);
+                if (errno != 0 || tail == *p || v > UINT_MAX)
+                        return false;
+                *(out++) = (unsigned) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
+parse_int64s(const char **p,
+             int64_t *out,
+             int n_ints,
+             const char *sep)
+{
+        long long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtoll(*p, &tail, 10);
+                if (errno != 0 || tail == *p ||
+                    v < INT64_MIN || v > INT64_MAX)
+                        return false;
+                *(out++) = (int64_t) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
+parse_uint64s(const char **p,
+              uint64_t *out,
+              int n_ints,
+              const char *sep)
+{
+        unsigned long long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtoull(*p, &tail, 10);
+                if (errno != 0 || tail == *p || v > UINT64_MAX)
+                        return false;
+                *(out++) = (uint64_t) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
 parse_size_t(const char **p,
              size_t *out)
 {
@@ -289,6 +459,42 @@ parse_size_t(const char **p,
 }
 
 static bool
+parse_mat(const char **p,
+          float *out,
+          enum vr_script_type type)
+{
+        int num_rows = type_rows(type);
+        int num_cols = type_columns(type);
+        int stride = type_matrix_stride(type);
+
+        for (int col = 0; col < num_cols; col++) {
+                if (!parse_floats(p, out, num_rows, NULL))
+                        return false;
+                out += stride / sizeof *out;
+        }
+
+        return true;
+}
+
+static bool
+parse_dmat(const char **p,
+           double *out,
+           enum vr_script_type type)
+{
+        int num_rows = type_rows(type);
+        int num_cols = type_columns(type);
+        int stride = type_matrix_stride(type);
+
+        for (int col = 0; col < num_cols; col++) {
+                if (!parse_doubles(p, out, num_rows, NULL))
+                        return false;
+                out += stride / sizeof *out;
+        }
+
+        return true;
+}
+
+static bool
 parse_value_type(const char **p,
                  enum vr_script_type *type)
 {
@@ -297,6 +503,9 @@ parse_value_type(const char **p,
                 enum vr_script_type type;
         } types[] = {
                 { "int ", VR_SCRIPT_TYPE_INT },
+                { "uint ", VR_SCRIPT_TYPE_UINT },
+                { "int64_t ", VR_SCRIPT_TYPE_INT64 },
+                { "uint64_t ", VR_SCRIPT_TYPE_UINT64 },
                 { "float ", VR_SCRIPT_TYPE_FLOAT },
                 { "double ", VR_SCRIPT_TYPE_DOUBLE },
                 { "vec2 ", VR_SCRIPT_TYPE_VEC2 },
@@ -308,6 +517,39 @@ parse_value_type(const char **p,
                 { "ivec2 ", VR_SCRIPT_TYPE_IVEC2 },
                 { "ivec3 ", VR_SCRIPT_TYPE_IVEC3 },
                 { "ivec4 ", VR_SCRIPT_TYPE_IVEC4 },
+                { "uvec2 ", VR_SCRIPT_TYPE_UVEC2 },
+                { "uvec3 ", VR_SCRIPT_TYPE_UVEC3 },
+                { "uvec4 ", VR_SCRIPT_TYPE_UVEC4 },
+                { "i64vec2 ", VR_SCRIPT_TYPE_I64VEC2 },
+                { "i64vec3 ", VR_SCRIPT_TYPE_I64VEC3 },
+                { "i64vec4 ", VR_SCRIPT_TYPE_I64VEC4 },
+                { "u64vec2 ", VR_SCRIPT_TYPE_U64VEC2 },
+                { "u64vec3 ", VR_SCRIPT_TYPE_U64VEC3 },
+                { "u64vec4 ", VR_SCRIPT_TYPE_U64VEC4 },
+                { "mat2 ", VR_SCRIPT_TYPE_MAT2 },
+                { "mat2x2 ", VR_SCRIPT_TYPE_MAT2 },
+                { "mat2x3 ", VR_SCRIPT_TYPE_MAT2X3 },
+                { "mat2x4 ", VR_SCRIPT_TYPE_MAT2X4 },
+                { "mat3x2 ", VR_SCRIPT_TYPE_MAT3X2 },
+                { "mat3 ", VR_SCRIPT_TYPE_MAT3 },
+                { "mat3x3 ", VR_SCRIPT_TYPE_MAT3 },
+                { "mat3x4 ", VR_SCRIPT_TYPE_MAT3X4 },
+                { "mat4x2 ", VR_SCRIPT_TYPE_MAT4X2 },
+                { "mat4x3 ", VR_SCRIPT_TYPE_MAT4X3 },
+                { "mat4 ", VR_SCRIPT_TYPE_MAT4 },
+                { "mat4x4 ", VR_SCRIPT_TYPE_MAT4 },
+                { "dmat2 ", VR_SCRIPT_TYPE_DMAT2 },
+                { "dmat2x2 ", VR_SCRIPT_TYPE_DMAT2 },
+                { "dmat2x3 ", VR_SCRIPT_TYPE_DMAT2X3 },
+                { "dmat2x4 ", VR_SCRIPT_TYPE_DMAT2X4 },
+                { "dmat3x2 ", VR_SCRIPT_TYPE_DMAT3X2 },
+                { "dmat3 ", VR_SCRIPT_TYPE_DMAT3 },
+                { "dmat3x3 ", VR_SCRIPT_TYPE_DMAT3 },
+                { "dmat3x4 ", VR_SCRIPT_TYPE_DMAT3X4 },
+                { "dmat4x2 ", VR_SCRIPT_TYPE_DMAT4X2 },
+                { "dmat4x3 ", VR_SCRIPT_TYPE_DMAT4X3 },
+                { "dmat4 ", VR_SCRIPT_TYPE_DMAT4 },
+                { "dmat4x4 ", VR_SCRIPT_TYPE_DMAT4 },
         };
 
         for (int i = 0; i < VR_N_ELEMENTS(types); i++) {
@@ -327,6 +569,12 @@ parse_value(const char **p,
         switch (value->type) {
         case VR_SCRIPT_TYPE_INT:
                 return parse_ints(p, &value->i, 1, NULL);
+        case VR_SCRIPT_TYPE_UINT:
+                return parse_uints(p, &value->u, 1, NULL);
+        case VR_SCRIPT_TYPE_INT64:
+                return parse_int64s(p, &value->i64, 1, NULL);
+        case VR_SCRIPT_TYPE_UINT64:
+                return parse_uint64s(p, &value->u64, 1, NULL);
         case VR_SCRIPT_TYPE_FLOAT:
                 return parse_floats(p, &value->f, 1, NULL);
         case VR_SCRIPT_TYPE_DOUBLE:
@@ -349,6 +597,44 @@ parse_value(const char **p,
                 return parse_ints(p, value->ivec, 3, NULL);
         case VR_SCRIPT_TYPE_IVEC4:
                 return parse_ints(p, value->ivec, 4, NULL);
+        case VR_SCRIPT_TYPE_UVEC2:
+                return parse_uints(p, value->uvec, 2, NULL);
+        case VR_SCRIPT_TYPE_UVEC3:
+                return parse_uints(p, value->uvec, 3, NULL);
+        case VR_SCRIPT_TYPE_UVEC4:
+                return parse_uints(p, value->uvec, 4, NULL);
+        case VR_SCRIPT_TYPE_I64VEC2:
+                return parse_int64s(p, value->i64vec, 2, NULL);
+        case VR_SCRIPT_TYPE_I64VEC3:
+                return parse_int64s(p, value->i64vec, 3, NULL);
+        case VR_SCRIPT_TYPE_I64VEC4:
+                return parse_int64s(p, value->i64vec, 4, NULL);
+        case VR_SCRIPT_TYPE_U64VEC2:
+                return parse_uint64s(p, value->u64vec, 2, NULL);
+        case VR_SCRIPT_TYPE_U64VEC3:
+                return parse_uint64s(p, value->u64vec, 3, NULL);
+        case VR_SCRIPT_TYPE_U64VEC4:
+                return parse_uint64s(p, value->u64vec, 4, NULL);
+        case VR_SCRIPT_TYPE_MAT2:
+        case VR_SCRIPT_TYPE_MAT2X3:
+        case VR_SCRIPT_TYPE_MAT2X4:
+        case VR_SCRIPT_TYPE_MAT3X2:
+        case VR_SCRIPT_TYPE_MAT3:
+        case VR_SCRIPT_TYPE_MAT3X4:
+        case VR_SCRIPT_TYPE_MAT4X2:
+        case VR_SCRIPT_TYPE_MAT4X3:
+        case VR_SCRIPT_TYPE_MAT4:
+                return parse_mat(p, value->mat, value->type);
+        case VR_SCRIPT_TYPE_DMAT2:
+        case VR_SCRIPT_TYPE_DMAT2X3:
+        case VR_SCRIPT_TYPE_DMAT2X4:
+        case VR_SCRIPT_TYPE_DMAT3X2:
+        case VR_SCRIPT_TYPE_DMAT3:
+        case VR_SCRIPT_TYPE_DMAT3X4:
+        case VR_SCRIPT_TYPE_DMAT4X2:
+        case VR_SCRIPT_TYPE_DMAT4X3:
+        case VR_SCRIPT_TYPE_DMAT4:
+                return parse_dmat(p, value->dmat, value->type);
         }
 
         vr_fatal("should not be reached");
@@ -422,6 +708,31 @@ process_require_line(struct load_state *data)
                 }
         }
 
+        int extension_len = 0;
+
+        while (true) {
+                char ch = start[extension_len];
+
+                if ((ch < 'A' || ch > 'Z') &&
+                    (ch < 'a' || ch > 'z') &&
+                    (ch < '0' || ch > '9') &&
+                    ch != '_')
+                        break;
+
+                extension_len++;
+        }
+
+        if (is_end(start + extension_len)) {
+                int n_extensions =
+                        data->extensions.length / sizeof (char *) - 1;
+                vr_buffer_set_length(&data->extensions,
+                                     (n_extensions + 2) * sizeof (char *));
+                char **extensions = (char **) data->extensions.data;
+                extensions[n_extensions++] = vr_strndup(start, extension_len);
+                extensions[n_extensions++] = NULL;
+                return true;
+        }
+
         vr_error_message("%s:%i: Invalid require line",
                          data->filename,
                          data->line_num);
@@ -440,6 +751,8 @@ process_draw_rect_command(const char *p,
 
         if (looking_at(&p, "ortho "))
                 ortho = true;
+
+        command->draw_rect.use_patches = looking_at(&p, "patch ");
 
         if (!parse_floats(&p, &command->draw_rect.x, 4, NULL) ||
             !is_end(p))
@@ -571,14 +884,21 @@ process_draw_arrays_command(struct load_state *data,
                             const char *p,
                             struct vr_script_command *command)
 {
-        int args[3];
-        int n_args;
+        int args[3] = { [2] = 1 };
+        int n_args = 2;
 
-        if (looking_at(&p, "instanced ")) {
-                n_args = 3;
-        } else {
-                n_args = 2;
-                args[2] = 1;
+        command->draw_arrays.indexed = false;
+
+        while (true) {
+                if (looking_at(&p, "instanced ")) {
+                        n_args = 3;
+                        continue;
+                } else if (looking_at(&p, "indexed ")) {
+                        command->draw_arrays.indexed = true;
+                        continue;
+                }
+
+                break;
         }
 
         static const struct {
@@ -643,6 +963,41 @@ found_topology:
         command->draw_arrays.vertex_count = args[1];
         command->draw_arrays.first_instance = 0;
         command->draw_arrays.instance_count = args[2];
+        command->draw_arrays.patch_size = data->patch_size;
+
+        return true;
+}
+
+static bool
+process_indices_line(struct load_state *data)
+{
+        const char *p = (char *) data->line.data;
+
+        while (true) {
+                while (*p && isspace(*p))
+                        p++;
+
+                if (*p == '\0' || *p == '#')
+                        return true;
+
+                vr_buffer_set_length(&data->indices,
+                                     data->indices.length + sizeof (uint16_t));
+                errno = 0;
+                char *tail;
+                unsigned value = strtoul(p, &tail, 10);
+
+                if (errno || value > UINT16_MAX) {
+                        vr_error_message("%s:%i: Invalid index",
+                                         data->filename,
+                                         data->line_num);
+                        return false;
+                }
+
+                uint16_t *index = (uint16_t *) (data->indices.data +
+                                                data->indices.length) - 1;
+                *index = value;
+                p = tail;
+        }
 
         return true;
 }
@@ -657,6 +1012,14 @@ process_test_line(struct load_state *data)
 
         if (*p == '#' || *p == '\0')
                 return true;
+
+        if (looking_at(&p, "patch parameter vertices ")) {
+                if (!parse_uints(&p, &data->patch_size, 1, NULL))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                return true;
+        }
 
         vr_buffer_set_length(&data->commands,
                              data->commands.length +
@@ -677,6 +1040,30 @@ process_test_line(struct load_state *data)
 
         if (looking_at(&p, "draw arrays "))
                 return process_draw_arrays_command(data, p, command);
+
+        if (looking_at(&p, "uniform ubo ")) {
+                if (!parse_uints(&p, &command->set_ubo_uniform.ubo, 1, NULL))
+                        goto error;
+                if (command->set_ubo_uniform.ubo >= sizeof (unsigned) * 8) {
+                        vr_error_message("%s:%i: UBO binding number is "
+                                         "too large",
+                                         data->filename,
+                                         data->line_num);
+                        return false;
+                }
+                while (isspace(*p))
+                        p++;
+                if (!parse_value_type(&p, &command->set_ubo_uniform.value.type))
+                        goto error;
+                if (!parse_size_t(&p, &command->set_ubo_uniform.offset))
+                        goto error;
+                if (!parse_value(&p, &command->set_ubo_uniform.value))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                command->op = VR_SCRIPT_OP_SET_UBO_UNIFORM;
+                return true;
+        }
 
         if (looking_at(&p, "uniform ")) {
                 while (isspace(*p))
@@ -753,6 +1140,22 @@ found:
 }
 
 static bool
+start_spirv_shader(struct load_state *data,
+                   enum vr_script_shader_stage stage)
+{
+        if (!vr_list_empty(&data->script->stages[stage])) {
+                vr_error_message("%s:%i: SPIR-V source can not be "
+                                 "linked with other shaders in the "
+                                 "same stage",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        return true;
+}
+
+static bool
 process_section_header(struct load_state *data)
 {
         if (!end_section(data))
@@ -768,25 +1171,20 @@ process_section_header(struct load_state *data)
         }
 
         if (is_stage_section(data, start, end)) {
-                const struct vr_script *script = data->script;
                 if (data->current_source_type == VR_SCRIPT_SOURCE_TYPE_SPIRV &&
-                    !vr_list_empty(&script->stages[data->current_stage])) {
-                        vr_error_message("%s:%i: SPIR-V source can not be "
-                                         "linked with other shaders in the "
-                                         "same stage",
-                                         data->filename,
-                                         data->line_num);
+                    !start_spirv_shader(data, data->current_stage))
                         return false;
-                }
 
                 return true;
         }
 
         if (is_string("vertex shader passthrough", start, end)) {
+                if (!start_spirv_shader(data, VR_SCRIPT_SHADER_STAGE_VERTEX))
+                        return false;
                 data->current_section = SECTION_NONE;
                 add_shader(data,
                            VR_SCRIPT_SHADER_STAGE_VERTEX,
-                           VR_SCRIPT_SOURCE_TYPE_GLSL,
+                           VR_SCRIPT_SOURCE_TYPE_SPIRV,
                            (sizeof vertex_shader_passthrough) - 1,
                            vertex_shader_passthrough);
                 return true;
@@ -804,6 +1202,11 @@ process_section_header(struct load_state *data)
 
         if (is_string("test", start, end)) {
                 data->current_section = SECTION_TEST;
+                return true;
+        }
+
+        if (is_string("indices", start, end)) {
+                data->current_section = SECTION_INDICES;
                 return true;
         }
 
@@ -850,6 +1253,9 @@ process_line(struct load_state *data)
                                  data->line.length);
                 return true;
 
+        case SECTION_INDICES:
+                return process_indices_line(data);
+
         case SECTION_TEST:
                 return process_test_line(data);
         }
@@ -891,8 +1297,10 @@ load_script_from_stream(const char *filename,
                 .line = VR_BUFFER_STATIC_INIT,
                 .buffer = VR_BUFFER_STATIC_INIT,
                 .commands = VR_BUFFER_STATIC_INIT,
+                .extensions = VR_BUFFER_STATIC_INIT,
                 .current_stage = -1,
-                .current_section = SECTION_NONE
+                .current_section = SECTION_NONE,
+                .patch_size = 3
         };
         bool res = true;
         int stage;
@@ -901,6 +1309,9 @@ load_script_from_stream(const char *filename,
         data.script->framebuffer_format =
                 vr_format_lookup_by_vk_format(VK_FORMAT_B8G8R8A8_UNORM);
         assert(data.script->framebuffer_format != NULL);
+
+        vr_buffer_set_length(&data.extensions, sizeof (const char *));
+        memset(data.extensions.data, 0, data.extensions.length);
 
         for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++)
                 vr_list_init(&data.script->stages[stage]);
@@ -917,12 +1328,15 @@ load_script_from_stream(const char *filename,
         if (res)
                 res = end_section(&data);
 
-        data.script->commands = vr_memdup(data.commands.data,
-                                          data.commands.length);
+        data.script->commands = (struct vr_script_command *) data.commands.data;
         data.script->n_commands = (data.commands.length /
                                    sizeof (struct vr_script_command));
+        data.script->extensions =
+                (const char *const *) data.extensions.data;
+        data.script->indices = (uint16_t *) data.indices.data;
+        data.script->n_indices =
+                data.indices.length / sizeof (uint16_t);
 
-        vr_buffer_destroy(&data.commands);
         vr_buffer_destroy(&data.buffer);
         vr_buffer_destroy(&data.line);
 
@@ -970,9 +1384,18 @@ vr_script_free(struct vr_script *script)
         if (script->vertex_data)
                 vr_vbo_free(script->vertex_data);
 
+        vr_free(script->indices);
+
         vr_free(script->filename);
 
         vr_free(script->commands);
+
+        if (script->extensions != NULL) {
+                for (const char *const *ext = script->extensions; *ext; ext++)
+                        vr_free((char *) *ext);
+
+                vr_free((void *) script->extensions);
+        }
 
         vr_free(script);
 }
@@ -982,25 +1405,56 @@ vr_script_type_size(enum vr_script_type type)
 {
         switch (type) {
         case VR_SCRIPT_TYPE_INT:
+        case VR_SCRIPT_TYPE_UINT:
         case VR_SCRIPT_TYPE_FLOAT:
                 return 4;
+        case VR_SCRIPT_TYPE_INT64:
+        case VR_SCRIPT_TYPE_UINT64:
         case VR_SCRIPT_TYPE_DOUBLE:
                 return 8;
         case VR_SCRIPT_TYPE_VEC2:
         case VR_SCRIPT_TYPE_IVEC2:
+        case VR_SCRIPT_TYPE_UVEC2:
                 return 4 * 2;
         case VR_SCRIPT_TYPE_VEC3:
         case VR_SCRIPT_TYPE_IVEC3:
+        case VR_SCRIPT_TYPE_UVEC3:
                 return 4 * 3;
         case VR_SCRIPT_TYPE_VEC4:
         case VR_SCRIPT_TYPE_IVEC4:
+        case VR_SCRIPT_TYPE_UVEC4:
                 return 4 * 4;
         case VR_SCRIPT_TYPE_DVEC2:
+        case VR_SCRIPT_TYPE_I64VEC2:
+        case VR_SCRIPT_TYPE_U64VEC2:
                 return 8 * 2;
         case VR_SCRIPT_TYPE_DVEC3:
+        case VR_SCRIPT_TYPE_I64VEC3:
+        case VR_SCRIPT_TYPE_U64VEC3:
                 return 8 * 3;
         case VR_SCRIPT_TYPE_DVEC4:
+        case VR_SCRIPT_TYPE_I64VEC4:
+        case VR_SCRIPT_TYPE_U64VEC4:
                 return 8 * 4;
+        case VR_SCRIPT_TYPE_MAT2:
+        case VR_SCRIPT_TYPE_MAT2X3:
+        case VR_SCRIPT_TYPE_MAT2X4:
+        case VR_SCRIPT_TYPE_MAT3X2:
+        case VR_SCRIPT_TYPE_MAT3:
+        case VR_SCRIPT_TYPE_MAT3X4:
+        case VR_SCRIPT_TYPE_MAT4X2:
+        case VR_SCRIPT_TYPE_MAT4X3:
+        case VR_SCRIPT_TYPE_MAT4:
+        case VR_SCRIPT_TYPE_DMAT2:
+        case VR_SCRIPT_TYPE_DMAT2X3:
+        case VR_SCRIPT_TYPE_DMAT2X4:
+        case VR_SCRIPT_TYPE_DMAT3X2:
+        case VR_SCRIPT_TYPE_DMAT3:
+        case VR_SCRIPT_TYPE_DMAT3X4:
+        case VR_SCRIPT_TYPE_DMAT4X2:
+        case VR_SCRIPT_TYPE_DMAT4X3:
+        case VR_SCRIPT_TYPE_DMAT4:
+                return type_matrix_stride(type) * type_columns(type);
         }
 
         vr_fatal("should not be reached");

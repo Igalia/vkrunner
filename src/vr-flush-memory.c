@@ -31,6 +31,7 @@ VkResult
 vr_flush_memory(struct vr_window *window,
                 int memory_type_index,
                 VkDeviceMemory memory,
+                VkDeviceSize offset,
                 VkDeviceSize size)
 {
         const VkMemoryType *memory_type =
@@ -44,7 +45,7 @@ vr_flush_memory(struct vr_window *window,
         VkMappedMemoryRange mapped_memory_range = {
                 .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
                 .memory = memory,
-                .offset = 0,
+                .offset = offset,
                 .size = size
         };
         return vr_vk.vkFlushMappedMemoryRanges(window->device,

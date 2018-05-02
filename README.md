@@ -5,6 +5,12 @@ VkRunner is a Vulkan shader tester based on `shader_runner` in
 able to test scripts as similar to Piglit’s shader_test format as
 possible.
 
+## Building
+
+- Install [autoconf](https://www.gnu.org/software/autoconf/autoconf.html)
+- Run `./autogen.sh && make`
+- You can find `vkrunner` under `src/`
+
 ## Running
 
 VkRunner requires glslangValidator to compile GLSL to SPIR-V. It is
@@ -17,18 +23,28 @@ from [here](https://github.com/KhronosGroup/glslang/).
 
 The `[test]` currently only supports the following commands:
 
-> draw rect _x_ _y_ _width_ _height_
+> draw rect [ortho] [patch] _x_ _y_ _width_ _height_
 
 Draws a rectangle at the given normalised coordinates. The vertices
 will be uploaded at vertex input location 0 as a vec3. Remember that
-Vulkan’s normalised coordinate system is different from OpenGL’s.
+Vulkan’s normalised coordinate system is different from OpenGL’s. If
+`ortho` is specified then the coordinates are scaled from the range
+[0,window size] to [-1,1] to make it easier to specify the positions
+in pixels. If `patch` is given then a patch topology will be used with
+a patch size of four.
 
-> draw arrays [instanced] _topology_ _firstVertex_ _vertexCount_ [_instanceCount_]
+> draw arrays [indexed] [instanced] _topology_ _firstVertex_ _vertexCount_ [_instanceCount_]
 
 Calls `vkCmdDraw` with the given parameters. The vertex data will be
 sourced from the `[vertex data]` section. The _topology_ should be one
 of the values of VkPrimitiveTopology minus the VK\_PRIMITIVE\_TOPOLOGY
 prefix. Alternatively it can be a GLenum value as used in Piglit.
+
+If `indexed` is specified then `vkCmdDrawIndexed` will be use to draw
+the primitive instead. The indices will be sourced from the
+`[indices]` section. _vertexCount_ will be used as the index count,
+_firstVertex_ becomes the vertex offset and _firstIndex_ will always
+be zero.
 
 > [relative] probe [rect] (rgb|rgba) (_x_, _y_[, _width_, _height_]) (_r_, _g_, _b_[, _a_])
 
@@ -48,8 +64,24 @@ The same as above except that it probes the entire window.
 
 Sets a push constant at the given offset. Note that unlike Piglit, the
 offset is a byte offset into the push constant buffer rather than a
-uniform location. The type can be one of int, float, double, vec[234],
-dvec[234] or ivec[234].
+uniform location. The type can be one of int, uint, int64_t, uint64_t,
+float, double, vec[234], dvec[234], ivec[234], uvec[234], i64vec[234],
+u64vec[234], mat[234]x[234] or dmat[234]x[234]. If matrices are
+specified they are assumed to have a stride according to the std140
+layout rules.
+
+> uniform ubo _binding_ _type_ _offset_ _values_…
+
+Sets a value within a uniform buffer. The first time a value is set
+within a buffer it will be created with the minimum size needed to
+contain all of the values set on it via test commands. It will then be
+bound to the descriptor set at the given binding point. The rest of
+the arguments are the same as for the `uniform` command. Note that the
+buffer is just updated by writing into a memory mapped view of it
+which means that if you do an update, draw call, update and then
+another draw call both draws will use the values from the second
+update. This is because the draws are not flushed until the next probe
+command or the test completes.
 
 > clear color _r_ _g_ _b_ _a_
 
@@ -59,6 +91,11 @@ zeros.
 > clear
 
 Clears the entire framebuffer to the previously set clear color.
+
+> patch parameter vertices _vertices_
+
+Sets the number of control points for tessellation patches in
+subsequent draw calls. Defaults to 3.
 
 Take a look in the examples directory for examples.
 
@@ -70,6 +107,15 @@ The `[require]` section can contain names of members from
 VkPhysicalDeviceFeatures. These will be searched for when deciding
 which physical device to open. If no physical device with the
 corresponding requirements can be found then it will report an error.
+
+> _extension_
+
+Any line that is not a feature and contains entirely alphanumeric and
+underscore characters is assumed to be a device extension name. This
+will be checked for when searching for a suitable device and if no
+device with the extension is found then the test will report that it
+was skipped. Otherwise the extension will be enabled when creating the
+device.
 
 > framebuffer _format_
 
@@ -115,6 +161,12 @@ the data (“int”, “uint”, “float”, “double”, “ivec”\*, “uve
 The data follows the column headers in space-separated form. “#” can
 be used for comments, as in shell scripts. See the
 `vertex-data.shader_test` file as an example.
+
+# [indices] section
+
+The `[indices]` section just contains a list of indices to use along
+with the vertices in `[vertex data]`. It will be used if the `indexed`
+option is given to the `draw arrays` test command.
 
 ## Command line arguments
 

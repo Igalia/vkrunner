@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "vr-util.h"
 
@@ -199,6 +200,26 @@ vr_util_ffsl(long int value)
                 return pos + (sizeof (long int) - sizeof (int)) * 8;
 
         return 0;
+}
+
+#endif
+
+#ifndef HAVE_BUILTIN_POPCOUNT
+
+int
+vr_util_popcount(unsigned x)
+{
+        int count = 0;
+
+        while (true) {
+                int next_bit = vr_util_ffs(x);
+
+                if (next_bit == 0)
+                        return count;
+
+                count++;
+                x >>= next_bit;
+        }
 }
 
 #endif

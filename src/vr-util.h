@@ -161,4 +161,11 @@ vr_align(int value, int alignment)
    return (value + alignment - 1) & ~(alignment - 1);
 }
 
+#ifdef HAVE_BUILTIN_POPCOUNT
+#define vr_util_popcount(x) __builtin_popcount(x)
+#else
+int
+vr_util_popcount(unsigned x);
+#endif
+
 #endif /* VR_UTIL_H */

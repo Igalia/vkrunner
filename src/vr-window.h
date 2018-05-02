@@ -50,7 +50,7 @@ struct vr_window {
         VkFence vk_fence;
 
         VkImage color_image;
-        VkImage linear_image;
+        VkBuffer linear_buffer;
         VkDeviceMemory memory;
         VkDeviceMemory linear_memory;
         bool need_linear_memory_invalidate;
@@ -65,6 +65,7 @@ struct vr_window {
 
 enum vr_result
 vr_window_new(const VkPhysicalDeviceFeatures *requires,
+              const char *const *extensions,
               const struct vr_format *framebuffer_format,
               struct vr_window **window_out);
 
