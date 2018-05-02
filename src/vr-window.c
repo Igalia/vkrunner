@@ -98,11 +98,11 @@ destroy_framebuffer_resources(struct vr_window *window)
                                    NULL /* allocator */);
                 window->memory = NULL;
         }
-        if (window->linear_image) {
-                vr_vk.vkDestroyImage(window->device,
-                                     window->linear_image,
-                                     NULL /* allocator */);
-                window->linear_image = NULL;
+        if (window->linear_buffer) {
+                vr_vk.vkDestroyBuffer(window->device,
+                                      window->linear_buffer,
+                                      NULL /* allocator */);
+                window->linear_buffer = NULL;
         }
         if (window->color_image) {
                 vr_vk.vkDestroyImage(window->device,
@@ -145,36 +145,41 @@ init_framebuffer_resources(struct vr_window *window)
                 return false;
         }
 
-        image_create_info.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-        image_create_info.tiling = VK_IMAGE_TILING_LINEAR;
-        res = vr_vk.vkCreateImage(window->device,
-                                  &image_create_info,
-                                  NULL, /* allocator */
-                                  &window->linear_image);
-        if (res != VK_SUCCESS) {
-                vr_error_message("Error creating VkImage");
-                return false;
-        }
-
         res = vr_allocate_store_image(window,
                                       0, /* memory_type_flags */
                                       1, /* n_images */
                                       (VkImage[]) { window->color_image },
                                       &window->memory,
                                       NULL /* memory_type_index */);
+
+        int format_size = vr_format_get_size(window->framebuffer_format);
+        window->linear_memory_stride = format_size * VR_WINDOW_WIDTH;
+
+        struct VkBufferCreateInfo buffer_create_info = {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                .size = window->linear_memory_stride * VR_WINDOW_HEIGHT,
+                .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        };
+        res = vr_vk.vkCreateBuffer(window->device,
+                                   &buffer_create_info,
+                                   NULL, /* allocator */
+                                   &window->linear_buffer);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error allocating framebuffer memory");
+                window->linear_buffer = NULL;
+                vr_error_message("Error creating linear buffer");
                 return false;
         }
 
-        res = vr_allocate_store_image(window,
-                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-                                      1, /* n_images */
-                                      &window->linear_image,
-                                      &window->linear_memory,
-                                      &linear_memory_type);
+        res = vr_allocate_store_buffer(window,
+                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                                       1, /* n_buffers */
+                                       &window->linear_buffer,
+                                       &window->linear_memory,
+                                       &linear_memory_type,
+                                       NULL /* offsets */);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error allocating framebuffer memory");
+                vr_error_message("Error allocating linear buffer memory");
                 return false;
         }
 
@@ -182,18 +187,6 @@ init_framebuffer_resources(struct vr_window *window)
                 (window->memory_properties.
                  memoryTypes[linear_memory_type].propertyFlags &
                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0;
-
-        VkImageSubresource linear_subresource = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .mipLevel = 0,
-                .arrayLayer = 0
-        };
-        VkSubresourceLayout linear_layout;
-        vr_vk.vkGetImageSubresourceLayout(window->device,
-                                          window->linear_image,
-                                          &linear_subresource,
-                                          &linear_layout);
-        window->linear_memory_stride = linear_layout.rowPitch;
 
         res = vr_vk.vkMapMemory(window->device,
                                 window->linear_memory,
@@ -255,54 +248,6 @@ init_framebuffer_resources(struct vr_window *window)
                 vr_error_message("Error creating framebuffer");
                 return false;
         }
-
-        VkCommandBufferBeginInfo command_buffer_begin_info = {
-                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
-        };
-        vr_vk.vkBeginCommandBuffer(window->command_buffer,
-                                   &command_buffer_begin_info);
-
-        VkImageMemoryBarrier image_memory_barrier = {
-                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                .srcAccessMask = 0,
-                .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                .newLayout = VK_IMAGE_LAYOUT_GENERAL,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image = window->linear_image,
-                .subresourceRange = {
-                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                        .baseMipLevel = 0,
-                        .levelCount = 1,
-                        .layerCount = 1
-                }
-        };
-        vr_vk.vkCmdPipelineBarrier(window->command_buffer,
-                                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                   0, /* dependencyFlags */
-                                   0, /* memoryBarrierCount */
-                                   NULL, /* pMemoryBarriers */
-                                   0, /* bufferMemoryBarrierCount */
-                                   NULL, /* pBufferMemoryBarriers */
-                                   1, /* imageMemoryBarrierCount */
-                                   &image_memory_barrier);
-
-        vr_vk.vkEndCommandBuffer(window->command_buffer);
-
-        VkSubmitInfo submitInfo = {
-                .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                .commandBufferCount = 1,
-                .pCommandBuffers = &window->command_buffer
-        };
-        vr_vk.vkQueueSubmit(window->queue,
-                            1,
-                            &submitInfo,
-                            VK_NULL_HANDLE);
-
-        vr_vk.vkQueueWaitIdle(window->queue);
 
         return true;
 }
@@ -534,14 +479,6 @@ init_vk(struct vr_window *window,
              VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
                 vr_error_message("Format %s is not supported as a color "
                                  "attachment and blit source",
-                                 window->framebuffer_format->name);
-                vres = VR_RESULT_FAIL;
-                goto error;
-        }
-        if ((format_properties.linearTilingFeatures &
-             VK_FORMAT_FEATURE_BLIT_DST_BIT) == 0) {
-                vr_error_message("Format %s is not supported as a linear "
-                                 "blit destination",
                                  window->framebuffer_format->name);
                 vres = VR_RESULT_FAIL;
                 goto error;

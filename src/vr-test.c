@@ -190,30 +190,25 @@ end_paint(struct test_data *data)
 
         vr_vk.vkCmdEndRenderPass(window->command_buffer);
 
-        VkImageCopy copy_region = {
-                .srcSubresource = {
+        VkBufferImageCopy copy_region = {
+                .bufferOffset = 0,
+                .bufferRowLength = VR_WINDOW_WIDTH,
+                .bufferImageHeight = VR_WINDOW_HEIGHT,
+                .imageSubresource = {
                         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                         .mipLevel = 0,
                         .baseArrayLayer = 0,
                         .layerCount = 1
                 },
-                .srcOffset = { 0, 0, 0 },
-                .dstSubresource = {
-                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                        .mipLevel = 0,
-                        .baseArrayLayer = 0,
-                        .layerCount = 1
-                },
-                .dstOffset = { 0, 0, 0 },
-                .extent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT, 1 }
+                .imageOffset = { 0, 0, 0 },
+                .imageExtent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT, 1 }
         };
-        vr_vk.vkCmdCopyImage(window->command_buffer,
-                             window->color_image,
-                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                             window->linear_image,
-                             VK_IMAGE_LAYOUT_GENERAL,
-                             1, /* regionCount */
-                             &copy_region);
+        vr_vk.vkCmdCopyImageToBuffer(window->command_buffer,
+                                     window->color_image,
+                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                     window->linear_buffer,
+                                     1, /* regionCount */
+                                     &copy_region);
 
         res = vr_vk.vkEndCommandBuffer(window->command_buffer);
         if (res != VK_SUCCESS) {

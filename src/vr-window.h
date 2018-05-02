@@ -50,7 +50,7 @@ struct vr_window {
         VkFence vk_fence;
 
         VkImage color_image;
-        VkImage linear_image;
+        VkBuffer linear_buffer;
         VkDeviceMemory memory;
         VkDeviceMemory linear_memory;
         bool need_linear_memory_invalidate;
