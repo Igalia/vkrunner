@@ -30,6 +30,7 @@
 #include "vr-vk.h"
 #include "vr-vbo.h"
 #include "vr-format.h"
+#include "vr-pipeline-key.h"
 
 enum vr_script_shader_stage {
         VR_SCRIPT_SHADER_STAGE_VERTEX,
@@ -136,7 +137,7 @@ struct vr_script_command {
         union {
                 struct {
                         float x, y, w, h;
-                        bool use_patches;
+                        struct vr_pipeline_key key;
                 } draw_rect;
 
                 struct {
@@ -167,7 +168,7 @@ struct vr_script_command {
                         uint32_t instance_count;
                         uint32_t first_vertex;
                         uint32_t first_instance;
-                        unsigned patch_size;
+                        struct vr_pipeline_key key;
                 } draw_arrays;
         };
 };

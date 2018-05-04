@@ -97,7 +97,21 @@ Clears the entire framebuffer to the previously set clear color.
 Sets the number of control points for tessellation patches in
 subsequent draw calls. Defaults to 3.
 
-Take a look in the examples directory for examples.
+> topology, primitiveRestartEnable, patchControlPoints,
+> depthClampEnable, rasterizerDiscardEnable, polygonMode, cullMode,
+> frontFace, depthBiasEnable, depthBiasConstantFactor, depthBiasClamp,
+> depthBiasSlopeFactor, lineWidth, logicOpEnable, logicOp,
+> blendEnable, srcColorBlendFactor, dstColorBlendFactor, colorBlendOp,
+> srcAlphaBlendFactor, dstAlphaBlendFactor, alphaBlendOp,
+> colorWriteMask
+
+These properties can be set on a pipeline by specifying their name
+followed by a value in the test section. This will affect subsequent
+draw calls. If multiple draw calls are issued with different values
+for these properties then a separate pipeline will be created for each
+set of state. See the `properties.shader_test` example for details.
+
+Take a look in the examples directory for more examples.
 
 ## [require] section
 

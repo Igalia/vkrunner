@@ -27,6 +27,8 @@ vkrunner_SOURCES = \
 	vr-hex.h \
 	vr-list.c \
 	vr-list.h \
+	vr-pipeline-key.c \
+	vr-pipeline-key.h \
 	vr-result.c \
 	vr-result.h \
 	vr-script.c \
@@ -57,4 +59,5 @@ vkrunner_LDADD = \
 
 EXTRA_DIST = \
 	make-formats.py \
+	make-enums.py \
 	$(NULL)

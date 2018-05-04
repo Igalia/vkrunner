@@ -62,7 +62,7 @@ struct load_state {
         enum section current_section;
         struct vr_buffer commands;
         struct vr_buffer extensions;
-        unsigned patch_size;
+        struct vr_pipeline_key current_key;
         struct vr_buffer indices;
 };
 
@@ -741,7 +741,8 @@ process_require_line(struct load_state *data)
 }
 
 static bool
-process_draw_rect_command(const char *p,
+process_draw_rect_command(struct load_state *data,
+                          const char *p,
                           struct vr_script_command *command)
 {
         if (!looking_at(&p, "draw rect "))
@@ -752,7 +753,16 @@ process_draw_rect_command(const char *p,
         if (looking_at(&p, "ortho "))
                 ortho = true;
 
-        command->draw_rect.use_patches = looking_at(&p, "patch ");
+        struct vr_pipeline_key *key = &command->draw_rect.key;
+
+        *key = data->current_key;
+        key->source = VR_PIPELINE_KEY_SOURCE_RECTANGLE;
+
+        if (looking_at(&p, "patch "))
+                key->topology.i = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+        else
+                key->topology.i = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+        key->patchControlPoints.i = 4;
 
         if (!parse_floats(&p, &command->draw_rect.x, 4, NULL) ||
             !is_end(p))
@@ -888,6 +898,8 @@ process_draw_arrays_command(struct load_state *data,
         int n_args = 2;
 
         command->draw_arrays.indexed = false;
+        command->draw_arrays.key = data->current_key;
+        command->draw_arrays.key.source = VR_PIPELINE_KEY_SOURCE_VERTEX_DATA;
 
         while (true) {
                 if (looking_at(&p, "instanced ")) {
@@ -939,7 +951,8 @@ process_draw_arrays_command(struct load_state *data,
 
         for (int i = 0; i < VR_N_ELEMENTS(topologies); i++) {
                 if (looking_at(&p, topologies[i].name)) {
-                        command->draw_arrays.topology = topologies[i].topology;
+                        command->draw_arrays.key.topology.i =
+                                topologies[i].topology;
                         goto found_topology;
                 }
         }
@@ -963,7 +976,6 @@ found_topology:
         command->draw_arrays.vertex_count = args[1];
         command->draw_arrays.first_instance = 0;
         command->draw_arrays.instance_count = args[2];
-        command->draw_arrays.patch_size = data->patch_size;
 
         return true;
 }
@@ -1003,6 +1015,122 @@ process_indices_line(struct load_state *data)
 }
 
 static bool
+process_bool_property(struct load_state *data,
+                      union vr_pipeline_key_value *value,
+                      const char *p)
+{
+        if (looking_at(&p, "true"))
+                value->i = true;
+        else if (looking_at(&p, "false"))
+                value->i = false;
+        else if (!parse_ints(&p, &value->i, 1, NULL))
+                goto error;
+
+        if (!is_end(p))
+                goto error;
+
+        return true;
+
+error:
+        vr_error_message("%s:%i: Invalid boolean value",
+                         data->filename,
+                         data->line_num);
+        return false;
+}
+
+static bool
+process_int_property(struct load_state *data,
+                     union vr_pipeline_key_value *value,
+                     const char *p)
+{
+        value->i = 0;
+
+        while (true) {
+                int this_int;
+
+                while (isspace(*p))
+                        p++;
+
+                if (parse_ints(&p, &this_int, 1, NULL)) {
+                        value->i |= this_int;
+                } else if (isalnum(*p)) {
+                        const char *end = p + 1;
+                        while (isalnum(*end) || *end == '_')
+                                end++;
+                        char *enum_name = vr_strndup(p, end - p);
+                        bool is_enum = vr_pipeline_key_lookup_enum(enum_name,
+                                                                   &this_int);
+                        free(enum_name);
+
+                        if (!is_enum)
+                                goto error;
+
+                        value->i |= this_int;
+                        p = end;
+                } else {
+                        goto error;
+                }
+
+                if (is_end(p))
+                        break;
+
+                while (isspace(*p))
+                        p++;
+
+                if (*p != '|')
+                        goto error;
+                p++;
+        }
+
+        return true;
+
+error:
+        vr_error_message("%s:%i: Invalid int value",
+                         data->filename,
+                         data->line_num);
+        return false;
+}
+
+static bool
+process_float_property(struct load_state *data,
+                       union vr_pipeline_key_value *value,
+                       const char *p)
+{
+        while (isspace(*p))
+                p++;
+
+        if (!parse_floats(&p, &value->f, 1, NULL) || !is_end(p)) {
+                vr_error_message("%s:%i: Invalid float value",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        return true;
+}
+
+static bool
+process_pipeline_property(struct load_state *data,
+                          union vr_pipeline_key_value *value,
+                          enum vr_pipeline_key_value_type type,
+                          const char *p)
+{
+        while (*p && isspace(*p))
+                p++;
+
+        switch (type) {
+        case VR_PIPELINE_KEY_VALUE_TYPE_BOOL:
+                return process_bool_property(data, value, p);
+        case VR_PIPELINE_KEY_VALUE_TYPE_INT:
+                return process_int_property(data, value, p);
+        case VR_PIPELINE_KEY_VALUE_TYPE_FLOAT:
+                return process_float_property(data, value, p);
+        }
+
+        vr_fatal("Unknown pipeline property type");
+}
+
+static bool
 process_test_line(struct load_state *data)
 {
         const char *p = (char *) data->line.data;
@@ -1014,11 +1142,34 @@ process_test_line(struct load_state *data)
                 return true;
 
         if (looking_at(&p, "patch parameter vertices ")) {
-                if (!parse_uints(&p, &data->patch_size, 1, NULL))
+                struct vr_pipeline_key *key = &data->current_key;
+                if (!parse_ints(&p, &key->patchControlPoints.i, 1, NULL))
                         goto error;
                 if (!is_end(p))
                         goto error;
                 return true;
+        }
+
+        if (isalnum(*p)) {
+                const char *end = p + 1;
+                while (isalnum(*end))
+                        end++;
+                char *prop_name = vr_strndup(p, end - p);
+
+                enum vr_pipeline_key_value_type key_value_type;
+                union vr_pipeline_key_value *key_value =
+                        vr_pipeline_key_lookup(&data->current_key,
+                                               prop_name,
+                                               &key_value_type);
+
+                vr_free(prop_name);
+
+                if (key_value) {
+                        return process_pipeline_property(data,
+                                                         key_value,
+                                                         key_value_type,
+                                                         end);
+                }
         }
 
         vr_buffer_set_length(&data->commands,
@@ -1032,7 +1183,7 @@ process_test_line(struct load_state *data)
 
         command->line_num = data->line_num;
 
-        if (process_draw_rect_command(p, command))
+        if (process_draw_rect_command(data, p, command))
                 return true;
 
         if (process_probe_command(p, command))
@@ -1300,10 +1451,11 @@ load_script_from_stream(const char *filename,
                 .extensions = VR_BUFFER_STATIC_INIT,
                 .current_stage = -1,
                 .current_section = SECTION_NONE,
-                .patch_size = 3
         };
         bool res = true;
         int stage;
+
+        vr_pipeline_key_init(&data.current_key);
 
         data.script->filename = vr_strdup(filename);
         data.script->framebuffer_format =
