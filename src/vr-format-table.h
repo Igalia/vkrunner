@@ -1021,6 +1021,86 @@ formats[] = {
                 }
         },
         {
+                .vk_format = VK_FORMAT_D16_UNORM,
+                .name = "D16_UNORM",
+                .packed_size = 0,
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_D16_UNORM_S8_UINT,
+                .name = "D16_UNORM_S8_UINT",
+                .packed_size = 0,
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_S,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_D24_UNORM_S8_UINT,
+                .name = "D24_UNORM_S8_UINT",
+                .packed_size = 0,
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 24,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_S,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_D32_SFLOAT,
+                .name = "D32_SFLOAT",
+                .packed_size = 0,
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_D32_SFLOAT_S8_UINT,
+                .name = "D32_SFLOAT_S8_UINT",
+                .packed_size = 0,
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_S,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                }
+        },
+        {
                 .vk_format = VK_FORMAT_R16G16B16A16_SFLOAT,
                 .name = "R16G16B16A16_SFLOAT",
                 .packed_size = 0,
@@ -2754,6 +2834,37 @@ formats[] = {
                                 .bits = 8,
                                 .component = VR_FORMAT_COMPONENT_R,
                                 .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_S8_UINT,
+                .name = "S8_UINT",
+                .packed_size = 0,
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_S,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_X8_D24_UNORM_PACK32,
+                .name = "X8_D24_UNORM_PACK32",
+                .packed_size = 32,
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_X,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 24,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_UNORM,
                         },
                 }
         },

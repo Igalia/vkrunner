@@ -276,6 +276,10 @@ vr_format_load_pixel(const struct vr_format *format,
                 case VR_FORMAT_COMPONENT_A:
                         pixel[3] = parts[i];
                         break;
+                case VR_FORMAT_COMPONENT_D:
+                case VR_FORMAT_COMPONENT_S:
+                case VR_FORMAT_COMPONENT_X:
+                        break;
                 }
         }
 }

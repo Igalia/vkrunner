@@ -39,6 +39,8 @@ FORMAT_RE = re.compile(r'\bVK_FORMAT_([A-Z0-9_]+)\b')
 SKIP_RE = re.compile(r'(?:_BLOCK(?:_IMG)?|_KHR|^UNDEFINED|'
                      r'^RANGE_SIZE|^MAX_ENUM|_RANGE)$')
 COMPONENT_RE = re.compile('([A-Z]+)([0-9]+)')
+COMPONENTS_RE = re.compile('(?:[A-Z][0-9]+)+$')
+STUB_RE = re.compile('X([0-9]+)$')
 PACK_RE = re.compile('PACK([0-9]+)$')
 MODE_RE = re.compile('(?:[US](?:NORM|SCALED|INT|FLOAT)|SRGB)$')
 
@@ -90,16 +92,10 @@ def get_formats(data):
     for name in sorted(set(get_format_names(data))):
         parts = name.split('_')
 
-        components = get_components(parts)
+        components, packed_size = get_components(parts)
 
         if components is None:
             continue
-
-        if len(parts) & 1 != 0:
-            md = PACK_RE.match(parts[-1])
-            packed_size = int(md.group(1))
-        else:
-            packed_size = 0
 
         yield {'name': name,
                'packed_size': packed_size,
@@ -107,19 +103,45 @@ def get_formats(data):
 
 
 def get_components(parts):
-    for i in range(0, len(parts) & ~1, 2):
-        mode = parts[i + 1]
-        if not MODE_RE.match(mode):
-            return None
+    packed_size = 0
+    components = []
 
-        components = [(md.group(1), int(md.group(2)), mode)
-                      for md in COMPONENT_RE.finditer(parts[i])]
+    i = 0
+    while i < len(parts):
+        md = STUB_RE.match(parts[i])
+        if md:
+            components.append(('X', int(md.group(1)), 'UNORM'))
+            i += 1
+            continue
 
-        for letter, size, mode in components:
-            if letter not in "RGBA":
-                return None
+        md = COMPONENTS_RE.match(parts[i])
+        if md:
+            if i + 2 > len(parts):
+                return None, None
+            mode_md = MODE_RE.match(parts[i + 1])
+            if mode_md is None:
+                return None, None
 
-    return components
+            comps = [(md.group(1), int(md.group(2)), parts[i + 1])
+                     for md in COMPONENT_RE.finditer(parts[i])]
+
+            for letter, size, mode in comps:
+                if letter not in "RGBADSX":
+                    return None, None
+
+            components.extend(comps)
+            i += 2
+            continue
+
+        md = PACK_RE.match(parts[i])
+        if md:
+            packed_size = int(md.group(1))
+            i += 1
+            continue
+
+        return None, None
+
+    return components, packed_size
 
 
 def main():

@@ -45,6 +45,9 @@ enum vr_format_component {
         VR_FORMAT_COMPONENT_G,
         VR_FORMAT_COMPONENT_B,
         VR_FORMAT_COMPONENT_A,
+        VR_FORMAT_COMPONENT_D,
+        VR_FORMAT_COMPONENT_S,
+        VR_FORMAT_COMPONENT_X,
 };
 
 struct vr_format_part {
