@@ -51,13 +51,13 @@ formats[] = {
                 .vk_format = VK_FORMAT_${format['name']},
                 .name = "${format['name']}",
                 .packed_size = ${format['packed_size']},
-                .mode = VR_FORMAT_MODE_${format['mode']},
                 .n_parts = ${len(format['components'])},
                 .parts = {
-                        % for letter, size in format['components']:
+                        % for letter, size, mode in format['components']:
                         {
                                 .bits = ${size},
                                 .component = VR_FORMAT_COMPONENT_${letter},
+                                .mode = VR_FORMAT_MODE_${mode},
                         },
                         % endfor
                 }
@@ -90,33 +90,35 @@ def get_formats(data):
     for name in sorted(set(get_format_names(data))):
         parts = name.split('_')
 
-        components = get_components(parts[0])
+        components = get_components(parts)
 
         if components is None:
             continue
 
-        mode = parts[1]
-        if not MODE_RE.match(mode):
-            continue
-
-        if len(parts) >= 3:
-            md = PACK_RE.match(parts[2])
+        if len(parts) & 1 != 0:
+            md = PACK_RE.match(parts[-1])
             packed_size = int(md.group(1))
         else:
             packed_size = 0
 
         yield {'name': name,
                'packed_size': packed_size,
-               'mode': parts[1],
                'components': components}
 
 
-def get_components(name):
-    components = [(md.group(1), int(md.group(2)))
-                  for md in COMPONENT_RE.finditer(name)]
-    for letter, size in components:
-        if letter not in "RGBA":
+def get_components(parts):
+    for i in range(0, len(parts) & ~1, 2):
+        mode = parts[i + 1]
+        if not MODE_RE.match(mode):
             return None
+
+        components = [(md.group(1), int(md.group(2)), mode)
+                      for md in COMPONENT_RE.finditer(parts[i])]
+
+        for letter, size, mode in components:
+            if letter not in "RGBA":
+                return None
+
     return components
 
 

@@ -50,6 +50,7 @@ enum vr_format_component {
 struct vr_format_part {
         int bits;
         enum vr_format_component component;
+        enum vr_format_mode mode;
 };
 
 struct vr_format {
@@ -59,7 +60,6 @@ struct vr_format {
          * Otherwise it is zero.
          */
         int packed_size;
-        enum vr_format_mode mode;
         int n_parts;
         struct vr_format_part parts[4];
 };

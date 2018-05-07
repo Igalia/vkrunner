@@ -69,13 +69,13 @@ vr_format_lookup_by_details(int bit_size,
 
         for (int i = 0; i < VR_N_ELEMENTS(formats); i++) {
                 if (formats[i].n_parts != n_components ||
-                    formats[i].mode != mode ||
                     formats[i].packed_size != 0)
                         continue;
 
                 for (int j = 0; j < n_components; j++) {
                         if (formats[i].parts[j].bits != bit_size ||
-                            formats[i].parts[j].component != comp_order[j])
+                            formats[i].parts[j].component != comp_order[j] ||
+                            formats[i].parts[j].mode != mode)
                                 goto bad_format;
                 }
 
@@ -165,17 +165,17 @@ load_packed_parts(const struct vr_format *format,
                 int bits = format->parts[i].bits;
                 uint32_t part = packed_parts & ((1 << bits) - 1);
 
-                parts[i] = load_packed_part(part, bits, format->mode);
+                parts[i] = load_packed_part(part, bits, format->parts[i].mode);
                 packed_parts >>= bits;
         }
 }
 
 static double
-load_part(const struct vr_format *format,
-          int bits,
-          const uint8_t *fb)
+load_part(int bits,
+          const uint8_t *fb,
+          enum vr_format_mode mode)
 {
-        switch (format->mode) {
+        switch (mode) {
         case VR_FORMAT_MODE_SRGB:
         case VR_FORMAT_MODE_UNORM:
                 switch (bits) {
@@ -257,7 +257,7 @@ vr_format_load_pixel(const struct vr_format *format,
         } else {
                 for (int i = 0; i < format->n_parts; i++) {
                         int bits = format->parts[i].bits;
-                        parts[i] = load_part(format, bits, p);
+                        parts[i] = load_part(bits, p, format->parts[i].mode);
                         p += bits / 8;
                 }
         }

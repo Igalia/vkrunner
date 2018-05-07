@@ -516,7 +516,7 @@ parse_data_line(struct vbo_data *data,
                 }
 
                 for (size_t j = 0; j < attrib->format->n_parts; ++j) {
-                        if (!parse_datum(attrib->format->mode,
+                        if (!parse_datum(attrib->format->parts[j].mode,
                                          attrib->format->parts[j].bits,
                                          &line_ptr,
                                          data_ptr))
