@@ -40,15 +40,16 @@ enum vr_format_mode {
         VR_FORMAT_MODE_SRGB,
 };
 
-enum vr_format_swizzle {
-        VR_FORMAT_SWIZZLE_RGBA,
-        VR_FORMAT_SWIZZLE_BGRA,
-        VR_FORMAT_SWIZZLE_ARGB,
-        VR_FORMAT_SWIZZLE_ABGR,
+enum vr_format_component {
+        VR_FORMAT_COMPONENT_R,
+        VR_FORMAT_COMPONENT_G,
+        VR_FORMAT_COMPONENT_B,
+        VR_FORMAT_COMPONENT_A,
 };
 
-struct vr_format_component {
+struct vr_format_part {
         int bits;
+        enum vr_format_component component;
 };
 
 struct vr_format {
@@ -58,10 +59,9 @@ struct vr_format {
          * Otherwise it is zero.
          */
         int packed_size;
-        enum vr_format_swizzle swizzle;
         enum vr_format_mode mode;
-        int n_components;
-        struct vr_format_component components[4];
+        int n_parts;
+        struct vr_format_part parts[4];
 };
 
 const struct vr_format *

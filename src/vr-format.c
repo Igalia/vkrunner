@@ -60,15 +60,22 @@ vr_format_lookup_by_details(int bit_size,
                             enum vr_format_mode mode,
                             int n_components)
 {
+        static const enum vr_format_component comp_order[] = {
+                VR_FORMAT_COMPONENT_R,
+                VR_FORMAT_COMPONENT_G,
+                VR_FORMAT_COMPONENT_B,
+                VR_FORMAT_COMPONENT_A,
+        };
+
         for (int i = 0; i < VR_N_ELEMENTS(formats); i++) {
-                if (formats[i].n_components != n_components ||
+                if (formats[i].n_parts != n_components ||
                     formats[i].mode != mode ||
-                    formats[i].packed_size != 0 ||
-                    formats[i].swizzle != VR_FORMAT_SWIZZLE_RGBA)
+                    formats[i].packed_size != 0)
                         continue;
 
                 for (int j = 0; j < n_components; j++) {
-                        if (formats[i].components[j].bits != bit_size)
+                        if (formats[i].parts[j].bits != bit_size ||
+                            formats[i].parts[j].component != comp_order[j])
                                 goto bad_format;
                 }
 
@@ -89,8 +96,8 @@ vr_format_get_size(const struct vr_format *format)
 
         int total_size = 0;
 
-        for (int i = 0; i < format->n_components; i++)
-                total_size += format->components[i].bits;
+        for (int i = 0; i < format->n_parts; i++)
+                total_size += format->parts[i].bits;
 
         return total_size / 8;
 }
@@ -154,8 +161,8 @@ load_packed_parts(const struct vr_format *format,
                 vr_fatal("Unknown packed bit size: %i", format->packed_size);
         }
 
-        for (int i = format->n_components - 1; i >= 0; i--) {
-                int bits = format->components[i].bits;
+        for (int i = format->n_parts - 1; i >= 0; i--) {
+                int bits = format->parts[i].bits;
                 uint32_t part = packed_parts & ((1 << bits) - 1);
 
                 parts[i] = load_packed_part(part, bits, format->mode);
@@ -242,49 +249,33 @@ vr_format_load_pixel(const struct vr_format *format,
                      const uint8_t *p,
                      double *pixel)
 {
-        double parts[4] = { 0.0f };
-
         /* Alpha component defaults to 1.0 if not contained in the format */
-        switch (format->swizzle) {
-        case VR_FORMAT_SWIZZLE_BGRA:
-        case VR_FORMAT_SWIZZLE_RGBA:
-                parts[3] = 1.0f;
-                break;
-        case VR_FORMAT_SWIZZLE_ARGB:
-        case VR_FORMAT_SWIZZLE_ABGR:
-                parts[0] = 1.0f;
-                break;
-        }
+        double parts[4] = { 0.0, 0.0, 0.0, 1.0 };
 
         if (format->packed_size) {
                 load_packed_parts(format, p, parts);
         } else {
-                for (int i = 0; i < format->n_components; i++) {
-                        int bits = format->components[i].bits;
+                for (int i = 0; i < format->n_parts; i++) {
+                        int bits = format->parts[i].bits;
                         parts[i] = load_part(format, bits, p);
                         p += bits / 8;
                 }
         }
 
-        switch (format->swizzle) {
-        case VR_FORMAT_SWIZZLE_RGBA:
-                memcpy(pixel, parts, sizeof parts);
-                break;
-        case VR_FORMAT_SWIZZLE_ARGB:
-                memcpy(pixel, parts + 1, sizeof (double) * 3);
-                pixel[2] = parts[0];
-                break;
-        case VR_FORMAT_SWIZZLE_BGRA:
-                pixel[0] = parts[2];
-                pixel[1] = parts[1];
-                pixel[2] = parts[0];
-                pixel[3] = parts[3];
-                break;
-        case VR_FORMAT_SWIZZLE_ABGR:
-                pixel[0] = parts[3];
-                pixel[1] = parts[2];
-                pixel[2] = parts[1];
-                pixel[3] = parts[0];
-                break;
+        for (int i = 0; i < format->n_parts; i++) {
+                switch (format->parts[i].component) {
+                case VR_FORMAT_COMPONENT_R:
+                        pixel[0] = parts[i];
+                        break;
+                case VR_FORMAT_COMPONENT_G:
+                        pixel[1] = parts[i];
+                        break;
+                case VR_FORMAT_COMPONENT_B:
+                        pixel[2] = parts[i];
+                        break;
+                case VR_FORMAT_COMPONENT_A:
+                        pixel[3] = parts[i];
+                        break;
+                }
         }
 }
