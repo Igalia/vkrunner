@@ -40,6 +40,7 @@ SKIP_RE = re.compile(r'(?:_BLOCK(?:_IMG)?|_KHR|^UNDEFINED|'
                      r'^RANGE_SIZE|^MAX_ENUM|_RANGE)$')
 COMPONENT_RE = re.compile('([A-Z]+)([0-9]+)')
 PACK_RE = re.compile('PACK([0-9]+)$')
+MODE_RE = re.compile('(?:[US](?:NORM|SCALED|INT|FLOAT)|SRGB)$')
 
 SWIZZLES = ['RGBA', 'BGRA', 'ARGB', 'ABGR']
 
@@ -92,6 +93,10 @@ def get_formats(data):
         components = get_components(parts[0])
 
         if components is None:
+            continue
+
+        mode = parts[1]
+        if not MODE_RE.match(mode):
             continue
 
         swizzle = get_swizzle(components)
