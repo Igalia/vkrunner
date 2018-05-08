@@ -88,9 +88,20 @@ command or the test completes.
 Sets the color to use for subsequent clear commands. Defaults to all
 zeros.
 
+> clear depth _value_
+
+Sets the value to clear the depth buffer to in subsequent clear
+commands. Defaults to 1.0.
+
+> clear stencil _value_
+
+Sets the value to clear the stencil buffer to in subsequent clear
+commands. Defaults to 0.
+
 > clear
 
-Clears the entire framebuffer to the previously set clear color.
+Clears the entire framebuffer to the previously set clear color, depth
+and stencil values.
 
 > patch parameter vertices _vertices_
 

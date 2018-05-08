@@ -65,6 +65,8 @@ struct load_state {
         struct vr_pipeline_key current_key;
         struct vr_buffer indices;
         float clear_color[4];
+        float clear_depth;
+        unsigned clear_stencil;
 };
 
 static const char *
@@ -1270,6 +1272,22 @@ process_test_line(struct load_state *data)
                 return true;
         }
 
+        if (looking_at(&p, "clear depth ")) {
+                if (!parse_floats(&p, &data->clear_depth, 1, NULL))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                return true;
+        }
+
+        if (looking_at(&p, "clear stencil ")) {
+                if (!parse_uints(&p, &data->clear_stencil, 1, NULL))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                return true;
+        }
+
         if (isalnum(*p)) {
                 const char *end = p + 1;
                 while (isalnum(*end) || *end == '.')
@@ -1359,6 +1377,8 @@ process_test_line(struct load_state *data)
                 memcpy(command->clear.color,
                        data->clear_color,
                        sizeof data->clear_color);
+                command->clear.depth = data->clear_depth;
+                command->clear.stencil = data->clear_stencil;
                 return true;
         }
 
@@ -1565,6 +1585,7 @@ load_script_from_stream(const char *filename,
                 .extensions = VR_BUFFER_STATIC_INIT,
                 .current_stage = -1,
                 .current_section = SECTION_NONE,
+                .clear_depth = 1.0f
         };
         bool res = true;
         int stage;

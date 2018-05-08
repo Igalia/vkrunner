@@ -715,8 +715,8 @@ clear(struct test_data *data,
                 {
                         .aspectMask = depth_stencil_flags,
                         .clearValue = { .depthStencil =
-                                        { .depth = 1.0f,
-                                          .stencil = 0 } }
+                                        { .depth = command->clear.depth,
+                                          .stencil = command->clear.stencil } }
                 },
         };
         VkClearRect clear_rect = {

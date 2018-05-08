@@ -170,6 +170,8 @@ struct vr_script_command {
 
                 struct {
                         float color[4];
+                        float depth;
+                        uint32_t stencil;
                 } clear;
 
                 struct {
