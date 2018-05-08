@@ -27,6 +27,7 @@
 
 #include <stdbool.h>
 #include <assert.h>
+#include <string.h>
 
 #include "vr-window.h"
 #include "vr-util.h"
