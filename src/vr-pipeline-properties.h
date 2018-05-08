@@ -66,3 +66,71 @@ VR_PIPELINE_PROP(INT, VkPipelineColorBlendAttachmentState, dstAlphaBlendFactor)
 VR_PIPELINE_PROP(INT, VkPipelineColorBlendAttachmentState, alphaBlendOp)
 VR_PIPELINE_PROP(INT, VkPipelineColorBlendAttachmentState, colorWriteMask)
 VR_PIPELINE_STRUCT_END()
+
+VR_PIPELINE_STRUCT_BEGIN(pDepthStencilState)
+VR_PIPELINE_PROP(BOOL, VkPipelineDepthStencilStateCreateInfo, depthTestEnable)
+VR_PIPELINE_PROP(BOOL, VkPipelineDepthStencilStateCreateInfo, depthWriteEnable)
+VR_PIPELINE_PROP(INT, VkPipelineDepthStencilStateCreateInfo, depthCompareOp)
+VR_PIPELINE_PROP(BOOL,
+                 VkPipelineDepthStencilStateCreateInfo,
+                 depthBoundsTestEnable)
+VR_PIPELINE_PROP(BOOL, VkPipelineDepthStencilStateCreateInfo, stencilTestEnable)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      front.failOp,
+                      front_failOp)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      front.passOp,
+                      front_passOp)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      front.depthFailOp,
+                      front_depthFailOp)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      front.compareOp,
+                      front_compareOp)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      front.compareMask,
+                      front_compareMask)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      front.writeMask,
+                      front_writeMask)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      front.reference,
+                      front_reference)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      back.failOp,
+                      back_failOp)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      back.passOp,
+                      back_passOp)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      back.depthFailOp,
+                      back_depthFailOp)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      back.compareOp,
+                      back_compareOp)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      back.compareMask,
+                      back_compareMask)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      back.writeMask,
+                      back_writeMask)
+VR_PIPELINE_PROP_NAME(INT,
+                      VkPipelineDepthStencilStateCreateInfo,
+                      back.reference,
+                      back_reference)
+VR_PIPELINE_PROP(FLOAT, VkPipelineDepthStencilStateCreateInfo, minDepthBounds)
+VR_PIPELINE_PROP(FLOAT, VkPipelineDepthStencilStateCreateInfo, maxDepthBounds)
+VR_PIPELINE_STRUCT_END()

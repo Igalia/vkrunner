@@ -79,14 +79,6 @@ base_multisample_state = {
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
 };
 
-static const VkPipelineDepthStencilStateCreateInfo
-base_depth_stencil_state = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .depthTestEnable = false,
-        .depthWriteEnable = false,
-        .depthCompareOp = VK_COMPARE_OP_LESS
-};
-
 static bool
 create_named_temp_file(FILE **stream_out,
                        char **filename_out)
@@ -460,6 +452,11 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                 }
         };
 
+        VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {
+                .sType =
+                VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        };
+
         VkPipelineColorBlendStateCreateInfo color_blend_state = {
                 .sType =
                 VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -472,7 +469,7 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                 .pViewportState = &base_viewport_state,
                 .pRasterizationState = &rasterization_state,
                 .pMultisampleState = &base_multisample_state,
-                .pDepthStencilState = &base_depth_stencil_state,
+                .pDepthStencilState = &depth_stencil_state,
                 .pColorBlendState = &color_blend_state,
                 .pTessellationState = &tessellation_state,
                 .subpass = 0,

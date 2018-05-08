@@ -51,11 +51,13 @@ struct vr_pipeline_key {
 #define VR_PIPELINE_STRUCT_BEGIN(m)
 #define VR_PIPELINE_STRUCT_BEGIN2(m1, s2, m2)
 #define VR_PIPELINE_PROP(t, s, n) union vr_pipeline_key_value n;
+#define VR_PIPELINE_PROP_NAME(t, s, m, n) VR_PIPELINE_PROP(t, s, n)
 #define VR_PIPELINE_STRUCT_END()
 #include "vr-pipeline-properties.h"
 #undef VR_PIPELINE_STRUCT_BEGIN
 #undef VR_PIPELINE_STRUCT_BEGIN2
 #undef VR_PIPELINE_PROP
+#undef VR_PIPELINE_PROP_NAME
 #undef VR_PIPELINE_STRUCT_END
 };
 

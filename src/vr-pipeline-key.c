@@ -42,6 +42,24 @@ base_key = {
                                   VK_COLOR_COMPONENT_G_BIT |
                                   VK_COLOR_COMPONENT_B_BIT |
                                   VK_COLOR_COMPONENT_A_BIT) },
+        .depthTestEnable = { .i = false },
+        .depthWriteEnable = { .i = false },
+        .depthCompareOp = { .i = VK_COMPARE_OP_LESS },
+        .stencilTestEnable = { .i = false },
+        .front_failOp = { .i = VK_STENCIL_OP_KEEP },
+        .front_passOp = { .i = VK_STENCIL_OP_KEEP },
+        .front_depthFailOp = { .i = VK_STENCIL_OP_KEEP },
+        .front_compareOp = { .i = VK_COMPARE_OP_ALWAYS },
+        .front_compareMask = { .i = UINT32_MAX },
+        .front_writeMask = { .i = UINT32_MAX },
+        .front_reference = { .i = 0 },
+        .back_failOp = { .i = VK_STENCIL_OP_KEEP },
+        .back_passOp = { .i = VK_STENCIL_OP_KEEP },
+        .back_depthFailOp = { .i = VK_STENCIL_OP_KEEP },
+        .back_compareOp = { .i = VK_COMPARE_OP_ALWAYS },
+        .back_compareMask = { .i = UINT32_MAX },
+        .back_writeMask = { .i = UINT32_MAX },
+        .back_reference = { .i = 0 },
 };
 
 struct vr_enum {
@@ -84,6 +102,12 @@ structs[] = {
           .key_offset = offsetof(struct vr_pipeline_key, n),    \
           .type = VR_PIPELINE_KEY_VALUE_TYPE_ ## t,             \
         },
+#define VR_PIPELINE_PROP_NAME(t, s, m, n)                       \
+        { .name = #m,                                           \
+          .member_offset = offsetof(s, m),                      \
+          .key_offset = offsetof(struct vr_pipeline_key, n),    \
+          .type = VR_PIPELINE_KEY_VALUE_TYPE_ ## t,             \
+        },
 #define VR_PIPELINE_STRUCT_END()                  \
         { .name = NULL }                          \
         } \
@@ -92,6 +116,7 @@ structs[] = {
 #undef VR_PIPELINE_STRUCT_BEGIN
 #undef VR_PIPELINE_STRUCT_BEGIN2
 #undef VR_PIPELINE_PROP
+#undef VR_PIPELINE_PROP_NAME
 #undef VR_PIPELINE_STRUCT_END
 };
 

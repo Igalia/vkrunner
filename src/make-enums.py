@@ -44,6 +44,8 @@ ENUMS = [
     'VkBlendFactor',
     'VkBlendOp',
     'VkColorComponentFlagBits',
+    'VkCompareOp',
+    'VkStencilOp'
 ]
 VALUE_RE = re.compile(r'\s*\b(VK_(?:[A-Z0-9_]+))\b')
 ENUM_START_RE = re.compile('\s*typedef\s+enum\s+(Vk[A-Za-z0-9]+)')

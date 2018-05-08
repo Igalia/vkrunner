@@ -103,7 +103,12 @@ subsequent draw calls. Defaults to 3.
 > depthBiasSlopeFactor, lineWidth, logicOpEnable, logicOp,
 > blendEnable, srcColorBlendFactor, dstColorBlendFactor, colorBlendOp,
 > srcAlphaBlendFactor, dstAlphaBlendFactor, alphaBlendOp,
-> colorWriteMask
+> colorWriteMask, depthTestEnable, depthWriteEnable, depthCompareOp,
+> depthBoundsTestEnable, stencilTestEnable, front.failOp,
+> front.passOp, front.depthFailOp, front.compareOp, front.compareMask,
+> front.writeMask, front.reference, back.failOp, back.passOp,
+> back.depthFailOp, back.compareOp, back.compareMask, back.writeMask,
+> back.reference
 
 These properties can be set on a pipeline by specifying their name
 followed by a value in the test section. This will affect subsequent
