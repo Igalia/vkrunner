@@ -56,7 +56,6 @@ struct test_data {
         struct vr_list buffers;
         struct vr_list ubo_buffers;
         const struct vr_script *script;
-        float clear_color[4];
         struct test_buffer *vbo_buffer;
         struct test_buffer *index_buffer;
         bool ubo_descriptor_set_bound;
@@ -681,16 +680,6 @@ set_ubo_uniform(struct test_data *data,
 }
 
 static bool
-clear_color(struct test_data *data,
-            const struct vr_script_command *command)
-{
-        memcpy(data->clear_color,
-               command->clear_color.color,
-               sizeof data->clear_color);
-        return true;
-}
-
-static bool
 clear(struct test_data *data,
       const struct vr_script_command *command)
 {
@@ -739,8 +728,8 @@ clear(struct test_data *data,
                 .layerCount = 1
         };
         memcpy(clear_attachments[0].clearValue.color.float32,
-               data->clear_color,
-               sizeof data->clear_color);
+               command->clear.color,
+               sizeof command->clear.color);
 
         int n_attachments;
 
@@ -796,10 +785,6 @@ vr_test_run(struct vr_window *window,
                         break;
                 case VR_SCRIPT_OP_SET_UBO_UNIFORM:
                         if (!set_ubo_uniform(&data, command))
-                                ret = false;
-                        break;
-                case VR_SCRIPT_OP_CLEAR_COLOR:
-                        if (!clear_color(&data, command))
                                 ret = false;
                         break;
                 case VR_SCRIPT_OP_CLEAR:

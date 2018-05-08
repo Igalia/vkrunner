@@ -64,6 +64,7 @@ struct load_state {
         struct vr_buffer extensions;
         struct vr_pipeline_key current_key;
         struct vr_buffer indices;
+        float clear_color[4];
 };
 
 static const char *
@@ -1261,6 +1262,14 @@ process_test_line(struct load_state *data)
                 return true;
         }
 
+        if (looking_at(&p, "clear color ")) {
+                if (!parse_floats(&p, data->clear_color, 4, NULL))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                return true;
+        }
+
         if (isalnum(*p)) {
                 const char *end = p + 1;
                 while (isalnum(*end) || *end == '.')
@@ -1343,19 +1352,13 @@ process_test_line(struct load_state *data)
                 return true;
         }
 
-        if (looking_at(&p, "clear color ")) {
-                if (!parse_floats(&p, command->clear_color.color, 4, NULL))
-                        goto error;
-                if (!is_end(p))
-                        goto error;
-                command->op = VR_SCRIPT_OP_CLEAR_COLOR;
-                return true;
-        }
-
         if (looking_at(&p, "clear")) {
                 if (!is_end(p))
                         goto error;
                 command->op = VR_SCRIPT_OP_CLEAR;
+                memcpy(command->clear.color,
+                       data->clear_color,
+                       sizeof data->clear_color);
                 return true;
         }
 

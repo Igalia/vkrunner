@@ -49,7 +49,6 @@ enum vr_script_op {
         VR_SCRIPT_OP_PROBE_RECT,
         VR_SCRIPT_OP_SET_PUSH_CONSTANT,
         VR_SCRIPT_OP_SET_UBO_UNIFORM,
-        VR_SCRIPT_OP_CLEAR_COLOR,
         VR_SCRIPT_OP_CLEAR
 };
 
@@ -171,7 +170,7 @@ struct vr_script_command {
 
                 struct {
                         float color[4];
-                } clear_color;
+                } clear;
 
                 struct {
                         VkPrimitiveTopology topology;
