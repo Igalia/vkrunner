@@ -219,6 +219,10 @@ type_rows(enum vr_script_type type)
                 return type - VR_SCRIPT_TYPE_IVEC2 + 2;
         if (type >= VR_SCRIPT_TYPE_UVEC2 && type <= VR_SCRIPT_TYPE_UVEC4)
                 return type - VR_SCRIPT_TYPE_UVEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_I16VEC2 && type <= VR_SCRIPT_TYPE_I16VEC4)
+                return type - VR_SCRIPT_TYPE_I16VEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_U16VEC2 && type <= VR_SCRIPT_TYPE_U16VEC4)
+                return type - VR_SCRIPT_TYPE_U16VEC2 + 2;
         if (type >= VR_SCRIPT_TYPE_I64VEC2 && type <= VR_SCRIPT_TYPE_I64VEC4)
                 return type - VR_SCRIPT_TYPE_I64VEC2 + 2;
         if (type >= VR_SCRIPT_TYPE_U64VEC2 && type <= VR_SCRIPT_TYPE_U64VEC4)
@@ -379,6 +383,69 @@ parse_uints(const char **p,
 }
 
 static bool
+parse_int16s(const char **p,
+             int16_t *out,
+             int n_ints,
+             const char *sep)
+{
+        long long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtoll(*p, &tail, 10);
+                if (errno != 0 || tail == *p ||
+                    v < INT16_MIN || v > INT16_MAX)
+                        return false;
+                *(out++) = (int16_t) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
+parse_uint16s(const char **p,
+              uint16_t *out,
+              int n_ints,
+              const char *sep)
+{
+        long long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtoll(*p, &tail, 10);
+                if (errno != 0 || tail == *p || v > UINT16_MAX)
+                        return false;
+                *(out++) = (uint16_t) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
 parse_int64s(const char **p,
              int64_t *out,
              int n_ints,
@@ -504,6 +571,8 @@ parse_value_type(const char **p,
         } types[] = {
                 { "int ", VR_SCRIPT_TYPE_INT },
                 { "uint ", VR_SCRIPT_TYPE_UINT },
+                { "int16_t ", VR_SCRIPT_TYPE_INT16 },
+                { "uint16_t ", VR_SCRIPT_TYPE_UINT16 },
                 { "int64_t ", VR_SCRIPT_TYPE_INT64 },
                 { "uint64_t ", VR_SCRIPT_TYPE_UINT64 },
                 { "float ", VR_SCRIPT_TYPE_FLOAT },
@@ -520,6 +589,12 @@ parse_value_type(const char **p,
                 { "uvec2 ", VR_SCRIPT_TYPE_UVEC2 },
                 { "uvec3 ", VR_SCRIPT_TYPE_UVEC3 },
                 { "uvec4 ", VR_SCRIPT_TYPE_UVEC4 },
+                { "i16vec2 ", VR_SCRIPT_TYPE_I16VEC2 },
+                { "i16vec3 ", VR_SCRIPT_TYPE_I16VEC3 },
+                { "i16vec4 ", VR_SCRIPT_TYPE_I16VEC4 },
+                { "u16vec2 ", VR_SCRIPT_TYPE_U16VEC2 },
+                { "u16vec3 ", VR_SCRIPT_TYPE_U16VEC3 },
+                { "u16vec4 ", VR_SCRIPT_TYPE_U16VEC4 },
                 { "i64vec2 ", VR_SCRIPT_TYPE_I64VEC2 },
                 { "i64vec3 ", VR_SCRIPT_TYPE_I64VEC3 },
                 { "i64vec4 ", VR_SCRIPT_TYPE_I64VEC4 },
@@ -571,6 +646,10 @@ parse_value(const char **p,
                 return parse_ints(p, &value->i, 1, NULL);
         case VR_SCRIPT_TYPE_UINT:
                 return parse_uints(p, &value->u, 1, NULL);
+        case VR_SCRIPT_TYPE_INT16:
+                return parse_int16s(p, &value->i16, 1, NULL);
+        case VR_SCRIPT_TYPE_UINT16:
+                return parse_uint16s(p, &value->u16, 1, NULL);
         case VR_SCRIPT_TYPE_INT64:
                 return parse_int64s(p, &value->i64, 1, NULL);
         case VR_SCRIPT_TYPE_UINT64:
@@ -603,6 +682,18 @@ parse_value(const char **p,
                 return parse_uints(p, value->uvec, 3, NULL);
         case VR_SCRIPT_TYPE_UVEC4:
                 return parse_uints(p, value->uvec, 4, NULL);
+        case VR_SCRIPT_TYPE_I16VEC2:
+                return parse_int16s(p, value->i16vec, 2, NULL);
+        case VR_SCRIPT_TYPE_I16VEC3:
+                return parse_int16s(p, value->i16vec, 3, NULL);
+        case VR_SCRIPT_TYPE_I16VEC4:
+                return parse_int16s(p, value->i16vec, 4, NULL);
+        case VR_SCRIPT_TYPE_U16VEC2:
+                return parse_uint16s(p, value->u16vec, 2, NULL);
+        case VR_SCRIPT_TYPE_U16VEC3:
+                return parse_uint16s(p, value->u16vec, 3, NULL);
+        case VR_SCRIPT_TYPE_U16VEC4:
+                return parse_uint16s(p, value->u16vec, 4, NULL);
         case VR_SCRIPT_TYPE_I64VEC2:
                 return parse_int64s(p, value->i64vec, 2, NULL);
         case VR_SCRIPT_TYPE_I64VEC3:
@@ -1556,6 +1647,9 @@ size_t
 vr_script_type_size(enum vr_script_type type)
 {
         switch (type) {
+        case VR_SCRIPT_TYPE_INT16:
+        case VR_SCRIPT_TYPE_UINT16:
+                return 2;
         case VR_SCRIPT_TYPE_INT:
         case VR_SCRIPT_TYPE_UINT:
         case VR_SCRIPT_TYPE_FLOAT:
@@ -1564,6 +1658,15 @@ vr_script_type_size(enum vr_script_type type)
         case VR_SCRIPT_TYPE_UINT64:
         case VR_SCRIPT_TYPE_DOUBLE:
                 return 8;
+        case VR_SCRIPT_TYPE_I16VEC2:
+        case VR_SCRIPT_TYPE_U16VEC2:
+                return 2 * 2;
+        case VR_SCRIPT_TYPE_I16VEC3:
+        case VR_SCRIPT_TYPE_U16VEC3:
+                return 2 * 3;
+        case VR_SCRIPT_TYPE_I16VEC4:
+        case VR_SCRIPT_TYPE_U16VEC4:
+                return 2 * 4;
         case VR_SCRIPT_TYPE_VEC2:
         case VR_SCRIPT_TYPE_IVEC2:
         case VR_SCRIPT_TYPE_UVEC2:

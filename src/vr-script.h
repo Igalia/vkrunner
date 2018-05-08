@@ -68,6 +68,8 @@ struct vr_script_shader {
 enum vr_script_type {
         VR_SCRIPT_TYPE_INT,
         VR_SCRIPT_TYPE_UINT,
+        VR_SCRIPT_TYPE_INT16,
+        VR_SCRIPT_TYPE_UINT16,
         VR_SCRIPT_TYPE_INT64,
         VR_SCRIPT_TYPE_UINT64,
         VR_SCRIPT_TYPE_FLOAT,
@@ -84,6 +86,12 @@ enum vr_script_type {
         VR_SCRIPT_TYPE_UVEC2,
         VR_SCRIPT_TYPE_UVEC3,
         VR_SCRIPT_TYPE_UVEC4,
+        VR_SCRIPT_TYPE_I16VEC2,
+        VR_SCRIPT_TYPE_I16VEC3,
+        VR_SCRIPT_TYPE_I16VEC4,
+        VR_SCRIPT_TYPE_U16VEC2,
+        VR_SCRIPT_TYPE_U16VEC3,
+        VR_SCRIPT_TYPE_U16VEC4,
         VR_SCRIPT_TYPE_I64VEC2,
         VR_SCRIPT_TYPE_I64VEC3,
         VR_SCRIPT_TYPE_I64VEC4,
@@ -115,6 +123,8 @@ struct vr_script_value {
         union {
                 int i;
                 unsigned u;
+                int16_t i16;
+                uint16_t u16;
                 int64_t i64;
                 uint64_t u64;
                 float f;
@@ -123,6 +133,8 @@ struct vr_script_value {
                 double dvec[4];
                 int ivec[4];
                 unsigned uvec[4];
+                int16_t i16vec[4];
+                uint16_t u16vec[4];
                 int64_t i64vec[4];
                 uint64_t u64vec[4];
                 float mat[16];
