@@ -62,6 +62,7 @@ struct test_data {
         bool ubo_descriptor_set_bound;
         VkDescriptorSet ubo_descriptor_set;
         VkPipeline bound_pipeline;
+        bool in_render_pass;
 };
 
 static const double
@@ -151,6 +152,9 @@ begin_paint(struct test_data *data)
 {
         VkResult res;
 
+        if (data->in_render_pass)
+                return true;
+
         VkCommandBufferBeginInfo begin_command_buffer_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
         };
@@ -178,6 +182,7 @@ begin_paint(struct test_data *data)
 
         data->bound_pipeline = NULL;
         data->ubo_descriptor_set_bound = false;
+        data->in_render_pass = true;
 
         return true;
 }
@@ -187,6 +192,9 @@ end_paint(struct test_data *data)
 {
         struct vr_window *window = data->window;
         VkResult res;
+
+        if (!data->in_render_pass)
+                return true;
 
         vr_vk.vkCmdEndRenderPass(window->command_buffer);
 
@@ -259,6 +267,8 @@ end_paint(struct test_data *data)
                                                      &memory_range);
         }
 
+        data->in_render_pass = false;
+
         return true;
 }
 
@@ -313,6 +323,9 @@ draw_rect(struct test_data *data,
                                       sizeof (struct vr_pipeline_vertex) * 4,
                                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
         if (buffer == NULL)
+                return false;
+
+        if (!begin_paint(data))
                 return false;
 
         struct vr_pipeline_vertex *v = buffer->memory_map;
@@ -420,6 +433,9 @@ draw_arrays(struct test_data *data,
                                 VK_WHOLE_SIZE);
         }
 
+        if (!begin_paint(data))
+                return false;
+
         bind_ubo_descriptor_set(data);
         bind_pipeline_for_command(data, command);
 
@@ -497,11 +513,10 @@ probe_rect(struct test_data *data,
         int n_components = command->probe_rect.n_components;
         const struct vr_format *format = data->window->framebuffer_format;
         int format_size = vr_format_get_size(format);
-        bool ret = true;
 
         /* End the paint to copy the framebuffer into the linear buffer */
         if (!end_paint(data))
-                ret = false;
+                return false;
 
         for (int y = 0; y < command->probe_rect.h; y++) {
                 const uint8_t *p =
@@ -518,23 +533,18 @@ probe_rect(struct test_data *data,
                                             command->probe_rect.color,
                                             tolerance,
                                             n_components)) {
-                                ret = false;
                                 print_command_fail(command);
                                 print_bad_pixel(x + command->probe_rect.x,
                                                 y + command->probe_rect.y,
                                                 n_components,
                                                 command->probe_rect.color,
                                                 pixel);
-                                goto done;
+                                return false;
                         }
                 }
         }
-done:
 
-        if (!begin_paint(data))
-                ret = false;
-
-        return ret;
+        return true;
 }
 
 static bool
@@ -543,6 +553,9 @@ set_push_constant(struct test_data *data,
 {
         const struct vr_script_value *value =
                 &command->set_push_constant.value;
+
+        if (!begin_paint(data))
+                return false;
 
         vr_vk.vkCmdPushConstants(data->window->command_buffer,
                                  data->pipeline->layout,
@@ -677,6 +690,9 @@ static bool
 clear(struct test_data *data,
       const struct vr_script_command *command)
 {
+        if (!begin_paint(data))
+                return false;
+
         VkClearAttachment color_clear_attachment = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .colorAttachment = 0,
@@ -708,15 +724,13 @@ vr_test_run(struct vr_window *window,
         struct test_data data = {
                 .window = window,
                 .pipeline = pipeline,
-                .script = script
+                .script = script,
+                .in_render_pass = false
         };
         bool ret = true;
 
         vr_list_init(&data.buffers);
         vr_list_init(&data.ubo_buffers);
-
-        if (!begin_paint(&data))
-                ret = false;
 
         for (int i = 0; i < script->n_commands; i++) {
                 const struct vr_script_command *command = script->commands + i;
