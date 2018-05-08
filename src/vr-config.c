@@ -94,6 +94,14 @@ opt_token_replacement(struct vr_config *config,
         return true;
 }
 
+static bool
+opt_n_frames(struct vr_config *config,
+             const char *arg)
+{
+        config->n_frames = strtoul(arg, NULL, 10);
+        return true;
+}
+
 static const struct option
 options[] = {
         { 'h', "Show this help message", NULL, opt_help },
@@ -102,6 +110,8 @@ options[] = {
         { 'd', "Show the SPIR-V disassembly", NULL, opt_disassembly },
         { 'D', "Replace occurences of TOK with REPL in the scripts",
           "TOK=REPL", opt_token_replacement },
+        { 'f', "Set the number of frames to render", "N_FRAMES",
+          opt_n_frames },
 };
 
 static bool
@@ -242,6 +252,8 @@ struct vr_config *
 vr_config_new(void)
 {
         struct vr_config *config = vr_calloc(sizeof *config);
+
+        config->n_frames = 1;
 
         vr_list_init(&config->scripts);
         vr_list_init(&config->token_replacements);

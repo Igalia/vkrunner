@@ -120,8 +120,10 @@ process_script(const struct vr_config *config,
                 goto out;
         }
 
-        if (!vr_test_run(window, pipeline, script))
-                res = VR_RESULT_FAIL;
+        for (int i = 0; i < config->n_frames; i++) {
+                if (!vr_test_run(window, pipeline, script, i))
+                        res = VR_RESULT_FAIL;
+        }
 
         if (config->image_filename) {
                 if (!write_ppm(window, config->image_filename))

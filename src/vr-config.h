@@ -45,6 +45,7 @@ struct vr_config {
         struct vr_list scripts;
         struct vr_list token_replacements;
         bool show_disassembly;
+        unsigned n_frames;
 };
 
 struct vr_config *

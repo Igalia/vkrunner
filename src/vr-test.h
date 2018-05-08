@@ -35,6 +35,7 @@
 bool
 vr_test_run(struct vr_window *window,
             struct vr_pipeline *pipeline,
-            const struct vr_script *script);
+            const struct vr_script *script,
+            unsigned frame_num);
 
 #endif /* VR_TEST_H */

@@ -1061,7 +1061,8 @@ run_commands(struct test_data *data)
 bool
 vr_test_run(struct vr_window *window,
             struct vr_pipeline *pipeline,
-            const struct vr_script *script)
+            const struct vr_script *script,
+            unsigned frame_num)
 {
         struct test_data data = {
                 .window = window,
