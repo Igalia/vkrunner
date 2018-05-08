@@ -1263,7 +1263,7 @@ process_test_line(struct load_state *data)
 
         if (isalnum(*p)) {
                 const char *end = p + 1;
-                while (isalnum(*end))
+                while (isalnum(*end) || *end == '.')
                         end++;
                 char *prop_name = vr_strndup(p, end - p);
 
