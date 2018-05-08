@@ -64,6 +64,20 @@ opt_image(struct vr_config *config,
 }
 
 static bool
+opt_video(struct vr_config *config,
+          const char *arg)
+{
+        if (config->video_filename) {
+                fprintf(stderr, "duplicate -v option\n");
+                return false;
+        }
+
+        config->video_filename = vr_strdup(arg);
+
+        return true;
+}
+
+static bool
 opt_disassembly(struct vr_config *config,
                 const char *arg)
 {
@@ -112,6 +126,8 @@ options[] = {
           "TOK=REPL", opt_token_replacement },
         { 'f', "Set the number of frames to render", "N_FRAMES",
           opt_n_frames },
+        { 'v', "File to write video to", "VIDEO_FILE",
+          opt_video },
 };
 
 static bool
@@ -288,6 +304,7 @@ vr_config_free(struct vr_config *config)
         free_scripts(config);
         free_token_replacements(config);
 
+        vr_free(config->video_filename);
         vr_free(config->image_filename);
 
         vr_free(config);

@@ -41,6 +41,26 @@
 #include "vr-test.h"
 #include "vr-config.h"
 #include "vr-error-message.h"
+#include "vr-subprocess.h"
+
+static struct vr_subprocess_sink *
+open_sink(const char *video_filename)
+{
+        const char *args[] = {
+                "ffmpeg", "-f", "rawvideo", "-pixel_format", "rgb24",
+                "-video_size",
+                VR_STRINGIFY(VR_WINDOW_WIDTH) "x"
+                VR_STRINGIFY(VR_WINDOW_HEIGHT),
+                "-framerate", "30",
+                "-i", "-",
+                "-b:v", "3M",
+                "-y",
+                video_filename,
+                NULL
+        };
+
+        return vr_subprocess_open_sink((char * const *) args);
+}
 
 static bool
 write_ppm(struct vr_window *window,
@@ -90,6 +110,39 @@ write_ppm(struct vr_window *window,
         return true;
 }
 
+static bool
+write_frame(struct vr_window *window,
+            struct vr_subprocess_sink *sink)
+{
+        const struct vr_format *format = window->framebuffer_format;
+        int format_size = vr_format_get_size(format);
+
+        for (int y = 0; y < VR_WINDOW_HEIGHT; y++) {
+                const uint8_t *p = ((uint8_t *) window->linear_memory_map +
+                                    y * window->linear_memory_stride);
+
+                for (int x = 0; x < VR_WINDOW_WIDTH; x++) {
+                        double pixel[4];
+
+                        vr_format_load_pixel(format, p, pixel);
+
+                        for (int i = 0; i < 3; i++) {
+                                double v = pixel[i];
+
+                                if (v < 0.0)
+                                        v = 0.0;
+                                else if (v > 1.0)
+                                        v = 1.0;
+
+                                fputc(round(v * 255.0), sink->out);
+                        }
+                        p += format_size;
+                }
+        }
+
+        return true;
+}
+
 static enum vr_result
 process_script(const struct vr_config *config,
                const char *filename)
@@ -98,6 +151,7 @@ process_script(const struct vr_config *config,
         struct vr_script *script = NULL;
         struct vr_window *window = NULL;
         struct vr_pipeline *pipeline = NULL;
+        struct vr_subprocess_sink *sink = NULL;
 
         script = vr_script_load(config, filename);
         if (script == NULL) {
@@ -120,9 +174,21 @@ process_script(const struct vr_config *config,
                 goto out;
         }
 
+        if (config->video_filename) {
+                sink = open_sink(config->video_filename);
+                if (sink == NULL) {
+                        res = VR_RESULT_FAIL;
+                        goto out;
+                }
+        }
+
         for (int i = 0; i < config->n_frames; i++) {
                 if (!vr_test_run(window, pipeline, script, i))
                         res = VR_RESULT_FAIL;
+                if (sink && !write_frame(window, sink)) {
+                        res = VR_RESULT_FAIL;
+                        break;
+                }
         }
 
         if (config->image_filename) {
@@ -131,6 +197,8 @@ process_script(const struct vr_config *config,
         }
 
 out:
+        if (sink)
+                vr_subprocess_close_sink(sink);
         if (pipeline)
                 vr_pipeline_free(pipeline);
         if (window)
