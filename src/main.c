@@ -106,6 +106,7 @@ process_script(struct vr_config *config,
         res = vr_window_new(&script->required_features,
                             script->extensions,
                             script->framebuffer_format,
+                            script->depth_stencil_format,
                             &window);
         if (res != VR_RESULT_PASS)
                 goto out;

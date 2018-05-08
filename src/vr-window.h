@@ -61,8 +61,12 @@ struct vr_window {
         void *linear_memory_map;
         VkDeviceSize linear_memory_stride;
         VkImageView color_image_view;
+        VkImage depth_image;
+        VkDeviceMemory depth_image_memory;
+        VkImageView depth_image_view;
         VkFramebuffer framebuffer;
         const struct vr_format *framebuffer_format;
+        const struct vr_format *depth_stencil_format;
 
         bool libvulkan_loaded;
 };
@@ -71,6 +75,7 @@ enum vr_result
 vr_window_new(const VkPhysicalDeviceFeatures *requires,
               const char *const *extensions,
               const struct vr_format *framebuffer_format,
+              const struct vr_format *depth_stencil_format,
               struct vr_window **window_out);
 
 void

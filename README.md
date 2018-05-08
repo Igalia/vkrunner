@@ -136,6 +136,12 @@ device.
 Use this to specify the format of the framebuffer using a format from
 VkFormat minus the VK_FORMAT prefix.
 
+> depthstencil _format_
+
+If this is specified VkRunner will try to add a depth-stencil
+attachment to the framebuffer with the given format. Without it no
+depth-stencil buffer will be created.
+
 ## Shader sections
 
 Shaders can be stored in sections like `[vertex shader]` just like in

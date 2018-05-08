@@ -697,11 +697,40 @@ clear(struct test_data *data,
         if (!begin_paint(data))
                 return false;
 
-        VkClearAttachment color_clear_attachment = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .colorAttachment = 0,
+        VkImageAspectFlags depth_stencil_flags = 0;
+        const struct vr_format *depth_stencil_format =
+                data->window->depth_stencil_format;
+
+        if (data->window->depth_stencil_format) {
+                for (int i = 0; i < depth_stencil_format->n_parts; i++) {
+                        switch (depth_stencil_format->parts[i].component) {
+                        case VR_FORMAT_COMPONENT_D:
+                                depth_stencil_flags |=
+                                        VK_IMAGE_ASPECT_DEPTH_BIT;
+                                break;
+                        case VR_FORMAT_COMPONENT_S:
+                                depth_stencil_flags |=
+                                        VK_IMAGE_ASPECT_STENCIL_BIT;
+                                break;
+                        default:
+                                break;
+                        }
+                }
+        }
+
+        VkClearAttachment clear_attachments[] = {
+                {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .colorAttachment = 0,
+                },
+                {
+                        .aspectMask = depth_stencil_flags,
+                        .clearValue = { .depthStencil =
+                                        { .depth = 1.0f,
+                                          .stencil = 0 } }
+                },
         };
-        VkClearRect color_clear_rect = {
+        VkClearRect clear_rect = {
                 .rect = {
                         .offset = { 0, 0 },
                         .extent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT }
@@ -709,14 +738,22 @@ clear(struct test_data *data,
                 .baseArrayLayer = 0,
                 .layerCount = 1
         };
-        memcpy(color_clear_attachment.clearValue.color.float32,
+        memcpy(clear_attachments[0].clearValue.color.float32,
                data->clear_color,
                sizeof data->clear_color);
+
+        int n_attachments;
+
+        if (depth_stencil_flags)
+                n_attachments = 2;
+        else
+                n_attachments = 1;
+
         vr_vk.vkCmdClearAttachments(data->window->command_buffer,
-                                    1, /* attachmentCount */
-                                    &color_clear_attachment,
+                                    n_attachments,
+                                    clear_attachments,
                                     1,
-                                    &color_clear_rect);
+                                    &clear_rect);
         return true;
 }
 

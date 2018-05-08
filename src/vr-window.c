@@ -111,6 +111,99 @@ destroy_framebuffer_resources(struct vr_window *window)
                                      NULL /* allocator */);
                 window->color_image = NULL;
         }
+        if (window->depth_image_view) {
+                vr_vk.vkDestroyImageView(window->device,
+                                         window->depth_image_view,
+                                         NULL /* allocator */);
+                window->depth_image_view = NULL;
+        }
+        if (window->depth_image_memory) {
+                vr_vk.vkFreeMemory(window->device,
+                                   window->depth_image_memory,
+                                   NULL /* allocator */);
+                window->depth_image_memory = NULL;
+        }
+        if (window->depth_image) {
+                vr_vk.vkDestroyImage(window->device,
+                                     window->depth_image,
+                                     NULL /* allocator */);
+                window->depth_image = NULL;
+        }
+}
+
+static bool
+init_depth_stencil_resources(struct vr_window *window)
+{
+        VkResult res;
+
+        VkImageCreateInfo image_create_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+                .imageType = VK_IMAGE_TYPE_2D,
+                .format = window->depth_stencil_format->vk_format,
+                .extent = {
+                        .width = VR_WINDOW_WIDTH,
+                        .height = VR_WINDOW_HEIGHT,
+                        .depth = 1
+                },
+                .mipLevels = 1,
+                .arrayLayers = 1,
+                .samples = VK_SAMPLE_COUNT_1_BIT,
+                .tiling = VK_IMAGE_TILING_OPTIMAL,
+                .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+        };
+        res = vr_vk.vkCreateImage(window->device,
+                                  &image_create_info,
+                                  NULL, /* allocator */
+                                  &window->depth_image);
+        if (res != VK_SUCCESS) {
+                window->depth_image = NULL;
+                vr_error_message("Error creating depth/stencil image");
+                return false;
+        }
+
+        res = vr_allocate_store_image(window,
+                                      0, /* memory_type_flags */
+                                      1, /* n_images */
+                                      &window->depth_image,
+                                      &window->depth_image_memory,
+                                      NULL /* memory_type_index */);
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error allocating depth/stencil memory");
+                return false;
+        }
+
+        VkImageViewCreateInfo image_view_create_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = window->depth_image,
+                .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                .format = window->depth_stencil_format->vk_format,
+                .components = {
+                        .r = VK_COMPONENT_SWIZZLE_R,
+                        .g = VK_COMPONENT_SWIZZLE_G,
+                        .b = VK_COMPONENT_SWIZZLE_B,
+                        .a = VK_COMPONENT_SWIZZLE_A
+                },
+                .subresourceRange = {
+                        .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1
+                }
+        };
+        res = vr_vk.vkCreateImageView(window->device,
+                                      &image_view_create_info,
+                                      NULL, /* allocator */
+                                      &window->depth_image_view);
+        if (res != VK_SUCCESS) {
+                window->depth_image_view = NULL;
+                vr_error_message("Error creating depth/stencil image view");
+                return false;
+        }
+
+        return true;
 }
 
 static bool
@@ -228,13 +321,20 @@ init_framebuffer_resources(struct vr_window *window)
                 return false;
         }
 
+        if (window->depth_stencil_format &&
+            !init_depth_stencil_resources(window))
+                return false;
+
         VkImageView attachments[] = {
                 window->color_image_view,
+                window->depth_image_view,
         };
         VkFramebufferCreateInfo framebuffer_create_info = {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = window->render_pass[0],
-                .attachmentCount = VR_N_ELEMENTS(attachments),
+                .attachmentCount = (window->depth_image_view ?
+                                    VR_N_ELEMENTS(attachments) :
+                                    VR_N_ELEMENTS(attachments) - 1),
                 .pAttachments = attachments,
                 .width = VR_WINDOW_WIDTH,
                 .height = VR_WINDOW_HEIGHT,
@@ -435,6 +535,16 @@ create_render_pass(struct vr_window *window,
                    VkRenderPass *render_pass_out)
 {
         VkResult res;
+        bool has_stencil = false;
+
+        if (window->depth_stencil_format) {
+                const struct vr_format *format = window->depth_stencil_format;
+
+                for (int i = 0; i < format->n_parts; i++) {
+                        if (format->parts[i].component == VR_FORMAT_COMPONENT_S)
+                                has_stencil = true;
+                }
+        }
 
         VkAttachmentDescription attachment_descriptions[] = {
                 {
@@ -451,6 +561,28 @@ create_render_pass(struct vr_window *window,
                                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
                         .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                 },
+                {
+                        .format = (window->depth_stencil_format ?
+                                   window->depth_stencil_format->vk_format :
+                                   0),
+                        .samples = VK_SAMPLE_COUNT_1_BIT,
+                        .loadOp = (first_render ?
+                                   VK_ATTACHMENT_LOAD_OP_DONT_CARE :
+                                   VK_ATTACHMENT_LOAD_OP_LOAD),
+                        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                        .stencilLoadOp = (first_render || !has_stencil ?
+                                          VK_ATTACHMENT_LOAD_OP_DONT_CARE :
+                                          VK_ATTACHMENT_LOAD_OP_LOAD),
+                        .stencilStoreOp = (has_stencil ?
+                                           VK_ATTACHMENT_STORE_OP_STORE :
+                                           VK_ATTACHMENT_STORE_OP_DONT_CARE),
+                        .initialLayout =
+                        (first_render ?
+                         VK_IMAGE_LAYOUT_UNDEFINED :
+                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL),
+                        .finalLayout =
+                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                },
         };
         VkSubpassDescription subpass_descriptions[] = {
                 {
@@ -461,6 +593,11 @@ create_render_pass(struct vr_window *window,
                                 .layout =
                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
                         },
+                        .pDepthStencilAttachment = &(VkAttachmentReference) {
+                                .attachment = 1,
+                                .layout =
+                                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                        },
                 }
         };
         VkRenderPassCreateInfo render_pass_create_info = {
@@ -470,6 +607,10 @@ create_render_pass(struct vr_window *window,
                 .subpassCount = VR_N_ELEMENTS(subpass_descriptions),
                 .pSubpasses = subpass_descriptions
         };
+        if (window->depth_stencil_format == NULL) {
+                render_pass_create_info.attachmentCount--;
+                subpass_descriptions[0].pDepthStencilAttachment = NULL;
+        }
         res = vr_vk.vkCreateRenderPass(window->device,
                                        &render_pass_create_info,
                                        NULL, /* allocator */
@@ -481,6 +622,20 @@ create_render_pass(struct vr_window *window,
         }
 
         return true;
+}
+
+static bool
+check_format(struct vr_window *window,
+             const struct vr_format *format,
+             VkFormatFeatureFlags flags)
+{
+        VkFormatProperties format_properties;
+
+        vr_vk.vkGetPhysicalDeviceFormatProperties(window->physical_device,
+                                                  format->vk_format,
+                                                  &format_properties);
+
+        return (format_properties.optimalTilingFeatures & flags) == flags;
 }
 
 static enum vr_result
@@ -524,21 +679,25 @@ init_vk(struct vr_window *window,
         vr_vk.vkGetPhysicalDeviceFeatures(window->physical_device,
                                           &window->features);
 
-        VkFormatProperties format_properties;
-        VkFormat framebuffer_format = window->framebuffer_format->vk_format;
-        vr_vk.vkGetPhysicalDeviceFormatProperties(window->physical_device,
-                                                  framebuffer_format,
-                                                  &format_properties);
-        if ((format_properties.optimalTilingFeatures &
-             (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-              VK_FORMAT_FEATURE_BLIT_SRC_BIT)) !=
-            (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-             VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
+        if (!check_format(window,
+                          window->framebuffer_format,
+                          VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+                          VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
                 vr_error_message("Format %s is not supported as a color "
                                  "attachment and blit source",
                                  window->framebuffer_format->name);
                 vres = VR_RESULT_FAIL;
                 goto error;
+        }
+
+        if (window->depth_stencil_format &&
+            !check_format(window,
+                          window->depth_stencil_format,
+                          VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+                vr_error_message("Format %s is not supported as a depth/stencil "
+                                 "attachment",
+                                 window->depth_stencil_format->name);
+                return false;
         }
 
         int n_extensions = 0;
@@ -675,6 +834,7 @@ enum vr_result
 vr_window_new(const VkPhysicalDeviceFeatures *requires,
               const char *const *extensions,
               const struct vr_format *framebuffer_format,
+              const struct vr_format *depth_stencil_format,
               struct vr_window **window_out)
 {
         struct vr_window *window = vr_calloc(sizeof *window);
@@ -687,6 +847,7 @@ vr_window_new(const VkPhysicalDeviceFeatures *requires,
 
         window->libvulkan_loaded = true;
         window->framebuffer_format = framebuffer_format;
+        window->depth_stencil_format = depth_stencil_format;
 
         vres = init_vk(window, requires, extensions);
         if (vres != VR_RESULT_PASS)

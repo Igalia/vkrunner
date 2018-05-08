@@ -732,6 +732,44 @@ parse_value(const char **p,
 }
 
 static bool
+parse_format(struct load_state *data,
+             const char *p,
+             const struct vr_format **format_out)
+{
+        while (isspace(*p))
+                p++;
+        const char *end = p;
+        while (*end && !isspace(*end))
+                end++;
+
+        if (!is_end(end)) {
+                vr_error_message("%s:%i: Missing format name",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        char *format_name = vr_strndup(p, end - p);
+        const struct vr_format *format = vr_format_lookup_by_name(format_name);
+        bool ret;
+
+        if (format == NULL) {
+                vr_error_message("%s:%i: Unknown format: %s",
+                                 data->filename,
+                                 data->line_num,
+                                 format_name);
+                ret = false;
+        } else {
+                *format_out = format;
+                ret = true;
+        }
+
+        vr_free(format_name);
+
+        return ret;
+}
+
+static bool
 process_none_line(struct load_state *data)
 {
         const char *start = (char *) data->line.data;
@@ -770,33 +808,15 @@ process_require_line(struct load_state *data)
         }
 
         if (looking_at(&p, "framebuffer ")) {
-                while (isspace(*p))
-                        p++;
-                const char *end = p;
-                while (*end && !isspace(*end))
-                        end++;
+                return parse_format(data,
+                                    p,
+                                    &data->script->framebuffer_format);
+        }
 
-                if (is_end(end)) {
-                        char *format_name = vr_strndup(p, end - p);
-                        const struct vr_format *format =
-                                vr_format_lookup_by_name(format_name);
-                        bool ret;
-
-                        if (format == NULL) {
-                                vr_error_message("%s:%i: Unknown format: %s",
-                                                 data->filename,
-                                                 data->line_num,
-                                                 format_name);
-                                ret = false;
-                        } else {
-                                data->script->framebuffer_format = format;
-                                ret = true;
-                        }
-
-                        vr_free(format_name);
-
-                        return ret;
-                }
+        if (looking_at(&p, "depthstencil ")) {
+                return parse_format(data,
+                                    p,
+                                    &data->script->depth_stencil_format);
         }
 
         int extension_len = 0;

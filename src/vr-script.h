@@ -193,6 +193,7 @@ struct vr_script {
         VkPhysicalDeviceFeatures required_features;
         const char *const *extensions;
         const struct vr_format *framebuffer_format;
+        const struct vr_format *depth_stencil_format;
         struct vr_vbo *vertex_data;
         uint16_t *indices;
         size_t n_indices;
