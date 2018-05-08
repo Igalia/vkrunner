@@ -249,8 +249,12 @@ vr_format_load_pixel(const struct vr_format *format,
                      const uint8_t *p,
                      double *pixel)
 {
+        for (int i = 0; i < 3; i++)
+                pixel[i] = 0.0;
         /* Alpha component defaults to 1.0 if not contained in the format */
-        double parts[4] = { 0.0, 0.0, 0.0, 1.0 };
+        pixel[3] = 1.0f;
+
+        double parts[4];
 
         if (format->packed_size) {
                 load_packed_parts(format, p, parts);
