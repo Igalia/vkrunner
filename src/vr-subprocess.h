@@ -27,8 +27,33 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
+
+#ifdef WIN32
+
+struct vr_subprocess_sink {
+        FILE *out;
+        int stub;
+};
+
+#else /* WIN32 */
+
+#include <sys/types.h>
+
+struct vr_subprocess_sink {
+        FILE *out;
+        pid_t pid;
+};
+
+#endif /* WIN32 */
 
 bool
 vr_subprocess_command(char * const *arguments);
+
+struct vr_subprocess_sink *
+vr_subprocess_open_sink(char *const *arguments);
+
+void
+vr_subprocess_close_sink(struct vr_subprocess_sink *sink);
 
 #endif /* __VR_SUBPROCESS_H__ */

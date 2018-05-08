@@ -106,6 +106,18 @@ vr_subprocess_command(char * const *arguments)
         return result;
 }
 
+struct vr_subprocess_sink *
+vr_subprocess_open_sink(char *const *arguments)
+{
+        vr_error_message("Process sinks not supported on Windows");
+        return NULL;
+}
+
+void
+vr_subprocess_close_sink(struct vr_subprocess_sink *sink)
+{
+}
+
 #else /* WIN32 */
 
 #include <unistd.h>
@@ -137,6 +149,61 @@ vr_subprocess_command(char * const *arguments)
         }
 
         return true;
+}
+
+struct vr_subprocess_sink *
+vr_subprocess_open_sink(char * const *arguments)
+{
+        pid_t pid;
+        int stdin_pipe[2];
+
+        if (pipe(stdin_pipe) == -1) {
+                vr_error_message("pipe: %s", strerror(errno));
+                return NULL;
+        }
+
+        pid = fork();
+
+        if (pid < 0) {
+                vr_error_message("fork failed: %s", strerror(errno));
+                close(stdin_pipe[0]);
+                close(stdin_pipe[1]);
+                return NULL;
+        } else if (pid == 0) {
+                dup2(stdin_pipe[0], STDIN_FILENO);
+                for (int i = 3; i < 256; i++)
+                        close(i);
+                execvp(arguments[0], arguments);
+                fprintf(stderr, "%s: %s\n", arguments[0], strerror(errno));
+                exit(EXIT_FAILURE);
+        } else {
+                close(stdin_pipe[0]);
+
+                FILE *out = fdopen(stdin_pipe[1], "w");
+
+                if (out == NULL) {
+                        vr_error_message("fdopen failed: %s", strerror(errno));
+                        close(stdin_pipe[1]);
+                        kill(pid, SIGKILL);
+                        while (waitpid(pid, NULL, 0) == -1);
+                        return NULL;
+                }
+
+                struct vr_subprocess_sink *sink = vr_alloc(sizeof *sink);
+
+                sink->pid = pid;
+                sink->out = out;
+
+                return sink;
+        }
+}
+
+void
+vr_subprocess_close_sink(struct vr_subprocess_sink *sink)
+{
+        fclose(sink->out);
+        while (waitpid(sink->pid, NULL, 0) == -1);
+        vr_free(sink);
 }
 
 #endif /* WIN32 */
