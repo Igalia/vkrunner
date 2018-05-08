@@ -1540,6 +1540,15 @@ process_test_line(struct load_state *data)
                                                   command);
         }
 
+        if (looking_at(&p, "uniform frame_num ")) {
+                if (!parse_size_t(&p, &command->set_uniform_frame_num.offset))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                command->op = VR_SCRIPT_OP_SET_UNIFORM_FRAME_NUM;
+                return true;
+        }
+
         if (looking_at(&p, "uniform ")) {
                 while (isspace(*p))
                         p++;

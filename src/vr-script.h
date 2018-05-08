@@ -53,6 +53,7 @@ enum vr_script_op {
         VR_SCRIPT_OP_PROBE_SSBO,
         VR_SCRIPT_OP_SET_PUSH_CONSTANT,
         VR_SCRIPT_OP_SET_BUFFER_SUBDATA,
+        VR_SCRIPT_OP_SET_UNIFORM_FRAME_NUM,
         VR_SCRIPT_OP_CLEAR
 };
 
@@ -107,6 +108,10 @@ struct vr_script_command {
                         size_t size;
                         void *data;
                 } set_push_constant;
+
+                struct {
+                        size_t offset;
+                } set_uniform_frame_num;
 
                 struct {
                         float color[4];

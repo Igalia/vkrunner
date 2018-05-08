@@ -568,11 +568,20 @@ get_push_constant_size(const struct vr_script *script)
         for (int i = 0; i < script->n_commands; i++) {
                 const struct vr_script_command *command =
                         script->commands + i;
-                if (command->op != VR_SCRIPT_OP_SET_PUSH_CONSTANT)
-                        continue;
+                size_t value_size;
+                size_t offset;
 
-                size_t end = (command->set_push_constant.offset +
-                              command->set_push_constant.size);
+                if (command->op == VR_SCRIPT_OP_SET_PUSH_CONSTANT) {
+                        value_size = command->set_push_constant.offset;
+                        offset = command->set_push_constant.offset;
+                } else if (command->op == VR_SCRIPT_OP_SET_UNIFORM_FRAME_NUM) {
+                        value_size = sizeof(uint32_t);
+                        offset = command->set_uniform_frame_num.offset;
+                } else {
+                        continue;
+                }
+
+                size_t end = offset + value_size;
 
                 if (end > max)
                         max = end;

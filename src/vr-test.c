@@ -72,6 +72,7 @@ struct test_data {
         VkPipeline bound_pipeline;
         enum test_state test_state;
         bool first_render;
+        unsigned frame_num;
 };
 
 static const double
@@ -848,6 +849,26 @@ set_push_constant(struct test_data *data,
 }
 
 static bool
+set_uniform_frame_num(struct test_data *data,
+                      const struct vr_script_command *command)
+{
+        uint32_t frame_num = data->frame_num;
+
+        if (data->test_state < TEST_STATE_COMMAND_BUFFER &&
+            !set_state(data, TEST_STATE_COMMAND_BUFFER))
+                return false;
+
+        vr_vk.vkCmdPushConstants(data->window->command_buffer,
+                                 data->pipeline->layout,
+                                 data->pipeline->stages,
+                                 command->set_uniform_frame_num.offset,
+                                 sizeof (uint32_t),
+                                 &frame_num);
+
+        return true;
+}
+
+static bool
 allocate_ubo_buffers(struct test_data *data)
 {
         VkResult res;
@@ -1048,6 +1069,10 @@ run_commands(struct test_data *data)
                         if (!set_buffer_subdata(data, command))
                                 ret = false;
                         break;
+                case VR_SCRIPT_OP_SET_UNIFORM_FRAME_NUM:
+                        if (!set_uniform_frame_num(data, command))
+                                ret = false;
+                        break;
                 case VR_SCRIPT_OP_CLEAR:
                         if (!clear(data, command))
                                 ret = false;
@@ -1070,6 +1095,7 @@ vr_test_run(struct vr_window *window,
                 .script = script,
                 .test_state = TEST_STATE_IDLE,
                 .first_render = true,
+                .frame_num = frame_num
         };
         bool ret = true;
 
