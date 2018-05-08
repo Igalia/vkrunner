@@ -43,7 +43,11 @@ struct vr_window {
         VkDescriptorPool descriptor_pool;
         VkCommandPool command_pool;
         VkCommandBuffer command_buffer;
-        VkRenderPass render_pass;
+        /* The first render pass is used for the first render and has
+         * a loadOp of DONT_CARE. The second is used for subsequent
+         * renders and loads the framebuffer contents.
+         */
+        VkRenderPass render_pass[2];
         VkQueue queue;
         int queue_family;
         VkInstance vk_instance;

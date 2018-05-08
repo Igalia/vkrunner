@@ -484,7 +484,7 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                 .pVertexInputState = &vertex_input_state,
                 .pInputAssemblyState = &input_assembly_state,
                 .layout = pipeline->layout,
-                .renderPass = window->render_pass,
+                .renderPass = window->render_pass[0],
         };
 
         vr_pipeline_key_to_create_info(key, &info);

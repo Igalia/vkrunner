@@ -63,6 +63,7 @@ struct test_data {
         VkDescriptorSet ubo_descriptor_set;
         VkPipeline bound_pipeline;
         bool in_render_pass;
+        bool first_render;
 };
 
 static const double
@@ -167,7 +168,9 @@ begin_paint(struct test_data *data)
 
         VkRenderPassBeginInfo render_pass_begin_info = {
                 .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                .renderPass = data->window->render_pass,
+                .renderPass = (data->first_render ?
+                               data->window->render_pass[0] :
+                               data->window->render_pass[1]),
                 .framebuffer = data->window->framebuffer,
                 .renderArea = {
                         .offset = { 0, 0 },
@@ -183,6 +186,7 @@ begin_paint(struct test_data *data)
         data->bound_pipeline = NULL;
         data->ubo_descriptor_set_bound = false;
         data->in_render_pass = true;
+        data->first_render = false;
 
         return true;
 }
@@ -725,7 +729,8 @@ vr_test_run(struct vr_window *window,
                 .window = window,
                 .pipeline = pipeline,
                 .script = script,
-                .in_render_pass = false
+                .in_render_pass = false,
+                .first_render = true
         };
         bool ret = true;
 

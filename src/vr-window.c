@@ -232,7 +232,7 @@ init_framebuffer_resources(struct vr_window *window)
         };
         VkFramebufferCreateInfo framebuffer_create_info = {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-                .renderPass = window->render_pass,
+                .renderPass = window->render_pass[0],
                 .attachmentCount = VR_N_ELEMENTS(attachments),
                 .pAttachments = attachments,
                 .width = VR_WINDOW_WIDTH,
@@ -263,11 +263,13 @@ deinit_vk(struct vr_window *window)
                                      NULL /* allocator */);
                 window->vk_fence = NULL;
         }
-        if (window->render_pass) {
-                vr_vk.vkDestroyRenderPass(window->device,
-                                          window->render_pass,
-                                          NULL /* allocator */);
-                window->render_pass = NULL;
+        for (int i = 0; i < VR_N_ELEMENTS(window->render_pass); i++) {
+                if (window->render_pass[i]) {
+                        vr_vk.vkDestroyRenderPass(window->device,
+                                                  window->render_pass[i],
+                                                  NULL /* allocator */);
+                        window->render_pass[i] = NULL;
+                }
         }
         if (window->descriptor_pool) {
                 vr_vk.vkDestroyDescriptorPool(window->device,
@@ -426,6 +428,60 @@ find_physical_device(struct vr_window *window,
         return VR_RESULT_SKIP;
 }
 
+static bool
+create_render_pass(struct vr_window *window,
+                   bool first_render,
+                   VkRenderPass *render_pass_out)
+{
+        VkResult res;
+
+        VkAttachmentDescription attachment_descriptions[] = {
+                {
+                        .format = window->framebuffer_format->vk_format,
+                        .samples = VK_SAMPLE_COUNT_1_BIT,
+                        .loadOp = (first_render ?
+                                   VK_ATTACHMENT_LOAD_OP_DONT_CARE :
+                                   VK_ATTACHMENT_LOAD_OP_LOAD),
+                        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                        .stencilLoadOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                        .initialLayout = (first_render ?
+                                          VK_IMAGE_LAYOUT_UNDEFINED :
+                                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                        .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                },
+        };
+        VkSubpassDescription subpass_descriptions[] = {
+                {
+                        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        .colorAttachmentCount = 1,
+                        .pColorAttachments = &(VkAttachmentReference) {
+                                .attachment = 0,
+                                .layout =
+                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                        },
+                }
+        };
+        VkRenderPassCreateInfo render_pass_create_info = {
+                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+                .attachmentCount = VR_N_ELEMENTS(attachment_descriptions),
+                .pAttachments = attachment_descriptions,
+                .subpassCount = VR_N_ELEMENTS(subpass_descriptions),
+                .pSubpasses = subpass_descriptions
+        };
+        res = vr_vk.vkCreateRenderPass(window->device,
+                                       &render_pass_create_info,
+                                       NULL, /* allocator */
+                                       render_pass_out);
+        if (res != VK_SUCCESS) {
+                *render_pass_out = NULL;
+                vr_error_message("Error creating render pass");
+                return false;
+        }
+
+        return true;
+}
+
 static enum vr_result
 init_vk(struct vr_window *window,
         const VkPhysicalDeviceFeatures *requires,
@@ -576,42 +632,15 @@ init_vk(struct vr_window *window,
                 goto error;
         }
 
-        VkAttachmentDescription attachment_descriptions[] = {
-                {
-                        .format = window->framebuffer_format->vk_format,
-                        .samples = VK_SAMPLE_COUNT_1_BIT,
-                        .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                        .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                },
-        };
-        VkSubpassDescription subpass_descriptions[] = {
-                {
-                        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-                        .colorAttachmentCount = 1,
-                        .pColorAttachments = &(VkAttachmentReference) {
-                                .attachment = 0,
-                                .layout =
-                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-                        },
-                }
-        };
-        VkRenderPassCreateInfo render_pass_create_info = {
-                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-                .attachmentCount = VR_N_ELEMENTS(attachment_descriptions),
-                .pAttachments = attachment_descriptions,
-                .subpassCount = VR_N_ELEMENTS(subpass_descriptions),
-                .pSubpasses = subpass_descriptions
-        };
-        res = vr_vk.vkCreateRenderPass(window->device,
-                                       &render_pass_create_info,
-                                       NULL, /* allocator */
-                                       &window->render_pass);
-        if (res != VK_SUCCESS) {
-                vr_error_message("Error creating render pass");
+        if (!create_render_pass(window,
+                                true, /* first_render */
+                                window->render_pass + 0)) {
+                vres = VR_RESULT_FAIL;
+                goto error;
+        }
+        if (!create_render_pass(window,
+                                false, /* first_render */
+                                window->render_pass + 1)) {
                 vres = VR_RESULT_FAIL;
                 goto error;
         }
