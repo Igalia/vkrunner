@@ -1,0 +1,84 @@
+# GLSL 4.40 changed the relevant language in Section 8.13.2 (Interpolation
+# Functions) to:
+#
+#    "Component selection operators (e.g., .xy) may be used when specifying
+#     interpolant."
+#
+# Furthermore, GLSL 4.60 clarified that
+#
+#    "(...) interpolant must be an l-value from an in declaration; this can
+#     include a variable, a block or structure member, an array element, or
+#     some combination of these."
+#
+# which means array subscripts on vectors should also be allowed.
+#
+
+[vertex shader]
+#version 440
+
+layout(location = 0) in vec4 piglit_vertex;
+layout(location = 1) in uvec2 indices_in;
+
+layout(location = 0) out vec2 a[2];
+layout(location = 2) flat out uvec2 indices_out;
+
+void main()
+{
+        gl_Position = piglit_vertex;
+
+        a[0] = vec2(0.25, 0.5);
+        a[1] = vec2(0.75, 1.0);
+        indices_out = indices_in;
+}
+
+[fragment shader]
+#version 440
+
+layout(location = 0) in vec2 a[2];
+layout(location = 2) flat in uvec2 indices;
+
+layout(location = 0) out vec4 color;
+
+void main()
+{
+        color.rgb = vec3(interpolateAtCentroid(a[indices.x][indices.y]));
+        color.a = 1.0;
+}
+
+[indices]
+0 1 2 2 1 3
+4 5 6 6 5 7
+8 9 10 10 9 11
+12 13 14 14 13 15
+
+[vertex data]
+0/R32G32_SFLOAT 1/R32G32_UINT
+-1.0 -1.0       0 0
+ 0.0 -1.0       0 0
+-1.0  0.0       0 0
+ 0.0  0.0       0 0
+
+ 0.0 -1.0       0 1
+ 1.0 -1.0       0 1
+ 0.0  0.0       0 1
+ 1.0  0.0       0 1
+
+-1.0  0.0       1 0
+ 0.0  0.0       1 0
+-1.0  1.0       1 0
+ 0.0  1.0       1 0
+
+ 0.0  0.0       1 1
+ 1.0  0.0       1 1
+ 0.0  1.0       1 1
+ 1.0  1.0       1 1
+
+[test]
+clear
+
+draw arrays indexed TRIANGLE_LIST 0 24
+
+relative probe rect rgb (0, 0, 0.5, 0.5) (0.25, 0.25, 0.25)
+relative probe rect rgb (0.5, 0, 0.5, 0.5) (0.5, 0.5, 0.5)
+relative probe rect rgb (0, 0.5, 0.5, 0.5) (0.75, 0.75, 0.75)
+relative probe rect rgb (0.5, 0.5, 0.5, 0.5) (1.0, 1.0, 1.0)

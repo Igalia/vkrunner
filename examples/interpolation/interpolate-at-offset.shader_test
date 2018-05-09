@@ -1,0 +1,72 @@
+# GLSL 4.40 changed the relevant language in Section 8.13.2 (Interpolation
+# Functions) to:
+#
+#    "Component selection operators (e.g., .xy) may be used when specifying
+#     interpolant."
+#
+# Furthermore, GLSL 4.60 clarified that
+#
+#    "(...) interpolant must be an l-value from an in declaration; this can
+#     include a variable, a block or structure member, an array element, or
+#     some combination of these."
+#
+# which means array subscripts on vectors should also be allowed.
+#
+
+[vertex shader]
+#version 440
+
+layout(location = 0) in vec4 piglit_vertex;
+
+layout(location = 0) out vec3 a;
+
+void main()
+{
+   gl_Position = piglit_vertex;
+
+   a = piglit_vertex.xyz;
+}
+
+[fragment shader]
+#version 440
+
+layout(location = 0) in vec3 a;
+
+layout(std140, push_constant) uniform block {
+        int u_idx;
+        uniform vec2 u_offset;
+};
+
+layout(location = 0) out vec4 color;
+
+void main()
+{
+   /* u_offset is always 0, so these should all be the same. */
+   vec2 delta1 = a.yx - interpolateAtOffset(a.yx, u_offset);
+   float delta2 = a[2] - interpolateAtOffset(a[2], u_offset);
+   float delta3 = a[u_idx] - interpolateAtOffset(a[u_idx], u_offset);
+
+   if (delta1 != vec2(0.0)) {
+      color = vec4(0.1, delta1.x + 0.5, delta1.y + 0.5, 0.0);
+   } else if (delta2 != 0.0) {
+      color = vec4(0.2, delta2 + 0.5, 0.0, 0.0);
+   } else if (delta3 != 0.0) {
+      color = vec4(0.3, delta3 + 0.5, 0.0, 0.0);
+   } else {
+      color = vec4(0.0, 1.0, 0.0, 1.0);
+   }
+}
+
+[test]
+clear color 0.0 0.0 0.0 0.0
+clear
+
+uniform vec2 8 0 0
+
+uniform int 0 0
+draw rect -1 -1 1 2
+
+uniform int 0 1
+draw rect 0 -1 1 2
+
+probe all rgba 0.0 1.0 0.0 1.0
