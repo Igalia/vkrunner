@@ -62,8 +62,11 @@ struct load_state {
         enum section current_section;
         struct vr_buffer commands;
         struct vr_buffer extensions;
-        unsigned patch_size;
+        struct vr_pipeline_key current_key;
         struct vr_buffer indices;
+        float clear_color[4];
+        float clear_depth;
+        unsigned clear_stencil;
 };
 
 static const char *
@@ -219,6 +222,10 @@ type_rows(enum vr_script_type type)
                 return type - VR_SCRIPT_TYPE_IVEC2 + 2;
         if (type >= VR_SCRIPT_TYPE_UVEC2 && type <= VR_SCRIPT_TYPE_UVEC4)
                 return type - VR_SCRIPT_TYPE_UVEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_I16VEC2 && type <= VR_SCRIPT_TYPE_I16VEC4)
+                return type - VR_SCRIPT_TYPE_I16VEC2 + 2;
+        if (type >= VR_SCRIPT_TYPE_U16VEC2 && type <= VR_SCRIPT_TYPE_U16VEC4)
+                return type - VR_SCRIPT_TYPE_U16VEC2 + 2;
         if (type >= VR_SCRIPT_TYPE_I64VEC2 && type <= VR_SCRIPT_TYPE_I64VEC4)
                 return type - VR_SCRIPT_TYPE_I64VEC2 + 2;
         if (type >= VR_SCRIPT_TYPE_U64VEC2 && type <= VR_SCRIPT_TYPE_U64VEC4)
@@ -379,6 +386,69 @@ parse_uints(const char **p,
 }
 
 static bool
+parse_int16s(const char **p,
+             int16_t *out,
+             int n_ints,
+             const char *sep)
+{
+        long long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtoll(*p, &tail, 10);
+                if (errno != 0 || tail == *p ||
+                    v < INT16_MIN || v > INT16_MAX)
+                        return false;
+                *(out++) = (int16_t) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
+parse_uint16s(const char **p,
+              uint16_t *out,
+              int n_ints,
+              const char *sep)
+{
+        long long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtoll(*p, &tail, 10);
+                if (errno != 0 || tail == *p || v > UINT16_MAX)
+                        return false;
+                *(out++) = (uint16_t) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
 parse_int64s(const char **p,
              int64_t *out,
              int n_ints,
@@ -504,6 +574,8 @@ parse_value_type(const char **p,
         } types[] = {
                 { "int ", VR_SCRIPT_TYPE_INT },
                 { "uint ", VR_SCRIPT_TYPE_UINT },
+                { "int16_t ", VR_SCRIPT_TYPE_INT16 },
+                { "uint16_t ", VR_SCRIPT_TYPE_UINT16 },
                 { "int64_t ", VR_SCRIPT_TYPE_INT64 },
                 { "uint64_t ", VR_SCRIPT_TYPE_UINT64 },
                 { "float ", VR_SCRIPT_TYPE_FLOAT },
@@ -520,6 +592,12 @@ parse_value_type(const char **p,
                 { "uvec2 ", VR_SCRIPT_TYPE_UVEC2 },
                 { "uvec3 ", VR_SCRIPT_TYPE_UVEC3 },
                 { "uvec4 ", VR_SCRIPT_TYPE_UVEC4 },
+                { "i16vec2 ", VR_SCRIPT_TYPE_I16VEC2 },
+                { "i16vec3 ", VR_SCRIPT_TYPE_I16VEC3 },
+                { "i16vec4 ", VR_SCRIPT_TYPE_I16VEC4 },
+                { "u16vec2 ", VR_SCRIPT_TYPE_U16VEC2 },
+                { "u16vec3 ", VR_SCRIPT_TYPE_U16VEC3 },
+                { "u16vec4 ", VR_SCRIPT_TYPE_U16VEC4 },
                 { "i64vec2 ", VR_SCRIPT_TYPE_I64VEC2 },
                 { "i64vec3 ", VR_SCRIPT_TYPE_I64VEC3 },
                 { "i64vec4 ", VR_SCRIPT_TYPE_I64VEC4 },
@@ -571,6 +649,10 @@ parse_value(const char **p,
                 return parse_ints(p, &value->i, 1, NULL);
         case VR_SCRIPT_TYPE_UINT:
                 return parse_uints(p, &value->u, 1, NULL);
+        case VR_SCRIPT_TYPE_INT16:
+                return parse_int16s(p, &value->i16, 1, NULL);
+        case VR_SCRIPT_TYPE_UINT16:
+                return parse_uint16s(p, &value->u16, 1, NULL);
         case VR_SCRIPT_TYPE_INT64:
                 return parse_int64s(p, &value->i64, 1, NULL);
         case VR_SCRIPT_TYPE_UINT64:
@@ -603,6 +685,18 @@ parse_value(const char **p,
                 return parse_uints(p, value->uvec, 3, NULL);
         case VR_SCRIPT_TYPE_UVEC4:
                 return parse_uints(p, value->uvec, 4, NULL);
+        case VR_SCRIPT_TYPE_I16VEC2:
+                return parse_int16s(p, value->i16vec, 2, NULL);
+        case VR_SCRIPT_TYPE_I16VEC3:
+                return parse_int16s(p, value->i16vec, 3, NULL);
+        case VR_SCRIPT_TYPE_I16VEC4:
+                return parse_int16s(p, value->i16vec, 4, NULL);
+        case VR_SCRIPT_TYPE_U16VEC2:
+                return parse_uint16s(p, value->u16vec, 2, NULL);
+        case VR_SCRIPT_TYPE_U16VEC3:
+                return parse_uint16s(p, value->u16vec, 3, NULL);
+        case VR_SCRIPT_TYPE_U16VEC4:
+                return parse_uint16s(p, value->u16vec, 4, NULL);
         case VR_SCRIPT_TYPE_I64VEC2:
                 return parse_int64s(p, value->i64vec, 2, NULL);
         case VR_SCRIPT_TYPE_I64VEC3:
@@ -638,6 +732,44 @@ parse_value(const char **p,
         }
 
         vr_fatal("should not be reached");
+}
+
+static bool
+parse_format(struct load_state *data,
+             const char *p,
+             const struct vr_format **format_out)
+{
+        while (isspace(*p))
+                p++;
+        const char *end = p;
+        while (*end && !isspace(*end))
+                end++;
+
+        if (!is_end(end)) {
+                vr_error_message("%s:%i: Missing format name",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        char *format_name = vr_strndup(p, end - p);
+        const struct vr_format *format = vr_format_lookup_by_name(format_name);
+        bool ret;
+
+        if (format == NULL) {
+                vr_error_message("%s:%i: Unknown format: %s",
+                                 data->filename,
+                                 data->line_num,
+                                 format_name);
+                ret = false;
+        } else {
+                *format_out = format;
+                ret = true;
+        }
+
+        vr_free(format_name);
+
+        return ret;
 }
 
 static bool
@@ -679,33 +811,15 @@ process_require_line(struct load_state *data)
         }
 
         if (looking_at(&p, "framebuffer ")) {
-                while (isspace(*p))
-                        p++;
-                const char *end = p;
-                while (*end && !isspace(*end))
-                        end++;
+                return parse_format(data,
+                                    p,
+                                    &data->script->framebuffer_format);
+        }
 
-                if (is_end(end)) {
-                        char *format_name = vr_strndup(p, end - p);
-                        const struct vr_format *format =
-                                vr_format_lookup_by_name(format_name);
-                        bool ret;
-
-                        if (format == NULL) {
-                                vr_error_message("%s:%i: Unknown format: %s",
-                                                 data->filename,
-                                                 data->line_num,
-                                                 format_name);
-                                ret = false;
-                        } else {
-                                data->script->framebuffer_format = format;
-                                ret = true;
-                        }
-
-                        vr_free(format_name);
-
-                        return ret;
-                }
+        if (looking_at(&p, "depthstencil ")) {
+                return parse_format(data,
+                                    p,
+                                    &data->script->depth_stencil_format);
         }
 
         int extension_len = 0;
@@ -741,7 +855,8 @@ process_require_line(struct load_state *data)
 }
 
 static bool
-process_draw_rect_command(const char *p,
+process_draw_rect_command(struct load_state *data,
+                          const char *p,
                           struct vr_script_command *command)
 {
         if (!looking_at(&p, "draw rect "))
@@ -752,7 +867,16 @@ process_draw_rect_command(const char *p,
         if (looking_at(&p, "ortho "))
                 ortho = true;
 
-        command->draw_rect.use_patches = looking_at(&p, "patch ");
+        struct vr_pipeline_key *key = &command->draw_rect.key;
+
+        *key = data->current_key;
+        key->source = VR_PIPELINE_KEY_SOURCE_RECTANGLE;
+
+        if (looking_at(&p, "patch "))
+                key->topology.i = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+        else
+                key->topology.i = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+        key->patchControlPoints.i = 4;
 
         if (!parse_floats(&p, &command->draw_rect.x, 4, NULL) ||
             !is_end(p))
@@ -888,6 +1012,8 @@ process_draw_arrays_command(struct load_state *data,
         int n_args = 2;
 
         command->draw_arrays.indexed = false;
+        command->draw_arrays.key = data->current_key;
+        command->draw_arrays.key.source = VR_PIPELINE_KEY_SOURCE_VERTEX_DATA;
 
         while (true) {
                 if (looking_at(&p, "instanced ")) {
@@ -939,7 +1065,8 @@ process_draw_arrays_command(struct load_state *data,
 
         for (int i = 0; i < VR_N_ELEMENTS(topologies); i++) {
                 if (looking_at(&p, topologies[i].name)) {
-                        command->draw_arrays.topology = topologies[i].topology;
+                        command->draw_arrays.key.topology.i =
+                                topologies[i].topology;
                         goto found_topology;
                 }
         }
@@ -963,7 +1090,6 @@ found_topology:
         command->draw_arrays.vertex_count = args[1];
         command->draw_arrays.first_instance = 0;
         command->draw_arrays.instance_count = args[2];
-        command->draw_arrays.patch_size = data->patch_size;
 
         return true;
 }
@@ -1003,6 +1129,122 @@ process_indices_line(struct load_state *data)
 }
 
 static bool
+process_bool_property(struct load_state *data,
+                      union vr_pipeline_key_value *value,
+                      const char *p)
+{
+        if (looking_at(&p, "true"))
+                value->i = true;
+        else if (looking_at(&p, "false"))
+                value->i = false;
+        else if (!parse_ints(&p, &value->i, 1, NULL))
+                goto error;
+
+        if (!is_end(p))
+                goto error;
+
+        return true;
+
+error:
+        vr_error_message("%s:%i: Invalid boolean value",
+                         data->filename,
+                         data->line_num);
+        return false;
+}
+
+static bool
+process_int_property(struct load_state *data,
+                     union vr_pipeline_key_value *value,
+                     const char *p)
+{
+        value->i = 0;
+
+        while (true) {
+                int this_int;
+
+                while (isspace(*p))
+                        p++;
+
+                if (parse_ints(&p, &this_int, 1, NULL)) {
+                        value->i |= this_int;
+                } else if (isalnum(*p)) {
+                        const char *end = p + 1;
+                        while (isalnum(*end) || *end == '_')
+                                end++;
+                        char *enum_name = vr_strndup(p, end - p);
+                        bool is_enum = vr_pipeline_key_lookup_enum(enum_name,
+                                                                   &this_int);
+                        free(enum_name);
+
+                        if (!is_enum)
+                                goto error;
+
+                        value->i |= this_int;
+                        p = end;
+                } else {
+                        goto error;
+                }
+
+                if (is_end(p))
+                        break;
+
+                while (isspace(*p))
+                        p++;
+
+                if (*p != '|')
+                        goto error;
+                p++;
+        }
+
+        return true;
+
+error:
+        vr_error_message("%s:%i: Invalid int value",
+                         data->filename,
+                         data->line_num);
+        return false;
+}
+
+static bool
+process_float_property(struct load_state *data,
+                       union vr_pipeline_key_value *value,
+                       const char *p)
+{
+        while (isspace(*p))
+                p++;
+
+        if (!parse_floats(&p, &value->f, 1, NULL) || !is_end(p)) {
+                vr_error_message("%s:%i: Invalid float value",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        return true;
+}
+
+static bool
+process_pipeline_property(struct load_state *data,
+                          union vr_pipeline_key_value *value,
+                          enum vr_pipeline_key_value_type type,
+                          const char *p)
+{
+        while (*p && isspace(*p))
+                p++;
+
+        switch (type) {
+        case VR_PIPELINE_KEY_VALUE_TYPE_BOOL:
+                return process_bool_property(data, value, p);
+        case VR_PIPELINE_KEY_VALUE_TYPE_INT:
+                return process_int_property(data, value, p);
+        case VR_PIPELINE_KEY_VALUE_TYPE_FLOAT:
+                return process_float_property(data, value, p);
+        }
+
+        vr_fatal("Unknown pipeline property type");
+}
+
+static bool
 process_test_line(struct load_state *data)
 {
         const char *p = (char *) data->line.data;
@@ -1014,11 +1256,58 @@ process_test_line(struct load_state *data)
                 return true;
 
         if (looking_at(&p, "patch parameter vertices ")) {
-                if (!parse_uints(&p, &data->patch_size, 1, NULL))
+                struct vr_pipeline_key *key = &data->current_key;
+                if (!parse_ints(&p, &key->patchControlPoints.i, 1, NULL))
                         goto error;
                 if (!is_end(p))
                         goto error;
                 return true;
+        }
+
+        if (looking_at(&p, "clear color ")) {
+                if (!parse_floats(&p, data->clear_color, 4, NULL))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                return true;
+        }
+
+        if (looking_at(&p, "clear depth ")) {
+                if (!parse_floats(&p, &data->clear_depth, 1, NULL))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                return true;
+        }
+
+        if (looking_at(&p, "clear stencil ")) {
+                if (!parse_uints(&p, &data->clear_stencil, 1, NULL))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                return true;
+        }
+
+        if (isalnum(*p)) {
+                const char *end = p + 1;
+                while (isalnum(*end) || *end == '.')
+                        end++;
+                char *prop_name = vr_strndup(p, end - p);
+
+                enum vr_pipeline_key_value_type key_value_type;
+                union vr_pipeline_key_value *key_value =
+                        vr_pipeline_key_lookup(&data->current_key,
+                                               prop_name,
+                                               &key_value_type);
+
+                vr_free(prop_name);
+
+                if (key_value) {
+                        return process_pipeline_property(data,
+                                                         key_value,
+                                                         key_value_type,
+                                                         end);
+                }
         }
 
         vr_buffer_set_length(&data->commands,
@@ -1032,7 +1321,7 @@ process_test_line(struct load_state *data)
 
         command->line_num = data->line_num;
 
-        if (process_draw_rect_command(p, command))
+        if (process_draw_rect_command(data, p, command))
                 return true;
 
         if (process_probe_command(p, command))
@@ -1081,19 +1370,15 @@ process_test_line(struct load_state *data)
                 return true;
         }
 
-        if (looking_at(&p, "clear color ")) {
-                if (!parse_floats(&p, command->clear_color.color, 4, NULL))
-                        goto error;
-                if (!is_end(p))
-                        goto error;
-                command->op = VR_SCRIPT_OP_CLEAR_COLOR;
-                return true;
-        }
-
         if (looking_at(&p, "clear")) {
                 if (!is_end(p))
                         goto error;
                 command->op = VR_SCRIPT_OP_CLEAR;
+                memcpy(command->clear.color,
+                       data->clear_color,
+                       sizeof data->clear_color);
+                command->clear.depth = data->clear_depth;
+                command->clear.stencil = data->clear_stencil;
                 return true;
         }
 
@@ -1300,10 +1585,12 @@ load_script_from_stream(const char *filename,
                 .extensions = VR_BUFFER_STATIC_INIT,
                 .current_stage = -1,
                 .current_section = SECTION_NONE,
-                .patch_size = 3
+                .clear_depth = 1.0f
         };
         bool res = true;
         int stage;
+
+        vr_pipeline_key_init(&data.current_key);
 
         data.script->filename = vr_strdup(filename);
         data.script->framebuffer_format =
@@ -1404,6 +1691,9 @@ size_t
 vr_script_type_size(enum vr_script_type type)
 {
         switch (type) {
+        case VR_SCRIPT_TYPE_INT16:
+        case VR_SCRIPT_TYPE_UINT16:
+                return 2;
         case VR_SCRIPT_TYPE_INT:
         case VR_SCRIPT_TYPE_UINT:
         case VR_SCRIPT_TYPE_FLOAT:
@@ -1412,6 +1702,15 @@ vr_script_type_size(enum vr_script_type type)
         case VR_SCRIPT_TYPE_UINT64:
         case VR_SCRIPT_TYPE_DOUBLE:
                 return 8;
+        case VR_SCRIPT_TYPE_I16VEC2:
+        case VR_SCRIPT_TYPE_U16VEC2:
+                return 2 * 2;
+        case VR_SCRIPT_TYPE_I16VEC3:
+        case VR_SCRIPT_TYPE_U16VEC3:
+                return 2 * 3;
+        case VR_SCRIPT_TYPE_I16VEC4:
+        case VR_SCRIPT_TYPE_U16VEC4:
+                return 2 * 4;
         case VR_SCRIPT_TYPE_VEC2:
         case VR_SCRIPT_TYPE_IVEC2:
         case VR_SCRIPT_TYPE_UVEC2:

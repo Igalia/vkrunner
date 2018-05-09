@@ -407,9 +407,9 @@ get_alignment(const struct vr_format *format)
 
         int max_size = 8;
 
-        for (int i = 0; i < format->n_components; i++) {
-                if (format->components[i].bits > max_size)
-                        max_size = format->components[i].bits;
+        for (int i = 0; i < format->n_parts; i++) {
+                if (format->parts[i].bits > max_size)
+                        max_size = format->parts[i].bits;
         }
 
         return max_size / 8;
@@ -515,14 +515,14 @@ parse_data_line(struct vbo_data *data,
                         continue;
                 }
 
-                for (size_t j = 0; j < attrib->format->n_components; ++j) {
-                        if (!parse_datum(attrib->format->mode,
-                                         attrib->format->components[j].bits,
+                for (size_t j = 0; j < attrib->format->n_parts; ++j) {
+                        if (!parse_datum(attrib->format->parts[j].mode,
+                                         attrib->format->parts[j].bits,
                                          &line_ptr,
                                          data_ptr))
                                 goto error;
 
-                        data_ptr += attrib->format->components[j].bits / 8;
+                        data_ptr += attrib->format->parts[j].bits / 8;
                 }
         }
 

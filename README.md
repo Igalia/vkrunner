@@ -64,11 +64,11 @@ The same as above except that it probes the entire window.
 
 Sets a push constant at the given offset. Note that unlike Piglit, the
 offset is a byte offset into the push constant buffer rather than a
-uniform location. The type can be one of int, uint, int64_t, uint64_t,
-float, double, vec[234], dvec[234], ivec[234], uvec[234], i64vec[234],
-u64vec[234], mat[234]x[234] or dmat[234]x[234]. If matrices are
-specified they are assumed to have a stride according to the std140
-layout rules.
+uniform location. The type can be one of int, uint, int16_t, uint16_t,
+int64_t, uint64_t, float, double, vec[234], dvec[234], ivec[234],
+uvec[234], i16vec[234], u16vec[234], i64vec[234], u64vec[234],
+mat[234]x[234] or dmat[234]x[234]. If matrices are specified they are
+assumed to have a stride according to the std140 layout rules.
 
 > uniform ubo _binding_ _type_ _offset_ _values_…
 
@@ -88,16 +88,46 @@ command or the test completes.
 Sets the color to use for subsequent clear commands. Defaults to all
 zeros.
 
+> clear depth _value_
+
+Sets the value to clear the depth buffer to in subsequent clear
+commands. Defaults to 1.0.
+
+> clear stencil _value_
+
+Sets the value to clear the stencil buffer to in subsequent clear
+commands. Defaults to 0.
+
 > clear
 
-Clears the entire framebuffer to the previously set clear color.
+Clears the entire framebuffer to the previously set clear color, depth
+and stencil values.
 
 > patch parameter vertices _vertices_
 
 Sets the number of control points for tessellation patches in
 subsequent draw calls. Defaults to 3.
 
-Take a look in the examples directory for examples.
+> topology, primitiveRestartEnable, patchControlPoints,
+> depthClampEnable, rasterizerDiscardEnable, polygonMode, cullMode,
+> frontFace, depthBiasEnable, depthBiasConstantFactor, depthBiasClamp,
+> depthBiasSlopeFactor, lineWidth, logicOpEnable, logicOp,
+> blendEnable, srcColorBlendFactor, dstColorBlendFactor, colorBlendOp,
+> srcAlphaBlendFactor, dstAlphaBlendFactor, alphaBlendOp,
+> colorWriteMask, depthTestEnable, depthWriteEnable, depthCompareOp,
+> depthBoundsTestEnable, stencilTestEnable, front.failOp,
+> front.passOp, front.depthFailOp, front.compareOp, front.compareMask,
+> front.writeMask, front.reference, back.failOp, back.passOp,
+> back.depthFailOp, back.compareOp, back.compareMask, back.writeMask,
+> back.reference
+
+These properties can be set on a pipeline by specifying their name
+followed by a value in the test section. This will affect subsequent
+draw calls. If multiple draw calls are issued with different values
+for these properties then a separate pipeline will be created for each
+set of state. See the `properties.shader_test` example for details.
+
+Take a look in the examples directory for more examples.
 
 ## [require] section
 
@@ -121,6 +151,12 @@ device.
 
 Use this to specify the format of the framebuffer using a format from
 VkFormat minus the VK_FORMAT prefix.
+
+> depthstencil _format_
+
+If this is specified VkRunner will try to add a depth-stencil
+attachment to the framebuffer with the given format. Without it no
+depth-stencil buffer will be created.
 
 ## Shader sections
 
@@ -162,7 +198,7 @@ The data follows the column headers in space-separated form. “#” can
 be used for comments, as in shell scripts. See the
 `vertex-data.shader_test` file as an example.
 
-# [indices] section
+## [indices] section
 
 The `[indices]` section just contains a list of indices to use along
 with the vertices in `[vertex data]`. It will be used if the `indexed`

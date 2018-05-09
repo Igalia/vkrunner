@@ -56,12 +56,13 @@ struct test_data {
         struct vr_list buffers;
         struct vr_list ubo_buffers;
         const struct vr_script *script;
-        float clear_color[4];
         struct test_buffer *vbo_buffer;
         struct test_buffer *index_buffer;
         bool ubo_descriptor_set_bound;
         VkDescriptorSet ubo_descriptor_set;
         VkPipeline bound_pipeline;
+        bool in_render_pass;
+        bool first_render;
 };
 
 static const double
@@ -151,6 +152,9 @@ begin_paint(struct test_data *data)
 {
         VkResult res;
 
+        if (data->in_render_pass)
+                return true;
+
         VkCommandBufferBeginInfo begin_command_buffer_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
         };
@@ -163,7 +167,9 @@ begin_paint(struct test_data *data)
 
         VkRenderPassBeginInfo render_pass_begin_info = {
                 .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                .renderPass = data->window->render_pass,
+                .renderPass = (data->first_render ?
+                               data->window->render_pass[0] :
+                               data->window->render_pass[1]),
                 .framebuffer = data->window->framebuffer,
                 .renderArea = {
                         .offset = { 0, 0 },
@@ -178,6 +184,8 @@ begin_paint(struct test_data *data)
 
         data->bound_pipeline = NULL;
         data->ubo_descriptor_set_bound = false;
+        data->in_render_pass = true;
+        data->first_render = false;
 
         return true;
 }
@@ -187,6 +195,9 @@ end_paint(struct test_data *data)
 {
         struct vr_window *window = data->window;
         VkResult res;
+
+        if (!data->in_render_pass)
+                return true;
 
         vr_vk.vkCmdEndRenderPass(window->command_buffer);
 
@@ -259,6 +270,8 @@ end_paint(struct test_data *data)
                                                      &memory_range);
         }
 
+        data->in_render_pass = false;
+
         return true;
 }
 
@@ -313,6 +326,9 @@ draw_rect(struct test_data *data,
                                       sizeof (struct vr_pipeline_vertex) * 4,
                                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
         if (buffer == NULL)
+                return false;
+
+        if (!begin_paint(data))
                 return false;
 
         struct vr_pipeline_vertex *v = buffer->memory_map;
@@ -420,6 +436,9 @@ draw_arrays(struct test_data *data,
                                 VK_WHOLE_SIZE);
         }
 
+        if (!begin_paint(data))
+                return false;
+
         bind_ubo_descriptor_set(data);
         bind_pipeline_for_command(data, command);
 
@@ -497,11 +516,10 @@ probe_rect(struct test_data *data,
         int n_components = command->probe_rect.n_components;
         const struct vr_format *format = data->window->framebuffer_format;
         int format_size = vr_format_get_size(format);
-        bool ret = true;
 
         /* End the paint to copy the framebuffer into the linear buffer */
         if (!end_paint(data))
-                ret = false;
+                return false;
 
         for (int y = 0; y < command->probe_rect.h; y++) {
                 const uint8_t *p =
@@ -518,23 +536,18 @@ probe_rect(struct test_data *data,
                                             command->probe_rect.color,
                                             tolerance,
                                             n_components)) {
-                                ret = false;
                                 print_command_fail(command);
                                 print_bad_pixel(x + command->probe_rect.x,
                                                 y + command->probe_rect.y,
                                                 n_components,
                                                 command->probe_rect.color,
                                                 pixel);
-                                goto done;
+                                return false;
                         }
                 }
         }
-done:
 
-        if (!begin_paint(data))
-                ret = false;
-
-        return ret;
+        return true;
 }
 
 static bool
@@ -543,6 +556,9 @@ set_push_constant(struct test_data *data,
 {
         const struct vr_script_value *value =
                 &command->set_push_constant.value;
+
+        if (!begin_paint(data))
+                return false;
 
         vr_vk.vkCmdPushConstants(data->window->command_buffer,
                                  data->pipeline->layout,
@@ -664,24 +680,46 @@ set_ubo_uniform(struct test_data *data,
 }
 
 static bool
-clear_color(struct test_data *data,
-            const struct vr_script_command *command)
-{
-        memcpy(data->clear_color,
-               command->clear_color.color,
-               sizeof data->clear_color);
-        return true;
-}
-
-static bool
 clear(struct test_data *data,
       const struct vr_script_command *command)
 {
-        VkClearAttachment color_clear_attachment = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .colorAttachment = 0,
+        if (!begin_paint(data))
+                return false;
+
+        VkImageAspectFlags depth_stencil_flags = 0;
+        const struct vr_format *depth_stencil_format =
+                data->window->depth_stencil_format;
+
+        if (data->window->depth_stencil_format) {
+                for (int i = 0; i < depth_stencil_format->n_parts; i++) {
+                        switch (depth_stencil_format->parts[i].component) {
+                        case VR_FORMAT_COMPONENT_D:
+                                depth_stencil_flags |=
+                                        VK_IMAGE_ASPECT_DEPTH_BIT;
+                                break;
+                        case VR_FORMAT_COMPONENT_S:
+                                depth_stencil_flags |=
+                                        VK_IMAGE_ASPECT_STENCIL_BIT;
+                                break;
+                        default:
+                                break;
+                        }
+                }
+        }
+
+        VkClearAttachment clear_attachments[] = {
+                {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .colorAttachment = 0,
+                },
+                {
+                        .aspectMask = depth_stencil_flags,
+                        .clearValue = { .depthStencil =
+                                        { .depth = command->clear.depth,
+                                          .stencil = command->clear.stencil } }
+                },
         };
-        VkClearRect color_clear_rect = {
+        VkClearRect clear_rect = {
                 .rect = {
                         .offset = { 0, 0 },
                         .extent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT }
@@ -689,14 +727,22 @@ clear(struct test_data *data,
                 .baseArrayLayer = 0,
                 .layerCount = 1
         };
-        memcpy(color_clear_attachment.clearValue.color.float32,
-               data->clear_color,
-               sizeof data->clear_color);
+        memcpy(clear_attachments[0].clearValue.color.float32,
+               command->clear.color,
+               sizeof command->clear.color);
+
+        int n_attachments;
+
+        if (depth_stencil_flags)
+                n_attachments = 2;
+        else
+                n_attachments = 1;
+
         vr_vk.vkCmdClearAttachments(data->window->command_buffer,
-                                    1, /* attachmentCount */
-                                    &color_clear_attachment,
+                                    n_attachments,
+                                    clear_attachments,
                                     1,
-                                    &color_clear_rect);
+                                    &clear_rect);
         return true;
 }
 
@@ -708,15 +754,14 @@ vr_test_run(struct vr_window *window,
         struct test_data data = {
                 .window = window,
                 .pipeline = pipeline,
-                .script = script
+                .script = script,
+                .in_render_pass = false,
+                .first_render = true
         };
         bool ret = true;
 
         vr_list_init(&data.buffers);
         vr_list_init(&data.ubo_buffers);
-
-        if (!begin_paint(&data))
-                ret = false;
 
         for (int i = 0; i < script->n_commands; i++) {
                 const struct vr_script_command *command = script->commands + i;
@@ -740,10 +785,6 @@ vr_test_run(struct vr_window *window,
                         break;
                 case VR_SCRIPT_OP_SET_UBO_UNIFORM:
                         if (!set_ubo_uniform(&data, command))
-                                ret = false;
-                        break;
-                case VR_SCRIPT_OP_CLEAR_COLOR:
-                        if (!clear_color(&data, command))
                                 ret = false;
                         break;
                 case VR_SCRIPT_OP_CLEAR:

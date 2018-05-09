@@ -12,6 +12,7 @@ vkrunner_SOURCES = \
 	vr-buffer.h \
 	vr-config.c \
 	vr-config.h \
+	vr-enum-table.h \
 	vr-error-message.c \
 	vr-error-message.h \
 	vr-feature-offsets.c \
@@ -27,6 +28,8 @@ vkrunner_SOURCES = \
 	vr-hex.h \
 	vr-list.c \
 	vr-list.h \
+	vr-pipeline-key.c \
+	vr-pipeline-key.h \
 	vr-result.c \
 	vr-result.h \
 	vr-script.c \
@@ -40,6 +43,7 @@ vkrunner_SOURCES = \
 	vr-vk-instance-funcs.h \
 	vr-pipeline.c \
 	vr-pipeline.h \
+	vr-pipeline-properties.h \
 	vr-subprocess.c \
 	vr-subprocess.h \
 	vr-test.c \
@@ -57,4 +61,5 @@ vkrunner_LDADD = \
 
 EXTRA_DIST = \
 	make-formats.py \
+	make-enums.py \
 	$(NULL)

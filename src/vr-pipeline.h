@@ -29,17 +29,7 @@
 #include "vr-script.h"
 #include "vr-window.h"
 #include "vr-config.h"
-
-enum vr_pipeline_source {
-        VR_PIPELINE_SOURCE_RECTANGLE,
-        VR_PIPELINE_SOURCE_VERTEX_DATA
-};
-
-struct vr_pipeline_key {
-        enum vr_pipeline_source source;
-        VkPrimitiveTopology topology;
-        unsigned patch_size;
-};
+#include "vr-pipeline-key.h"
 
 struct vr_pipeline {
         struct vr_window *window;

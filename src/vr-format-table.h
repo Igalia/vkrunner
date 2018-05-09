@@ -5,1576 +5,2867 @@ formats[] = {
                 .vk_format = VK_FORMAT_A1R5G5B5_UNORM_PACK16,
                 .name = "A1R5G5B5_UNORM_PACK16",
                 .packed_size = 16,
-                .swizzle = VR_FORMAT_SWIZZLE_ARGB,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 1 },
-                        { .bits = 5 },
-                        { .bits = 5 },
-                        { .bits = 5 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 1,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_SINT_PACK32,
                 .name = "A2B10G10R10_SINT_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_SNORM_PACK32,
                 .name = "A2B10G10R10_SNORM_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_SSCALED_PACK32,
                 .name = "A2B10G10R10_SSCALED_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_UINT_PACK32,
                 .name = "A2B10G10R10_UINT_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_UNORM_PACK32,
                 .name = "A2B10G10R10_UNORM_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_USCALED_PACK32,
                 .name = "A2B10G10R10_USCALED_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_SINT_PACK32,
                 .name = "A2R10G10B10_SINT_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ARGB,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_SNORM_PACK32,
                 .name = "A2R10G10B10_SNORM_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ARGB,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_SSCALED_PACK32,
                 .name = "A2R10G10B10_SSCALED_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ARGB,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_UINT_PACK32,
                 .name = "A2R10G10B10_UINT_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ARGB,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_UNORM_PACK32,
                 .name = "A2R10G10B10_UNORM_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ARGB,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_USCALED_PACK32,
                 .name = "A2R10G10B10_USCALED_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ARGB,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 2 },
-                        { .bits = 10 },
-                        { .bits = 10 },
-                        { .bits = 10 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 2,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_SINT_PACK32,
                 .name = "A8B8G8R8_SINT_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_SNORM_PACK32,
                 .name = "A8B8G8R8_SNORM_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_SRGB_PACK32,
                 .name = "A8B8G8R8_SRGB_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_SRGB,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_SSCALED_PACK32,
                 .name = "A8B8G8R8_SSCALED_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_UINT_PACK32,
                 .name = "A8B8G8R8_UINT_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_UNORM_PACK32,
                 .name = "A8B8G8R8_UNORM_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_USCALED_PACK32,
                 .name = "A8B8G8R8_USCALED_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_ABGR,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B10G11R11_UFLOAT_PACK32,
                 .name = "B10G11R11_UFLOAT_PACK32",
                 .packed_size = 32,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_UFLOAT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 10 },
-                        { .bits = 11 },
-                        { .bits = 11 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 10,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UFLOAT,
+                        },
+                        {
+                                .bits = 11,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UFLOAT,
+                        },
+                        {
+                                .bits = 11,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B4G4R4A4_UNORM_PACK16,
                 .name = "B4G4R4A4_UNORM_PACK16",
                 .packed_size = 16,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 4 },
-                        { .bits = 4 },
-                        { .bits = 4 },
-                        { .bits = 4 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 4,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 4,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 4,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 4,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B5G5R5A1_UNORM_PACK16,
                 .name = "B5G5R5A1_UNORM_PACK16",
                 .packed_size = 16,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 5 },
-                        { .bits = 5 },
-                        { .bits = 5 },
-                        { .bits = 1 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 1,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B5G6R5_UNORM_PACK16,
                 .name = "B5G6R5_UNORM_PACK16",
                 .packed_size = 16,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 3,
-                .components = {
-                        { .bits = 5 },
-                        { .bits = 6 },
-                        { .bits = 5 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 6,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_SINT,
                 .name = "B8G8R8A8_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_SNORM,
                 .name = "B8G8R8A8_SNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_SRGB,
                 .name = "B8G8R8A8_SRGB",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_SRGB,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_SSCALED,
                 .name = "B8G8R8A8_SSCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_UINT,
                 .name = "B8G8R8A8_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_UNORM,
                 .name = "B8G8R8A8_UNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_USCALED,
                 .name = "B8G8R8A8_USCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_SINT,
                 .name = "B8G8R8_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_SNORM,
                 .name = "B8G8R8_SNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_SRGB,
                 .name = "B8G8R8_SRGB",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_SRGB,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_SSCALED,
                 .name = "B8G8R8_SSCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_UINT,
                 .name = "B8G8R8_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_UNORM,
                 .name = "B8G8R8_UNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_USCALED,
                 .name = "B8G8R8_USCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_BGRA,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_D16_UNORM,
+                .name = "D16_UNORM",
+                .packed_size = 0,
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_D16_UNORM_S8_UINT,
+                .name = "D16_UNORM_S8_UINT",
+                .packed_size = 0,
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_S,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_D24_UNORM_S8_UINT,
+                .name = "D24_UNORM_S8_UINT",
+                .packed_size = 0,
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 24,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_S,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_D32_SFLOAT,
+                .name = "D32_SFLOAT",
+                .packed_size = 0,
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_D32_SFLOAT_S8_UINT,
+                .name = "D32_SFLOAT_S8_UINT",
+                .packed_size = 0,
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_S,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_SFLOAT,
                 .name = "R16G16B16A16_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_SINT,
                 .name = "R16G16B16A16_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_SNORM,
                 .name = "R16G16B16A16_SNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_SSCALED,
                 .name = "R16G16B16A16_SSCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_UINT,
                 .name = "R16G16B16A16_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_UNORM,
                 .name = "R16G16B16A16_UNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_USCALED,
                 .name = "R16G16B16A16_USCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_SFLOAT,
                 .name = "R16G16B16_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_SINT,
                 .name = "R16G16B16_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_SNORM,
                 .name = "R16G16B16_SNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 3,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_SSCALED,
                 .name = "R16G16B16_SSCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 3,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_UINT,
                 .name = "R16G16B16_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_UNORM,
                 .name = "R16G16B16_UNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 3,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_USCALED,
                 .name = "R16G16B16_USCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 3,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16_SFLOAT,
                 .name = "R16G16_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 2,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16_SINT,
                 .name = "R16G16_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 2,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16_SNORM,
                 .name = "R16G16_SNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 2,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16_SSCALED,
                 .name = "R16G16_SSCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 2,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16_UINT,
                 .name = "R16G16_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 2,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16_UNORM,
                 .name = "R16G16_UNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 2,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16G16_USCALED,
                 .name = "R16G16_USCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 2,
-                .components = {
-                        { .bits = 16 },
-                        { .bits = 16 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16_SFLOAT,
                 .name = "R16_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 1,
-                .components = {
-                        { .bits = 16 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16_SINT,
                 .name = "R16_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 1,
-                .components = {
-                        { .bits = 16 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16_SNORM,
                 .name = "R16_SNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 1,
-                .components = {
-                        { .bits = 16 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16_SSCALED,
                 .name = "R16_SSCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 1,
-                .components = {
-                        { .bits = 16 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16_UINT,
                 .name = "R16_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 1,
-                .components = {
-                        { .bits = 16 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16_UNORM,
                 .name = "R16_UNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 1,
-                .components = {
-                        { .bits = 16 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R16_USCALED,
                 .name = "R16_USCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 1,
-                .components = {
-                        { .bits = 16 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 16,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32A32_SFLOAT,
                 .name = "R32G32B32A32_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 32 },
-                        { .bits = 32 },
-                        { .bits = 32 },
-                        { .bits = 32 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32A32_SINT,
                 .name = "R32G32B32A32_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 32 },
-                        { .bits = 32 },
-                        { .bits = 32 },
-                        { .bits = 32 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32A32_UINT,
                 .name = "R32G32B32A32_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 32 },
-                        { .bits = 32 },
-                        { .bits = 32 },
-                        { .bits = 32 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32_SFLOAT,
                 .name = "R32G32B32_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 32 },
-                        { .bits = 32 },
-                        { .bits = 32 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32_SINT,
                 .name = "R32G32B32_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 32 },
-                        { .bits = 32 },
-                        { .bits = 32 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32_UINT,
                 .name = "R32G32B32_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 32 },
-                        { .bits = 32 },
-                        { .bits = 32 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32G32_SFLOAT,
                 .name = "R32G32_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 2,
-                .components = {
-                        { .bits = 32 },
-                        { .bits = 32 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32G32_SINT,
                 .name = "R32G32_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 2,
-                .components = {
-                        { .bits = 32 },
-                        { .bits = 32 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32G32_UINT,
                 .name = "R32G32_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 2,
-                .components = {
-                        { .bits = 32 },
-                        { .bits = 32 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32_SFLOAT,
                 .name = "R32_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 1,
-                .components = {
-                        { .bits = 32 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32_SINT,
                 .name = "R32_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 1,
-                .components = {
-                        { .bits = 32 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R32_UINT,
                 .name = "R32_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 1,
-                .components = {
-                        { .bits = 32 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 32,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R4G4B4A4_UNORM_PACK16,
                 .name = "R4G4B4A4_UNORM_PACK16",
                 .packed_size = 16,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 4 },
-                        { .bits = 4 },
-                        { .bits = 4 },
-                        { .bits = 4 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 4,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 4,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 4,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 4,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R4G4_UNORM_PACK8,
                 .name = "R4G4_UNORM_PACK8",
                 .packed_size = 8,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 2,
-                .components = {
-                        { .bits = 4 },
-                        { .bits = 4 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 4,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 4,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R5G5B5A1_UNORM_PACK16,
                 .name = "R5G5B5A1_UNORM_PACK16",
                 .packed_size = 16,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 5 },
-                        { .bits = 5 },
-                        { .bits = 5 },
-                        { .bits = 1 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 1,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R5G6B5_UNORM_PACK16,
                 .name = "R5G6B5_UNORM_PACK16",
                 .packed_size = 16,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 3,
-                .components = {
-                        { .bits = 5 },
-                        { .bits = 6 },
-                        { .bits = 5 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 6,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 5,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64A64_SFLOAT,
                 .name = "R64G64B64A64_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 64 },
-                        { .bits = 64 },
-                        { .bits = 64 },
-                        { .bits = 64 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64A64_SINT,
                 .name = "R64G64B64A64_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 64 },
-                        { .bits = 64 },
-                        { .bits = 64 },
-                        { .bits = 64 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64A64_UINT,
                 .name = "R64G64B64A64_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 64 },
-                        { .bits = 64 },
-                        { .bits = 64 },
-                        { .bits = 64 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64_SFLOAT,
                 .name = "R64G64B64_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 64 },
-                        { .bits = 64 },
-                        { .bits = 64 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64_SINT,
                 .name = "R64G64B64_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 64 },
-                        { .bits = 64 },
-                        { .bits = 64 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64_UINT,
                 .name = "R64G64B64_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 64 },
-                        { .bits = 64 },
-                        { .bits = 64 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64G64_SFLOAT,
                 .name = "R64G64_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 2,
-                .components = {
-                        { .bits = 64 },
-                        { .bits = 64 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64G64_SINT,
                 .name = "R64G64_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 2,
-                .components = {
-                        { .bits = 64 },
-                        { .bits = 64 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64G64_UINT,
                 .name = "R64G64_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 2,
-                .components = {
-                        { .bits = 64 },
-                        { .bits = 64 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64_SFLOAT,
                 .name = "R64_SFLOAT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SFLOAT,
-                .n_components = 1,
-                .components = {
-                        { .bits = 64 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SFLOAT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64_SINT,
                 .name = "R64_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 1,
-                .components = {
-                        { .bits = 64 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R64_UINT,
                 .name = "R64_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 1,
-                .components = {
-                        { .bits = 64 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 64,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_SINT,
                 .name = "R8G8B8A8_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_SNORM,
                 .name = "R8G8B8A8_SNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_SRGB,
                 .name = "R8G8B8A8_SRGB",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SRGB,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_SSCALED,
                 .name = "R8G8B8A8_SSCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_UINT,
                 .name = "R8G8B8A8_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_UNORM,
                 .name = "R8G8B8A8_UNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_USCALED,
                 .name = "R8G8B8A8_USCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 4,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 4,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_A,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_SINT,
                 .name = "R8G8B8_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_SNORM,
                 .name = "R8G8B8_SNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_SRGB,
                 .name = "R8G8B8_SRGB",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SRGB,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_SSCALED,
                 .name = "R8G8B8_SSCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_UINT,
                 .name = "R8G8B8_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_UNORM,
                 .name = "R8G8B8_UNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_USCALED,
                 .name = "R8G8B8_USCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 3,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 3,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_B,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8_SINT,
                 .name = "R8G8_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 2,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8_SNORM,
                 .name = "R8G8_SNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 2,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8_SRGB,
                 .name = "R8G8_SRGB",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SRGB,
-                .n_components = 2,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8_SSCALED,
                 .name = "R8G8_SSCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 2,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8_UINT,
                 .name = "R8G8_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 2,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8_UNORM,
                 .name = "R8G8_UNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 2,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8G8_USCALED,
                 .name = "R8G8_USCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 2,
-                .components = {
-                        { .bits = 8 },
-                        { .bits = 8 },
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_G,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8_SINT,
                 .name = "R8_SINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SINT,
-                .n_components = 1,
-                .components = {
-                        { .bits = 8 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8_SNORM,
                 .name = "R8_SNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SNORM,
-                .n_components = 1,
-                .components = {
-                        { .bits = 8 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8_SRGB,
                 .name = "R8_SRGB",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SRGB,
-                .n_components = 1,
-                .components = {
-                        { .bits = 8 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SRGB,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8_SSCALED,
                 .name = "R8_SSCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_SSCALED,
-                .n_components = 1,
-                .components = {
-                        { .bits = 8 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_SSCALED,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8_UINT,
                 .name = "R8_UINT",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UINT,
-                .n_components = 1,
-                .components = {
-                        { .bits = 8 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8_UNORM,
                 .name = "R8_UNORM",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_UNORM,
-                .n_components = 1,
-                .components = {
-                        { .bits = 8 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
         {
                 .vk_format = VK_FORMAT_R8_USCALED,
                 .name = "R8_USCALED",
                 .packed_size = 0,
-                .swizzle = VR_FORMAT_SWIZZLE_RGBA,
-                .mode = VR_FORMAT_MODE_USCALED,
-                .n_components = 1,
-                .components = {
-                        { .bits = 8 },
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_R,
+                                .mode = VR_FORMAT_MODE_USCALED,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_S8_UINT,
+                .name = "S8_UINT",
+                .packed_size = 0,
+                .n_parts = 1,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_S,
+                                .mode = VR_FORMAT_MODE_UINT,
+                        },
+                }
+        },
+        {
+                .vk_format = VK_FORMAT_X8_D24_UNORM_PACK32,
+                .name = "X8_D24_UNORM_PACK32",
+                .packed_size = 32,
+                .n_parts = 2,
+                .parts = {
+                        {
+                                .bits = 8,
+                                .component = VR_FORMAT_COMPONENT_X,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
+                        {
+                                .bits = 24,
+                                .component = VR_FORMAT_COMPONENT_D,
+                                .mode = VR_FORMAT_MODE_UNORM,
+                        },
                 }
         },
 };

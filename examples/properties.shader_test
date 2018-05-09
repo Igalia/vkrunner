@@ -1,0 +1,59 @@
+[require]
+wideLines
+logicOp
+
+[vertex shader passthrough]
+
+[fragment shader]
+#version 450
+
+layout(location = 0) out vec4 color_out;
+
+void
+main()
+{
+        color_out = vec4(1.0);
+}
+
+[vertex data]
+0/R32G32_SFLOAT
+-0.5 -0.5
+0.5 -0.5
+
+[test]
+clear
+
+# Red rectangle in the top left
+colorWriteMask VK_COLOR_COMPONENT_R_BIT
+draw rect -1 -1 1 1
+
+# Yellow rectangle in the top right
+colorWriteMask VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+draw rect 0 -1 1 1
+
+# Blue at the bottom
+colorWriteMask VK_COLOR_COMPONENT_B_BIT
+draw rect -1 0 2 1
+
+# A wide line across the top that inverts the red and blue channels
+lineWidth 4.0
+colorWriteMask VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_B_BIT
+logicOpEnable true
+logicOp VK_LOGIC_OP_XOR
+draw arrays LINE_LIST 0 2
+logicOpEnable false
+
+# Two rectangles, one gets culled, one doesn’t
+colorWriteMask VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
+cullMode VK_CULL_MODE_FRONT_BIT
+frontFace VK_FRONT_FACE_CLOCKWISE
+draw rect -1 -1 2 2
+cullMode VK_CULL_MODE_BACK_BIT
+draw rect 0.8 0 0.2 1
+
+relative probe rect rgb (0.0, 0.0, 0.5, 0.2) (1.0, 0.0, 0.0)
+relative probe rect rgb (0.5, 0.0, 0.5, 0.2) (1.0, 1.0, 0.0)
+relative probe rect rgb (0.26, 0.25, 0.23, 0.009) (0.0, 0.0, 1.0)
+relative probe rect rgb (0.51, 0.25, 0.23, 0.009) (0.0, 1.0, 1.0)
+relative probe rect rgb (0.0, 0.5, 0.9, 0.5) (0.0, 0.0, 1.0)
+relative probe rect rgb (0.9, 0.5, 0.1, 0.5) (1.0, 1.0, 1.0)
