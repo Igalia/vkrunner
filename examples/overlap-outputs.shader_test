@@ -1,0 +1,43 @@
+[vertex shader]
+#version 450
+
+layout(location = 0, component = 0) out float a[4];
+layout(location = 2, component = 1) out float b[4];
+
+layout(location = 0) in vec4 pos;
+
+void
+main()
+{
+        gl_Position = pos;
+
+        for (int i = 0; i < a.length(); i++) {
+                a[i] = i;
+                b[i] = i + 2;
+        }
+}
+
+[fragment shader]
+#version 450
+
+layout(location = 0) in vec2 ab[6];
+layout(location = 0) out vec4 color;
+
+void
+main()
+{
+        color = vec4(0.0, 1.0, 0.0, 1.0);
+
+        for (int i = 0; i < ab.length(); i++) {
+                if (i < 4 && round(ab[i].x) != float(i))
+                        color = vec4(1.0, i, ab[i].x / 10.0, 1.0);
+                if (i >= 2 && round(ab[i].y) != float(i))
+                        color = vec4(1.0, i, ab[i].y / 10.0, 1.0);
+        }
+}
+
+[test]
+clear
+
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
