@@ -133,7 +133,7 @@ make install
 
 cp "$INSTALL_DIR/bin/vkrunner.exe" "$RESULT_DIR"
 cp -r "$INSTALL_DIR/share/vkrunner/examples" "$RESULT_DIR"
-cp "$SRC_DIR/README.md" "$RESULT_DIR"
+cp "$SRC_DIR/"{README.md,COPYING} "$RESULT_DIR"
 
 cd "$RESULT_DIR"
 zip -r "$RESULT_FILE" *
