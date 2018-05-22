@@ -1,3 +1,3 @@
 SUBDIRS = src examples
 
-EXTRA_DIST = README.md
+EXTRA_DIST = README.md COPYING
