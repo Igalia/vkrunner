@@ -32,6 +32,7 @@
 #include <ctype.h>
 #include <limits.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include "vr-script.h"
 #include "vr-list.h"
@@ -62,6 +63,7 @@ struct load_state {
         enum section current_section;
         struct vr_buffer commands;
         struct vr_buffer extensions;
+        struct vr_buffer buffers;
         struct vr_pipeline_key current_key;
         struct vr_buffer indices;
         float clear_color[4];
@@ -1244,6 +1246,91 @@ process_pipeline_property(struct load_state *data,
         vr_fatal("Unknown pipeline property type");
 }
 
+static struct vr_script_buffer *
+get_buffer(struct load_state *data,
+           unsigned binding,
+           enum vr_script_buffer_type type)
+{
+        struct vr_script_buffer *buffer =
+                (struct vr_script_buffer *) data->buffers.data;
+        unsigned n_buffers = (data->buffers.length /
+                              sizeof (struct vr_script_buffer));
+
+        for (unsigned i = 0; i < n_buffers; i++) {
+                if (buffer[i].binding == binding) {
+                        if (buffer[i].type != type) {
+                                vr_error_message("%s:%i: Buffer binding point "
+                                                 "%u used with different types",
+                                                 data->filename,
+                                                 data->line_num,
+                                                 binding);
+                                return NULL;
+                        }
+
+                        return buffer + i;
+                }
+        }
+
+        vr_buffer_set_length(&data->buffers,
+                             data->buffers.length + sizeof *buffer);
+        buffer = ((struct vr_script_buffer *)
+                  (data->buffers.data + data->buffers.length) - 1);
+        buffer->type = type;
+        buffer->size = 0;
+        buffer->binding = binding;
+
+        return buffer;
+}
+
+static bool
+process_set_buffer_subdata(struct load_state *data,
+                           enum vr_script_buffer_type type,
+                           const char *p,
+                           struct vr_script_command *command)
+{
+        if (!parse_uints(&p, &command->set_ubo_uniform.ubo, 1, NULL))
+                goto error;
+
+        if (command->set_ubo_uniform.ubo >= sizeof (unsigned) * 8) {
+                vr_error_message("%s:%i: UBO binding number is "
+                                 "too large",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        struct vr_script_buffer *buffer =
+                get_buffer(data, command->set_ubo_uniform.ubo, type);
+        if (buffer == NULL)
+                return false;
+
+        while (isspace(*p))
+                p++;
+        if (!parse_value_type(&p, &command->set_ubo_uniform.value.type))
+                goto error;
+        if (!parse_size_t(&p, &command->set_ubo_uniform.offset))
+                goto error;
+        if (!parse_value(&p, &command->set_ubo_uniform.value))
+                goto error;
+        if (!is_end(p))
+                goto error;
+
+        size_t end = (command->set_ubo_uniform.offset +
+                      vr_script_type_size(command->set_ubo_uniform.value.type));
+        if (end > buffer->size)
+                buffer->size = end;
+
+        command->op = VR_SCRIPT_OP_SET_UBO_UNIFORM;
+
+        return true;
+
+error:
+        vr_error_message("%s:%i: Invalid set buffer subdata command",
+                         data->filename,
+                         data->line_num);
+        return false;
+}
+
 static bool
 process_test_line(struct load_state *data)
 {
@@ -1331,27 +1418,10 @@ process_test_line(struct load_state *data)
                 return process_draw_arrays_command(data, p, command);
 
         if (looking_at(&p, "uniform ubo ")) {
-                if (!parse_uints(&p, &command->set_ubo_uniform.ubo, 1, NULL))
-                        goto error;
-                if (command->set_ubo_uniform.ubo >= sizeof (unsigned) * 8) {
-                        vr_error_message("%s:%i: UBO binding number is "
-                                         "too large",
-                                         data->filename,
-                                         data->line_num);
-                        return false;
-                }
-                while (isspace(*p))
-                        p++;
-                if (!parse_value_type(&p, &command->set_ubo_uniform.value.type))
-                        goto error;
-                if (!parse_size_t(&p, &command->set_ubo_uniform.offset))
-                        goto error;
-                if (!parse_value(&p, &command->set_ubo_uniform.value))
-                        goto error;
-                if (!is_end(p))
-                        goto error;
-                command->op = VR_SCRIPT_OP_SET_UBO_UNIFORM;
-                return true;
+                return process_set_buffer_subdata(data,
+                                                  VR_SCRIPT_BUFFER_TYPE_UBO,
+                                                  p,
+                                                  command);
         }
 
         if (looking_at(&p, "uniform ")) {
@@ -1571,6 +1641,14 @@ read_line(FILE *f,
         return buffer->length > 0;
 }
 
+static int
+compare_buffer_binding(const void *a,
+                       const void *b)
+{
+        return ((int) ((const struct vr_script_buffer *) a)->binding -
+                (int) ((const struct vr_script_buffer *) b)->binding);
+}
+
 static struct vr_script *
 load_script_from_stream(const char *filename,
                         FILE *f)
@@ -1583,6 +1661,7 @@ load_script_from_stream(const char *filename,
                 .buffer = VR_BUFFER_STATIC_INIT,
                 .commands = VR_BUFFER_STATIC_INIT,
                 .extensions = VR_BUFFER_STATIC_INIT,
+                .buffers = VR_BUFFER_STATIC_INIT,
                 .current_stage = -1,
                 .current_section = SECTION_NONE,
                 .clear_depth = 1.0f
@@ -1623,6 +1702,14 @@ load_script_from_stream(const char *filename,
         data.script->indices = (uint16_t *) data.indices.data;
         data.script->n_indices =
                 data.indices.length / sizeof (uint16_t);
+
+        data.script->buffers = (struct vr_script_buffer *) data.buffers.data;
+        data.script->n_buffers = (data.buffers.length /
+                                  sizeof (struct vr_script_buffer));
+        qsort(data.script->buffers,
+              data.script->n_buffers,
+              sizeof data.script->buffers[0],
+              compare_buffer_binding);
 
         vr_buffer_destroy(&data.buffer);
         vr_buffer_destroy(&data.line);
@@ -1676,6 +1763,8 @@ vr_script_free(struct vr_script *script)
         vr_free(script->filename);
 
         vr_free(script->commands);
+
+        vr_free(script->buffers);
 
         if (script->extensions != NULL) {
                 for (const char *const *ext = script->extensions; *ext; ext++)

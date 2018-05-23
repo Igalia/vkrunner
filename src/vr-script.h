@@ -186,6 +186,16 @@ struct vr_script_command {
         };
 };
 
+enum vr_script_buffer_type {
+        VR_SCRIPT_BUFFER_TYPE_UBO,
+};
+
+struct vr_script_buffer {
+        unsigned binding;
+        enum vr_script_buffer_type type;
+        size_t size;
+};
+
 struct vr_script {
         char *filename;
         struct vr_list stages[VR_SCRIPT_N_STAGES];
@@ -198,6 +208,8 @@ struct vr_script {
         struct vr_vbo *vertex_data;
         uint16_t *indices;
         size_t n_indices;
+        struct vr_script_buffer *buffers;
+        size_t n_buffers;
 };
 
 struct vr_script *

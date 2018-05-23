@@ -591,45 +591,26 @@ create_vk_layout(struct vr_pipeline *pipeline,
         return layout;
 }
 
-static unsigned
-get_used_ubo_bindings(const struct vr_script *script)
-{
-        unsigned used = 0;
-
-        for (int i = 0; i < script->n_commands; i++) {
-                const struct vr_script_command *command =
-                        script->commands + i;
-                if (command->op != VR_SCRIPT_OP_SET_UBO_UNIFORM)
-                        continue;
-
-                used |= 1UL << command->set_ubo_uniform.ubo;
-        }
-
-        return used;
-}
-
 static VkDescriptorSetLayout
 create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
-                                unsigned used_ubos)
+                                const struct vr_script *script)
 {
         VkResult res;
-        int n_ubos = vr_util_popcount(used_ubos);
+        size_t n_buffers = script->n_buffers;
         VkDescriptorSetLayoutBinding *bindings =
-                vr_calloc(sizeof (*bindings) * n_ubos);
-        int i = 0;
+                vr_calloc(sizeof (*bindings) * n_buffers);
 
-        while (used_ubos) {
-                bindings[i].binding = vr_util_ffsl(used_ubos) - 1;
+        for (unsigned i = 0; i < n_buffers; i++) {
+                const struct vr_script_buffer *buffer = script->buffers + i;
+                bindings[i].binding = buffer->binding;
                 bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 bindings[i].descriptorCount = 1;
                 bindings[i].stageFlags = pipeline->stages;
-                used_ubos &= ~(1 << bindings[i].binding);
-                i++;
         }
 
         VkDescriptorSetLayoutCreateInfo create_info = {
                 .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                .bindingCount = n_ubos,
+                .bindingCount = n_buffers,
                 .pBindings = bindings
         };
 
@@ -769,11 +750,9 @@ vr_pipeline_create(const struct vr_config *config,
 
         pipeline->stages = get_script_stages(script);
 
-        unsigned ubo_bindings = get_used_ubo_bindings(script);
-
-        if (ubo_bindings != 0) {
+        if (script->n_buffers > 0) {
                 pipeline->descriptor_set_layout =
-                        create_vk_descriptor_set_layout(pipeline, ubo_bindings);
+                        create_vk_descriptor_set_layout(pipeline, script);
                 if (pipeline->descriptor_set_layout == NULL)
                         goto error;
         }
