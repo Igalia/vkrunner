@@ -1291,14 +1291,6 @@ process_set_buffer_subdata(struct load_state *data,
 {
         command->set_buffer_subdata.binding = binding;
 
-        if (binding >= sizeof (unsigned) * 8) {
-                vr_error_message("%s:%i: UBO binding number is "
-                                 "too large",
-                                 data->filename,
-                                 data->line_num);
-                return false;
-        }
-
         struct vr_script_buffer *buffer =
                 get_buffer(data, binding, type);
         if (buffer == NULL)
