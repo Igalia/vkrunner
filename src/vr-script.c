@@ -71,6 +71,77 @@ struct load_state {
         unsigned clear_stencil;
 };
 
+enum base_type {
+        BASE_TYPE_INT,
+        BASE_TYPE_UINT,
+        BASE_TYPE_INT16,
+        BASE_TYPE_UINT16,
+        BASE_TYPE_INT64,
+        BASE_TYPE_UINT64,
+        BASE_TYPE_FLOAT,
+        BASE_TYPE_DOUBLE
+};
+
+struct type_info {
+        enum base_type base_type;
+        int columns;
+        int rows;
+};
+
+static const struct type_info
+type_infos[] = {
+        [VR_SCRIPT_TYPE_INT] = { BASE_TYPE_INT, 1, 1 },
+        [VR_SCRIPT_TYPE_UINT] = { BASE_TYPE_UINT, 1, 1 },
+        [VR_SCRIPT_TYPE_INT16] = { BASE_TYPE_INT16, 1, 1 },
+        [VR_SCRIPT_TYPE_UINT16] = { BASE_TYPE_UINT16, 1, 1 },
+        [VR_SCRIPT_TYPE_INT64] = { BASE_TYPE_INT64, 4, 1 },
+        [VR_SCRIPT_TYPE_UINT64] = { BASE_TYPE_UINT64, 4, 1 },
+        [VR_SCRIPT_TYPE_FLOAT] = { BASE_TYPE_FLOAT, 1, 1 },
+        [VR_SCRIPT_TYPE_DOUBLE] = { BASE_TYPE_DOUBLE, 1, 1 },
+        [VR_SCRIPT_TYPE_VEC2] = { BASE_TYPE_FLOAT, 1, 2 },
+        [VR_SCRIPT_TYPE_VEC3] = { BASE_TYPE_FLOAT, 1, 3 },
+        [VR_SCRIPT_TYPE_VEC4] = { BASE_TYPE_FLOAT, 1, 4 },
+        [VR_SCRIPT_TYPE_DVEC2] = { BASE_TYPE_DOUBLE, 1, 2 },
+        [VR_SCRIPT_TYPE_DVEC3] = { BASE_TYPE_DOUBLE, 1, 3 },
+        [VR_SCRIPT_TYPE_DVEC4] = { BASE_TYPE_DOUBLE, 1, 4 },
+        [VR_SCRIPT_TYPE_IVEC2] = { BASE_TYPE_INT, 1, 2 },
+        [VR_SCRIPT_TYPE_IVEC3] = { BASE_TYPE_INT, 1, 3 },
+        [VR_SCRIPT_TYPE_IVEC4] = { BASE_TYPE_INT, 1, 4 },
+        [VR_SCRIPT_TYPE_UVEC2] = { BASE_TYPE_UINT, 1, 2 },
+        [VR_SCRIPT_TYPE_UVEC3] = { BASE_TYPE_UINT, 1, 3 },
+        [VR_SCRIPT_TYPE_UVEC4] = { BASE_TYPE_UINT, 1, 4 },
+        [VR_SCRIPT_TYPE_I16VEC2] = { BASE_TYPE_INT16, 1, 2 },
+        [VR_SCRIPT_TYPE_I16VEC3] = { BASE_TYPE_INT16, 1, 3 },
+        [VR_SCRIPT_TYPE_I16VEC4] = { BASE_TYPE_INT16, 1, 4 },
+        [VR_SCRIPT_TYPE_U16VEC2] = { BASE_TYPE_UINT16, 1, 2 },
+        [VR_SCRIPT_TYPE_U16VEC3] = { BASE_TYPE_UINT16, 1, 3 },
+        [VR_SCRIPT_TYPE_U16VEC4] = { BASE_TYPE_UINT16, 1, 4 },
+        [VR_SCRIPT_TYPE_I64VEC2] = { BASE_TYPE_INT64, 1, 2 },
+        [VR_SCRIPT_TYPE_I64VEC3] = { BASE_TYPE_INT64, 1, 3 },
+        [VR_SCRIPT_TYPE_I64VEC4] = { BASE_TYPE_INT64, 1, 4 },
+        [VR_SCRIPT_TYPE_U64VEC2] = { BASE_TYPE_UINT64, 1, 2 },
+        [VR_SCRIPT_TYPE_U64VEC3] = { BASE_TYPE_UINT64, 1, 3 },
+        [VR_SCRIPT_TYPE_U64VEC4] = { BASE_TYPE_UINT64, 1, 4 },
+        [VR_SCRIPT_TYPE_MAT2] = { BASE_TYPE_FLOAT, 2, 2 },
+        [VR_SCRIPT_TYPE_MAT2X3] = { BASE_TYPE_FLOAT, 2, 3 },
+        [VR_SCRIPT_TYPE_MAT2X4] = { BASE_TYPE_FLOAT, 2, 4 },
+        [VR_SCRIPT_TYPE_MAT3X2] = { BASE_TYPE_FLOAT, 3, 2 },
+        [VR_SCRIPT_TYPE_MAT3] = { BASE_TYPE_FLOAT, 3, 3 },
+        [VR_SCRIPT_TYPE_MAT3X4] = { BASE_TYPE_FLOAT, 3, 4 },
+        [VR_SCRIPT_TYPE_MAT4X2] = { BASE_TYPE_FLOAT, 4, 2 },
+        [VR_SCRIPT_TYPE_MAT4X3] = { BASE_TYPE_FLOAT, 4, 3 },
+        [VR_SCRIPT_TYPE_MAT4] = { BASE_TYPE_FLOAT, 4, 4 },
+        [VR_SCRIPT_TYPE_DMAT2] = { BASE_TYPE_DOUBLE, 2, 2 },
+        [VR_SCRIPT_TYPE_DMAT2X3] = { BASE_TYPE_DOUBLE, 2, 3 },
+        [VR_SCRIPT_TYPE_DMAT2X4] = { BASE_TYPE_DOUBLE, 2, 4 },
+        [VR_SCRIPT_TYPE_DMAT3X2] = { BASE_TYPE_DOUBLE, 3, 2 },
+        [VR_SCRIPT_TYPE_DMAT3] = { BASE_TYPE_DOUBLE, 3, 3 },
+        [VR_SCRIPT_TYPE_DMAT3X4] = { BASE_TYPE_DOUBLE, 3, 4 },
+        [VR_SCRIPT_TYPE_DMAT4X2] = { BASE_TYPE_DOUBLE, 4, 2 },
+        [VR_SCRIPT_TYPE_DMAT4X3] = { BASE_TYPE_DOUBLE, 4, 3 },
+        [VR_SCRIPT_TYPE_DMAT4] = { BASE_TYPE_DOUBLE, 4, 4 },
+};
+
 static const char *
 stage_names[VR_SCRIPT_N_STAGES] = {
         "vertex shader",
@@ -203,40 +274,21 @@ is_end(const char *p)
         return *p == '\0';
 }
 
-static int
-type_columns(enum vr_script_type type)
+static size_t
+base_type_size(enum base_type type)
 {
-        if (type >= VR_SCRIPT_TYPE_MAT2 && type <= VR_SCRIPT_TYPE_MAT4)
-                return (type - VR_SCRIPT_TYPE_MAT2) / 3 + 2;
-        if (type >= VR_SCRIPT_TYPE_DMAT2 && type <= VR_SCRIPT_TYPE_DMAT4)
-                return (type - VR_SCRIPT_TYPE_DMAT2) / 3 + 2;
-        return 1;
-}
+        switch (type) {
+        case BASE_TYPE_INT: return sizeof (int32_t);
+        case BASE_TYPE_UINT: return sizeof (uint32_t);
+        case BASE_TYPE_INT16: return sizeof (int16_t);
+        case BASE_TYPE_UINT16: return sizeof (uint16_t);
+        case BASE_TYPE_INT64: return sizeof (int64_t);
+        case BASE_TYPE_UINT64: return sizeof (uint64_t);
+        case BASE_TYPE_FLOAT: return sizeof (float);
+        case BASE_TYPE_DOUBLE: return sizeof (double);
+        }
 
-static int
-type_rows(enum vr_script_type type)
-{
-        if (type >= VR_SCRIPT_TYPE_VEC2 && type <= VR_SCRIPT_TYPE_VEC4)
-                return type - VR_SCRIPT_TYPE_VEC2 + 2;
-        if (type >= VR_SCRIPT_TYPE_DVEC2 && type <= VR_SCRIPT_TYPE_DVEC4)
-                return type - VR_SCRIPT_TYPE_DVEC2 + 2;
-        if (type >= VR_SCRIPT_TYPE_IVEC2 && type <= VR_SCRIPT_TYPE_IVEC4)
-                return type - VR_SCRIPT_TYPE_IVEC2 + 2;
-        if (type >= VR_SCRIPT_TYPE_UVEC2 && type <= VR_SCRIPT_TYPE_UVEC4)
-                return type - VR_SCRIPT_TYPE_UVEC2 + 2;
-        if (type >= VR_SCRIPT_TYPE_I16VEC2 && type <= VR_SCRIPT_TYPE_I16VEC4)
-                return type - VR_SCRIPT_TYPE_I16VEC2 + 2;
-        if (type >= VR_SCRIPT_TYPE_U16VEC2 && type <= VR_SCRIPT_TYPE_U16VEC4)
-                return type - VR_SCRIPT_TYPE_U16VEC2 + 2;
-        if (type >= VR_SCRIPT_TYPE_I64VEC2 && type <= VR_SCRIPT_TYPE_I64VEC4)
-                return type - VR_SCRIPT_TYPE_I64VEC2 + 2;
-        if (type >= VR_SCRIPT_TYPE_U64VEC2 && type <= VR_SCRIPT_TYPE_U64VEC4)
-                return type - VR_SCRIPT_TYPE_U64VEC2 + 2;
-        if (type >= VR_SCRIPT_TYPE_MAT2 && type <= VR_SCRIPT_TYPE_MAT4)
-                return (type - VR_SCRIPT_TYPE_MAT2) % 3 + 2;
-        if (type >= VR_SCRIPT_TYPE_DMAT2 && type <= VR_SCRIPT_TYPE_DMAT4)
-                return (type - VR_SCRIPT_TYPE_DMAT2) % 3 + 2;
-        return 1;
+        vr_fatal("Unknown base type");
 }
 
 /**
@@ -245,22 +297,14 @@ type_rows(enum vr_script_type type)
 static size_t
 type_matrix_stride(enum vr_script_type type)
 {
-        int component_size;
-
-        if (type >= VR_SCRIPT_TYPE_MAT2 && type <= VR_SCRIPT_TYPE_MAT4)
-                component_size = 4;
-        else if (type >= VR_SCRIPT_TYPE_DMAT2 && type <= VR_SCRIPT_TYPE_DMAT4)
-                component_size = 8;
-        else
-                vr_fatal("Matrix size requested for non-matrix type");
-
-        int rows = type_rows(type);
+        const struct type_info *info = type_infos + type;
+        int component_size = base_type_size(info->base_type);
         int base_alignment;
 
-        if (rows == 3)
+        if (info->rows == 3)
                 base_alignment = component_size * 4;
         else
-                base_alignment = component_size * rows;
+                base_alignment = component_size * info->rows;
 
         /* according to std140 the size is rounded up to a vec4 */
         return vr_align(base_alignment, 16);
@@ -531,42 +575,6 @@ parse_size_t(const char **p,
 }
 
 static bool
-parse_mat(const char **p,
-          float *out,
-          enum vr_script_type type)
-{
-        int num_rows = type_rows(type);
-        int num_cols = type_columns(type);
-        int stride = type_matrix_stride(type);
-
-        for (int col = 0; col < num_cols; col++) {
-                if (!parse_floats(p, out, num_rows, NULL))
-                        return false;
-                out += stride / sizeof *out;
-        }
-
-        return true;
-}
-
-static bool
-parse_dmat(const char **p,
-           double *out,
-           enum vr_script_type type)
-{
-        int num_rows = type_rows(type);
-        int num_cols = type_columns(type);
-        int stride = type_matrix_stride(type);
-
-        for (int col = 0; col < num_cols; col++) {
-                if (!parse_doubles(p, out, num_rows, NULL))
-                        return false;
-                out += stride / sizeof *out;
-        }
-
-        return true;
-}
-
-static bool
 parse_value_type(const char **p,
                  enum vr_script_type *type)
 {
@@ -646,94 +654,72 @@ static bool
 parse_value(const char **p,
             struct vr_script_value *value)
 {
-        switch (value->type) {
-        case VR_SCRIPT_TYPE_INT:
-                return parse_ints(p, &value->i, 1, NULL);
-        case VR_SCRIPT_TYPE_UINT:
-                return parse_uints(p, &value->u, 1, NULL);
-        case VR_SCRIPT_TYPE_INT16:
-                return parse_int16s(p, &value->i16, 1, NULL);
-        case VR_SCRIPT_TYPE_UINT16:
-                return parse_uint16s(p, &value->u16, 1, NULL);
-        case VR_SCRIPT_TYPE_INT64:
-                return parse_int64s(p, &value->i64, 1, NULL);
-        case VR_SCRIPT_TYPE_UINT64:
-                return parse_uint64s(p, &value->u64, 1, NULL);
-        case VR_SCRIPT_TYPE_FLOAT:
-                return parse_floats(p, &value->f, 1, NULL);
-        case VR_SCRIPT_TYPE_DOUBLE:
-                return parse_doubles(p, &value->d, 1, NULL);
-        case VR_SCRIPT_TYPE_VEC2:
-                return parse_floats(p, value->vec, 2, NULL);
-        case VR_SCRIPT_TYPE_VEC3:
-                return parse_floats(p, value->vec, 3, NULL);
-        case VR_SCRIPT_TYPE_VEC4:
-                return parse_floats(p, value->vec, 4, NULL);
-        case VR_SCRIPT_TYPE_DVEC2:
-                return parse_doubles(p, value->dvec, 2, NULL);
-        case VR_SCRIPT_TYPE_DVEC3:
-                return parse_doubles(p, value->dvec, 3, NULL);
-        case VR_SCRIPT_TYPE_DVEC4:
-                return parse_doubles(p, value->dvec, 4, NULL);
-        case VR_SCRIPT_TYPE_IVEC2:
-                return parse_ints(p, value->ivec, 2, NULL);
-        case VR_SCRIPT_TYPE_IVEC3:
-                return parse_ints(p, value->ivec, 3, NULL);
-        case VR_SCRIPT_TYPE_IVEC4:
-                return parse_ints(p, value->ivec, 4, NULL);
-        case VR_SCRIPT_TYPE_UVEC2:
-                return parse_uints(p, value->uvec, 2, NULL);
-        case VR_SCRIPT_TYPE_UVEC3:
-                return parse_uints(p, value->uvec, 3, NULL);
-        case VR_SCRIPT_TYPE_UVEC4:
-                return parse_uints(p, value->uvec, 4, NULL);
-        case VR_SCRIPT_TYPE_I16VEC2:
-                return parse_int16s(p, value->i16vec, 2, NULL);
-        case VR_SCRIPT_TYPE_I16VEC3:
-                return parse_int16s(p, value->i16vec, 3, NULL);
-        case VR_SCRIPT_TYPE_I16VEC4:
-                return parse_int16s(p, value->i16vec, 4, NULL);
-        case VR_SCRIPT_TYPE_U16VEC2:
-                return parse_uint16s(p, value->u16vec, 2, NULL);
-        case VR_SCRIPT_TYPE_U16VEC3:
-                return parse_uint16s(p, value->u16vec, 3, NULL);
-        case VR_SCRIPT_TYPE_U16VEC4:
-                return parse_uint16s(p, value->u16vec, 4, NULL);
-        case VR_SCRIPT_TYPE_I64VEC2:
-                return parse_int64s(p, value->i64vec, 2, NULL);
-        case VR_SCRIPT_TYPE_I64VEC3:
-                return parse_int64s(p, value->i64vec, 3, NULL);
-        case VR_SCRIPT_TYPE_I64VEC4:
-                return parse_int64s(p, value->i64vec, 4, NULL);
-        case VR_SCRIPT_TYPE_U64VEC2:
-                return parse_uint64s(p, value->u64vec, 2, NULL);
-        case VR_SCRIPT_TYPE_U64VEC3:
-                return parse_uint64s(p, value->u64vec, 3, NULL);
-        case VR_SCRIPT_TYPE_U64VEC4:
-                return parse_uint64s(p, value->u64vec, 4, NULL);
-        case VR_SCRIPT_TYPE_MAT2:
-        case VR_SCRIPT_TYPE_MAT2X3:
-        case VR_SCRIPT_TYPE_MAT2X4:
-        case VR_SCRIPT_TYPE_MAT3X2:
-        case VR_SCRIPT_TYPE_MAT3:
-        case VR_SCRIPT_TYPE_MAT3X4:
-        case VR_SCRIPT_TYPE_MAT4X2:
-        case VR_SCRIPT_TYPE_MAT4X3:
-        case VR_SCRIPT_TYPE_MAT4:
-                return parse_mat(p, value->mat, value->type);
-        case VR_SCRIPT_TYPE_DMAT2:
-        case VR_SCRIPT_TYPE_DMAT2X3:
-        case VR_SCRIPT_TYPE_DMAT2X4:
-        case VR_SCRIPT_TYPE_DMAT3X2:
-        case VR_SCRIPT_TYPE_DMAT3:
-        case VR_SCRIPT_TYPE_DMAT3X4:
-        case VR_SCRIPT_TYPE_DMAT4X2:
-        case VR_SCRIPT_TYPE_DMAT4X3:
-        case VR_SCRIPT_TYPE_DMAT4:
-                return parse_dmat(p, value->dmat, value->type);
+        const struct type_info *info = type_infos + value->type;
+        size_t stride = (type_matrix_stride(value->type) /
+                         base_type_size(info->base_type));
+
+        for (int col = 0; col < info->columns; col++) {
+                switch (info->base_type) {
+                case BASE_TYPE_INT:
+                        if (!parse_ints(p,
+                                        value->ivec + col * stride,
+                                        info->rows,
+                                        NULL))
+                                return false;
+                        break;
+                case BASE_TYPE_UINT:
+                        if (!parse_uints(p,
+                                         value->uvec + col * stride,
+                                         info->rows,
+                                         NULL))
+                                return false;
+                        break;
+                case BASE_TYPE_INT16:
+                        if (!parse_int16s(p,
+                                          value->i16vec + col * stride,
+                                          info->rows,
+                                          NULL))
+                                return false;
+                        break;
+                case BASE_TYPE_UINT16:
+                        if (!parse_uint16s(p,
+                                           value->u16vec + col * stride,
+                                           info->rows,
+                                           NULL))
+                                return false;
+                        break;
+                case BASE_TYPE_INT64:
+                        if (!parse_int64s(p,
+                                          value->i64vec + col * stride,
+                                          info->rows,
+                                          NULL))
+                                return false;
+                        break;
+                case BASE_TYPE_UINT64:
+                        if (!parse_uint64s(p,
+                                           value->u64vec + col * stride,
+                                           info->rows,
+                                           NULL))
+                                return false;
+                        break;
+                case BASE_TYPE_FLOAT:
+                        if (!parse_floats(p,
+                                          value->vec + col * stride,
+                                          info->rows,
+                                          NULL))
+                                return false;
+                        break;
+                case BASE_TYPE_DOUBLE:
+                        if (!parse_doubles(p,
+                                           value->dvec + col * stride,
+                                           info->rows,
+                                           NULL))
+                                return false;
+                        break;
+                }
         }
 
-        vr_fatal("should not be reached");
+        return true;
 }
 
 static bool
@@ -1826,71 +1812,10 @@ vr_script_free(struct vr_script *script)
 size_t
 vr_script_type_size(enum vr_script_type type)
 {
-        switch (type) {
-        case VR_SCRIPT_TYPE_INT16:
-        case VR_SCRIPT_TYPE_UINT16:
-                return 2;
-        case VR_SCRIPT_TYPE_INT:
-        case VR_SCRIPT_TYPE_UINT:
-        case VR_SCRIPT_TYPE_FLOAT:
-                return 4;
-        case VR_SCRIPT_TYPE_INT64:
-        case VR_SCRIPT_TYPE_UINT64:
-        case VR_SCRIPT_TYPE_DOUBLE:
-                return 8;
-        case VR_SCRIPT_TYPE_I16VEC2:
-        case VR_SCRIPT_TYPE_U16VEC2:
-                return 2 * 2;
-        case VR_SCRIPT_TYPE_I16VEC3:
-        case VR_SCRIPT_TYPE_U16VEC3:
-                return 2 * 3;
-        case VR_SCRIPT_TYPE_I16VEC4:
-        case VR_SCRIPT_TYPE_U16VEC4:
-                return 2 * 4;
-        case VR_SCRIPT_TYPE_VEC2:
-        case VR_SCRIPT_TYPE_IVEC2:
-        case VR_SCRIPT_TYPE_UVEC2:
-                return 4 * 2;
-        case VR_SCRIPT_TYPE_VEC3:
-        case VR_SCRIPT_TYPE_IVEC3:
-        case VR_SCRIPT_TYPE_UVEC3:
-                return 4 * 3;
-        case VR_SCRIPT_TYPE_VEC4:
-        case VR_SCRIPT_TYPE_IVEC4:
-        case VR_SCRIPT_TYPE_UVEC4:
-                return 4 * 4;
-        case VR_SCRIPT_TYPE_DVEC2:
-        case VR_SCRIPT_TYPE_I64VEC2:
-        case VR_SCRIPT_TYPE_U64VEC2:
-                return 8 * 2;
-        case VR_SCRIPT_TYPE_DVEC3:
-        case VR_SCRIPT_TYPE_I64VEC3:
-        case VR_SCRIPT_TYPE_U64VEC3:
-                return 8 * 3;
-        case VR_SCRIPT_TYPE_DVEC4:
-        case VR_SCRIPT_TYPE_I64VEC4:
-        case VR_SCRIPT_TYPE_U64VEC4:
-                return 8 * 4;
-        case VR_SCRIPT_TYPE_MAT2:
-        case VR_SCRIPT_TYPE_MAT2X3:
-        case VR_SCRIPT_TYPE_MAT2X4:
-        case VR_SCRIPT_TYPE_MAT3X2:
-        case VR_SCRIPT_TYPE_MAT3:
-        case VR_SCRIPT_TYPE_MAT3X4:
-        case VR_SCRIPT_TYPE_MAT4X2:
-        case VR_SCRIPT_TYPE_MAT4X3:
-        case VR_SCRIPT_TYPE_MAT4:
-        case VR_SCRIPT_TYPE_DMAT2:
-        case VR_SCRIPT_TYPE_DMAT2X3:
-        case VR_SCRIPT_TYPE_DMAT2X4:
-        case VR_SCRIPT_TYPE_DMAT3X2:
-        case VR_SCRIPT_TYPE_DMAT3:
-        case VR_SCRIPT_TYPE_DMAT3X4:
-        case VR_SCRIPT_TYPE_DMAT4X2:
-        case VR_SCRIPT_TYPE_DMAT4X3:
-        case VR_SCRIPT_TYPE_DMAT4:
-                return type_matrix_stride(type) * type_columns(type);
-        }
+        const struct type_info *info = type_infos + type;
 
-        vr_fatal("should not be reached");
+        if (info->columns > 1)
+                return type_matrix_stride(type) * info->columns;
+        else
+                return base_type_size(info->base_type) * info->rows;
 }
