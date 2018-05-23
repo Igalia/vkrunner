@@ -1284,14 +1284,14 @@ get_buffer(struct load_state *data,
 
 static bool
 process_set_buffer_subdata(struct load_state *data,
+                           unsigned binding,
                            enum vr_script_buffer_type type,
                            const char *p,
                            struct vr_script_command *command)
 {
-        if (!parse_uints(&p, &command->set_ubo_uniform.ubo, 1, NULL))
-                goto error;
+        command->set_buffer_subdata.binding = binding;
 
-        if (command->set_ubo_uniform.ubo >= sizeof (unsigned) * 8) {
+        if (binding >= sizeof (unsigned) * 8) {
                 vr_error_message("%s:%i: UBO binding number is "
                                  "too large",
                                  data->filename,
@@ -1300,27 +1300,28 @@ process_set_buffer_subdata(struct load_state *data,
         }
 
         struct vr_script_buffer *buffer =
-                get_buffer(data, command->set_ubo_uniform.ubo, type);
+                get_buffer(data, binding, type);
         if (buffer == NULL)
                 return false;
 
         while (isspace(*p))
                 p++;
-        if (!parse_value_type(&p, &command->set_ubo_uniform.value.type))
+        if (!parse_value_type(&p, &command->set_buffer_subdata.value.type))
                 goto error;
-        if (!parse_size_t(&p, &command->set_ubo_uniform.offset))
+        if (!parse_size_t(&p, &command->set_buffer_subdata.offset))
                 goto error;
-        if (!parse_value(&p, &command->set_ubo_uniform.value))
+        if (!parse_value(&p, &command->set_buffer_subdata.value))
                 goto error;
         if (!is_end(p))
                 goto error;
 
-        size_t end = (command->set_ubo_uniform.offset +
-                      vr_script_type_size(command->set_ubo_uniform.value.type));
+        size_t type_size =
+                vr_script_type_size(command->set_buffer_subdata.value.type);
+        size_t end = command->set_buffer_subdata.offset + type_size;
         if (end > buffer->size)
                 buffer->size = end;
 
-        command->op = VR_SCRIPT_OP_SET_UBO_UNIFORM;
+        command->op = VR_SCRIPT_OP_SET_BUFFER_SUBDATA;
 
         return true;
 
@@ -1418,8 +1419,32 @@ process_test_line(struct load_state *data)
                 return process_draw_arrays_command(data, p, command);
 
         if (looking_at(&p, "uniform ubo ")) {
+                unsigned binding;
+
+                if (!parse_uints(&p, &binding, 1, NULL))
+                        goto error;
+
                 return process_set_buffer_subdata(data,
+                                                  binding,
                                                   VR_SCRIPT_BUFFER_TYPE_UBO,
+                                                  p,
+                                                  command);
+        }
+
+        if (looking_at(&p, "ssbo ")) {
+                unsigned binding;
+
+                if (!parse_uints(&p, &binding, 1, NULL))
+                        goto error;
+
+                while (isspace(*p))
+                        p++;
+                if (!looking_at(&p, "subdata "))
+                        goto error;
+
+                return process_set_buffer_subdata(data,
+                                                  binding,
+                                                  VR_SCRIPT_BUFFER_TYPE_SSBO,
                                                   p,
                                                   command);
         }

@@ -83,6 +83,11 @@ another draw call both draws will use the values from the second
 update. This is because the draws are not flushed until the next probe
 command or the test completes.
 
+> ssbo _binding_ subdata _type_ _offset_ _values_…
+
+Sets a value within a storage buffer. The command is the same as
+`uniform ubo` except for the different buffer type.
+
 > clear color _r_ _g_ _b_ _a_
 
 Sets the color to use for subsequent clear commands. Defaults to all

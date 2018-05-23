@@ -602,8 +602,19 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
 
         for (unsigned i = 0; i < n_buffers; i++) {
                 const struct vr_script_buffer *buffer = script->buffers + i;
+                VkDescriptorType descriptor_type;
+                switch (buffer->type) {
+                case VR_SCRIPT_BUFFER_TYPE_UBO:
+                        descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                        goto found_type;
+                case VR_SCRIPT_BUFFER_TYPE_SSBO:
+                        descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                        goto found_type;
+                }
+                vr_fatal("Unexpected buffer type");
+        found_type:
                 bindings[i].binding = buffer->binding;
-                bindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                bindings[i].descriptorType = descriptor_type;
                 bindings[i].descriptorCount = 1;
                 bindings[i].stageFlags = pipeline->stages;
         }

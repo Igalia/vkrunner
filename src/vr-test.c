@@ -601,8 +601,23 @@ allocate_ubo_buffers(struct test_data *data)
         for (unsigned i = 0; i < data->script->n_buffers; i++) {
                 const struct vr_script_buffer *script_buffer =
                         data->script->buffers + i;
-                enum VkBufferUsageFlagBits usage =
-                        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+                enum VkBufferUsageFlagBits usage;
+                VkDescriptorType descriptor_type;
+                switch (script_buffer->type) {
+                case VR_SCRIPT_BUFFER_TYPE_UBO:
+                        usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+                        descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                        goto found_type;
+                case VR_SCRIPT_BUFFER_TYPE_SSBO:
+                        usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+                        descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                        goto found_type;
+                }
+                vr_fatal("Unexpected buffer type");
+        found_type:
+                ((void) 0);
+
                 struct test_buffer *test_buffer =
                         allocate_test_buffer(data, script_buffer->size, usage);
 
@@ -622,7 +637,7 @@ allocate_ubo_buffers(struct test_data *data)
                         .dstBinding = script_buffer->binding,
                         .dstArrayElement = 0,
                         .descriptorCount = 1,
-                        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                        .descriptorType = descriptor_type,
                         .pBufferInfo = &buffer_info
                 };
                 vr_vk.vkUpdateDescriptorSets(data->window->device,
@@ -636,21 +651,22 @@ allocate_ubo_buffers(struct test_data *data)
 }
 
 static bool
-set_ubo_uniform(struct test_data *data,
-                const struct vr_script_command *command)
+set_buffer_subdata(struct test_data *data,
+                   const struct vr_script_command *command)
 {
         struct test_buffer *buffer =
-                get_ubo_buffer_for_binding(data, command->set_ubo_uniform.ubo);
+                get_ubo_buffer_for_binding(data,
+                                           command->set_buffer_subdata.binding);
 
         if (buffer == NULL)
                 return false;
 
         const struct vr_script_value *value =
-                &command->set_ubo_uniform.value;
+                &command->set_buffer_subdata.value;
         size_t value_size = vr_script_type_size(value->type);
 
         memcpy((uint8_t *) buffer->memory_map +
-               command->set_ubo_uniform.offset,
+               command->set_buffer_subdata.offset,
                &value->i,
                value_size);
         vr_flush_memory(data->window,
@@ -755,8 +771,8 @@ run_commands(struct test_data *data)
                         if (!set_push_constant(data, command))
                                 ret = false;
                         break;
-                case VR_SCRIPT_OP_SET_UBO_UNIFORM:
-                        if (!set_ubo_uniform(data, command))
+                case VR_SCRIPT_OP_SET_BUFFER_SUBDATA:
+                        if (!set_buffer_subdata(data, command))
                                 ret = false;
                         break;
                 case VR_SCRIPT_OP_CLEAR:

@@ -48,7 +48,7 @@ enum vr_script_op {
         VR_SCRIPT_OP_DRAW_ARRAYS,
         VR_SCRIPT_OP_PROBE_RECT,
         VR_SCRIPT_OP_SET_PUSH_CONSTANT,
-        VR_SCRIPT_OP_SET_UBO_UNIFORM,
+        VR_SCRIPT_OP_SET_BUFFER_SUBDATA,
         VR_SCRIPT_OP_CLEAR
 };
 
@@ -158,10 +158,10 @@ struct vr_script_command {
                 } probe_rect;
 
                 struct {
-                        unsigned ubo;
+                        unsigned binding;
                         size_t offset;
                         struct vr_script_value value;
-                } set_ubo_uniform;
+                } set_buffer_subdata;
 
                 struct {
                         size_t offset;
@@ -188,6 +188,7 @@ struct vr_script_command {
 
 enum vr_script_buffer_type {
         VR_SCRIPT_BUFFER_TYPE_UBO,
+        VR_SCRIPT_BUFFER_TYPE_SSBO,
 };
 
 struct vr_script_buffer {
