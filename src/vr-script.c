@@ -1325,6 +1325,22 @@ error:
 }
 
 static bool
+process_set_ssbo_size(struct load_state *data,
+                      unsigned binding,
+                      unsigned size)
+{
+        struct vr_script_buffer *buffer =
+                get_buffer(data, binding, VR_SCRIPT_BUFFER_TYPE_SSBO);
+        if (buffer == NULL)
+                return false;
+
+        if (size > buffer->size)
+                buffer->size = size;
+
+        return true;
+}
+
+static bool
 process_test_line(struct load_state *data)
 {
         const char *p = (char *) data->line.data;
@@ -1334,6 +1350,8 @@ process_test_line(struct load_state *data)
 
         if (*p == '#' || *p == '\0')
                 return true;
+
+        const char *command_start = p;
 
         if (looking_at(&p, "patch parameter vertices ")) {
                 struct vr_pipeline_key *key = &data->current_key;
@@ -1366,6 +1384,18 @@ process_test_line(struct load_state *data)
                 if (!is_end(p))
                         goto error;
                 return true;
+        }
+
+        if (looking_at(&p, "ssbo ")) {
+                unsigned values[2];
+                if (parse_uints(&p, values, VR_N_ELEMENTS(values), NULL)) {
+                        if (!is_end(p))
+                                return false;
+                        return process_set_ssbo_size(data,
+                                                     values[0],
+                                                     values[1]);
+                }
+                p = command_start;
         }
 
         if (isalnum(*p)) {

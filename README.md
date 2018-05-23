@@ -88,6 +88,12 @@ command or the test completes.
 Sets a value within a storage buffer. The command is the same as
 `uniform ubo` except for the different buffer type.
 
+> ssbo _binding_ _size_
+
+Sets the size of a storage buffer. This is optional if there are ssbo
+subdata commands because in that case it will just take the size of
+the largest offset.
+
 > clear color _r_ _g_ _b_ _a_
 
 Sets the color to use for subsequent clear commands. Defaults to all
