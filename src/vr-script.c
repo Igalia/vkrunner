@@ -1484,6 +1484,15 @@ process_test_line(struct load_state *data)
         if (looking_at(&p, "draw arrays "))
                 return process_draw_arrays_command(data, p, command);
 
+        if (looking_at(&p, "compute ")) {
+                if (!parse_uints(&p, &command->dispatch_compute.x, 3, NULL))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                command->op = VR_SCRIPT_OP_DISPATCH_COMPUTE;
+                return true;
+        }
+
         if (looking_at(&p, "uniform ubo ")) {
                 unsigned binding;
 

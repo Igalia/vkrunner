@@ -367,14 +367,27 @@ bind_ubo_descriptor_set(struct test_data *data)
             data->ubo_descriptor_set == NULL)
                 return;
 
-        vr_vk.vkCmdBindDescriptorSets(data->window->command_buffer,
-                                      VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                      data->pipeline->layout,
-                                      0, /* firstSet */
-                                      1, /* descriptorSetCount */
-                                      &data->ubo_descriptor_set,
-                                      0, /* dynamicOffsetCount */
-                                      NULL /* pDynamicOffsets */);
+        if (data->pipeline->stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
+                vr_vk.vkCmdBindDescriptorSets(data->window->command_buffer,
+                                              VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                              data->pipeline->layout,
+                                              0, /* firstSet */
+                                              1, /* descriptorSetCount */
+                                              &data->ubo_descriptor_set,
+                                              0, /* dynamicOffsetCount */
+                                              NULL /* pDynamicOffsets */);
+        }
+
+        if (data->pipeline->compute_pipeline) {
+                vr_vk.vkCmdBindDescriptorSets(data->window->command_buffer,
+                                              VK_PIPELINE_BIND_POINT_COMPUTE,
+                                              data->pipeline->layout,
+                                              0, /* firstSet */
+                                              1, /* descriptorSetCount */
+                                              &data->ubo_descriptor_set,
+                                              0, /* dynamicOffsetCount */
+                                              NULL /* pDynamicOffsets */);
+        }
 
         data->ubo_descriptor_set_bound = true;
 }
@@ -388,9 +401,16 @@ bind_pipeline_for_command(struct test_data *data,
         if (pipeline == data->bound_pipeline)
                 return;
 
-        vr_vk.vkCmdBindPipeline(data->window->command_buffer,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                pipeline);
+        if (pipeline == data->pipeline->compute_pipeline) {
+                vr_vk.vkCmdBindPipeline(data->window->command_buffer,
+                                        VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        pipeline);
+        } else {
+                vr_vk.vkCmdBindPipeline(data->window->command_buffer,
+                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        pipeline);
+        }
+
         data->bound_pipeline = pipeline;
 }
 
@@ -565,6 +585,24 @@ draw_arrays(struct test_data *data,
                                 command->draw_arrays.first_vertex,
                                 command->draw_arrays.first_instance);
         }
+
+        return true;
+}
+
+static bool
+dispatch_compute(struct test_data *data,
+                 const struct vr_script_command *command)
+{
+        if (!set_state(data, TEST_STATE_COMMAND_BUFFER))
+                return false;
+
+        bind_ubo_descriptor_set(data);
+        bind_pipeline_for_command(data, command);
+
+        vr_vk.vkCmdDispatch(data->window->command_buffer,
+                            command->dispatch_compute.x,
+                            command->dispatch_compute.y,
+                            command->dispatch_compute.z);
 
         return true;
 }
@@ -901,6 +939,10 @@ run_commands(struct test_data *data)
                         break;
                 case VR_SCRIPT_OP_DRAW_ARRAYS:
                         if (!draw_arrays(data, command))
+                                ret = false;
+                        break;
+                case VR_SCRIPT_OP_DISPATCH_COMPUTE:
+                        if (!dispatch_compute(data, command))
                                 ret = false;
                         break;
                 case VR_SCRIPT_OP_PROBE_RECT:

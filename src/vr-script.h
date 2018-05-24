@@ -46,6 +46,7 @@ enum vr_script_shader_stage {
 enum vr_script_op {
         VR_SCRIPT_OP_DRAW_RECT,
         VR_SCRIPT_OP_DRAW_ARRAYS,
+        VR_SCRIPT_OP_DISPATCH_COMPUTE,
         VR_SCRIPT_OP_PROBE_RECT,
         VR_SCRIPT_OP_PROBE_SSBO,
         VR_SCRIPT_OP_SET_PUSH_CONSTANT,
@@ -160,6 +161,10 @@ struct vr_script_command {
                         float x, y, w, h;
                         struct vr_pipeline_key key;
                 } draw_rect;
+
+                struct {
+                        unsigned x, y, z;
+                } dispatch_compute;
 
                 struct {
                         int n_components;

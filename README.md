@@ -46,6 +46,10 @@ the primitive instead. The indices will be sourced from the
 _firstVertex_ becomes the vertex offset and _firstIndex_ will always
 be zero.
 
+> compute _x_ _y_ _z_
+
+Dispatch the compute shader with the given parameters.
+
 > [relative] probe [rect] (rgb|rgba) (_x_, _y_[, _width_, _height_]) (_r_, _g_, _b_[, _a_])
 
 Verifies that a given rectangle matches the given colour. If the

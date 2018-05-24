@@ -757,6 +757,9 @@ vr_pipeline_for_command(struct vr_pipeline *pipeline,
 {
         const struct vr_pipeline_key *key;
 
+        if (command->op == VR_SCRIPT_OP_DISPATCH_COMPUTE)
+                return pipeline->compute_pipeline;
+
         key = get_key_for_command(command);
         assert(key != NULL);
 
