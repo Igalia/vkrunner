@@ -1819,3 +1819,144 @@ vr_script_type_size(enum vr_script_type type)
         else
                 return base_type_size(info->base_type) * info->rows;
 }
+
+static bool
+compare_signed(enum vr_script_comparison comparison,
+               int64_t a,
+               int64_t b)
+{
+        switch (comparison) {
+        case VR_SCRIPT_COMPARISON_EQUAL:
+                return a == b;
+        case VR_SCRIPT_COMPARISON_NOT_EQUAL:
+                return a != b;
+        case VR_SCRIPT_COMPARISON_LESS:
+                return a < b;
+        case VR_SCRIPT_COMPARISON_GREATER_EQUAL:
+                return a >= b;
+        case VR_SCRIPT_COMPARISON_GREATER:
+                return a > b;
+        case VR_SCRIPT_COMPARISON_LESS_EQUAL:
+                return a <= b;
+        }
+
+        vr_fatal("Unexpected comparison");
+}
+
+static bool
+compare_unsigned(enum vr_script_comparison comparison,
+                 uint64_t a,
+                 uint64_t b)
+{
+        switch (comparison) {
+        case VR_SCRIPT_COMPARISON_EQUAL:
+                return a == b;
+        case VR_SCRIPT_COMPARISON_NOT_EQUAL:
+                return a != b;
+        case VR_SCRIPT_COMPARISON_LESS:
+                return a < b;
+        case VR_SCRIPT_COMPARISON_GREATER_EQUAL:
+                return a >= b;
+        case VR_SCRIPT_COMPARISON_GREATER:
+                return a > b;
+        case VR_SCRIPT_COMPARISON_LESS_EQUAL:
+                return a <= b;
+        }
+
+        vr_fatal("Unexpected comparison");
+}
+
+static bool
+compare_double(enum vr_script_comparison comparison,
+               double a,
+               double b)
+{
+        switch (comparison) {
+        case VR_SCRIPT_COMPARISON_EQUAL:
+                return a == b;
+        case VR_SCRIPT_COMPARISON_NOT_EQUAL:
+                return a != b;
+        case VR_SCRIPT_COMPARISON_LESS:
+                return a < b;
+        case VR_SCRIPT_COMPARISON_GREATER_EQUAL:
+                return a >= b;
+        case VR_SCRIPT_COMPARISON_GREATER:
+                return a > b;
+        case VR_SCRIPT_COMPARISON_LESS_EQUAL:
+                return a <= b;
+        }
+
+        vr_fatal("Unexpected comparison");
+}
+
+static bool
+compare_value(enum vr_script_comparison comparison,
+              enum base_type type,
+              const void *a,
+              const void *b)
+{
+        switch (type) {
+        case BASE_TYPE_INT:
+                return compare_signed(comparison,
+                                      *(const int32_t *) a,
+                                      *(const int32_t *) b);
+        case BASE_TYPE_UINT:
+                return compare_unsigned(comparison,
+                                        *(const uint32_t *) a,
+                                        *(const uint32_t *) b);
+        case BASE_TYPE_INT16:
+                return compare_signed(comparison,
+                                      *(const int16_t *) a,
+                                      *(const int16_t *) b);
+        case BASE_TYPE_UINT16:
+                return compare_unsigned(comparison,
+                                        *(const uint16_t *) a,
+                                        *(const uint16_t *) b);
+        case BASE_TYPE_INT64:
+                return compare_signed(comparison,
+                                      *(const int64_t *) a,
+                                      *(const int64_t *) b);
+        case BASE_TYPE_UINT64:
+                return compare_unsigned(comparison,
+                                        *(const uint64_t *) a,
+                                        *(const uint64_t *) b);
+        case BASE_TYPE_FLOAT:
+                return compare_double(comparison,
+                                      *(const float *) a,
+                                      *(const float *) b);
+        case BASE_TYPE_DOUBLE:
+                return compare_double(comparison,
+                                      *(const double *) a,
+                                      *(const double *) b);
+        }
+
+        vr_fatal("Unexpected base type");
+}
+
+bool
+vr_script_compare_values(enum vr_script_comparison comparison,
+                         const struct vr_script_value *a,
+                         const struct vr_script_value *b)
+{
+        assert(a->type == b->type);
+
+        const struct type_info *info = type_infos + a->type;
+        size_t stride = type_matrix_stride(a->type);
+        size_t base_size = base_type_size(info->base_type);
+        const uint8_t *a_buf = (const uint8_t *) a->vec;
+        const uint8_t *b_buf = (const uint8_t *) b->vec;
+
+        for (int col = 0; col < info->columns; col++) {
+                for (int row = 0; row < info->rows; row++) {
+                        if (!compare_value(comparison,
+                                           info->base_type,
+                                           a_buf + row * base_size,
+                                           b_buf + row * base_size))
+                                return false;
+                }
+                a_buf += stride;
+                b_buf += stride;
+        }
+
+        return true;
+}

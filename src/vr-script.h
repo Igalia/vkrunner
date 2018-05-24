@@ -141,6 +141,15 @@ struct vr_script_value {
         };
 };
 
+enum vr_script_comparison {
+        VR_SCRIPT_COMPARISON_EQUAL,
+        VR_SCRIPT_COMPARISON_NOT_EQUAL,
+        VR_SCRIPT_COMPARISON_LESS,
+        VR_SCRIPT_COMPARISON_GREATER_EQUAL,
+        VR_SCRIPT_COMPARISON_GREATER,
+        VR_SCRIPT_COMPARISON_LESS_EQUAL
+};
+
 struct vr_script_command {
         enum vr_script_op op;
         int line_num;
@@ -221,5 +230,10 @@ vr_script_free(struct vr_script *script);
 
 size_t
 vr_script_type_size(enum vr_script_type type);
+
+bool
+vr_script_compare_values(enum vr_script_comparison comparison,
+                         const struct vr_script_value *a,
+                         const struct vr_script_value *b);
 
 #endif /* VR_SCRIPT_H */
