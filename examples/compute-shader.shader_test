@@ -1,0 +1,31 @@
+[compute shader]
+#version 450
+
+layout(binding = 3) buffer block {
+        vec2 values[];
+};
+
+void
+main()
+{
+        values[gl_WorkGroupID.x + gl_WorkGroupID.y * gl_NumWorkGroups.x] =
+                gl_WorkGroupID.xy;
+}
+
+[test]
+# Set the buffer at binding 3 to be large enough to hold 256x256 vec2s
+ssbo 3 524288
+
+# Use the compute shader to fill each vec2 with its grid position
+compute 256 256 1
+
+# Probe a few points in the buffer
+
+# Four corners of the grid
+probe ssbo vec2 3 0 == 0 0
+probe ssbo vec2 3 2040 == 255 0
+probe ssbo vec2 3 522240 == 0 255
+probe ssbo vec2 3 524280 == 255 255
+
+# Center
+probe ssbo vec2 3 263168 == 128 128

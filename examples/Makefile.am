@@ -12,4 +12,5 @@ dist_shader_test_DATA = \
 	properties.shader_test \
 	depth-buffer.shader_test \
 	ssbo.shader_test \
+	compute-shader.shader_test \
 	$(NULL)
