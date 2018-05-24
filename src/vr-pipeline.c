@@ -418,7 +418,8 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
         VkPipelineShaderStageCreateInfo stages[VR_SCRIPT_N_STAGES] = { };
 
         for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
-                if (pipeline->modules[i] == NULL)
+                if (i == VR_SCRIPT_SHADER_STAGE_COMPUTE ||
+                    pipeline->modules[i] == NULL)
                         continue;
                 stages[num_stages].sType =
                         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -506,6 +507,45 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
 
         vr_free((void *) vertex_input_state.pVertexBindingDescriptions);
         vr_free((void *) vertex_input_state.pVertexAttributeDescriptions);
+
+        if (res != VK_SUCCESS) {
+                vr_error_message("Error creating VkPipeline");
+                return NULL;
+        }
+
+        return vk_pipeline;
+}
+
+static VkPipeline
+create_compute_pipeline(struct vr_pipeline *pipeline)
+{
+        struct vr_window *window = pipeline->window;
+        VkResult res;
+
+        VkComputePipelineCreateInfo info = {
+                .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+
+                .stage = {
+                        .sType =
+                        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                        .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+                        .module =
+                        pipeline->modules[VR_SCRIPT_SHADER_STAGE_COMPUTE],
+                        .pName = "main"
+                },
+                .layout = pipeline->layout,
+                .basePipelineHandle = NULL,
+                .basePipelineIndex = -1,
+        };
+
+        VkPipeline vk_pipeline;
+
+        res = vr_vk.vkCreateComputePipelines(window->device,
+                                             pipeline->pipeline_cache,
+                                             1, /* nCreateInfos */
+                                             &info,
+                                             NULL, /* allocator */
+                                             &vk_pipeline);
 
         if (res != VK_SUCCESS) {
                 vr_error_message("Error creating VkPipeline");
@@ -772,21 +812,30 @@ vr_pipeline_create(const struct vr_config *config,
         if (pipeline->layout == NULL)
                 goto error;
 
-        get_keys(script, &pipeline->keys, &pipeline->n_pipelines);
+        if (pipeline->stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
+                get_keys(script, &pipeline->keys, &pipeline->n_pipelines);
 
-        pipeline->pipelines = vr_calloc(sizeof (VkPipeline) *
-                                        pipeline->n_pipelines);
+                pipeline->pipelines = vr_calloc(sizeof (VkPipeline) *
+                                                pipeline->n_pipelines);
 
-        bool use_derivatives = pipeline->n_pipelines > 1;
+                bool use_derivatives = pipeline->n_pipelines > 1;
 
-        for (int i = 0; i < pipeline->n_pipelines; i++) {
-                pipeline->pipelines[i] =
-                        create_vk_pipeline(pipeline,
-                                           script,
-                                           pipeline->keys + i,
-                                           i == 0 && use_derivatives,
-                                           pipeline->pipelines[0]);
-                if (pipeline->pipelines[i] == NULL)
+                for (int i = 0; i < pipeline->n_pipelines; i++) {
+                        pipeline->pipelines[i] =
+                                create_vk_pipeline(pipeline,
+                                                   script,
+                                                   pipeline->keys + i,
+                                                   i == 0 && use_derivatives,
+                                                   pipeline->pipelines[0]);
+                        if (pipeline->pipelines[i] == NULL)
+                                goto error;
+                }
+        }
+
+        if (pipeline->modules[VR_SCRIPT_SHADER_STAGE_COMPUTE]) {
+                pipeline->compute_pipeline =
+                        create_compute_pipeline(pipeline);
+                if (pipeline->compute_pipeline == NULL)
                         goto error;
         }
 
@@ -801,6 +850,12 @@ void
 vr_pipeline_free(struct vr_pipeline *pipeline)
 {
         struct vr_window *window = pipeline->window;
+
+        if (pipeline->compute_pipeline) {
+                vr_vk.vkDestroyPipeline(window->device,
+                                        pipeline->compute_pipeline,
+                                        NULL /* allocator */);
+        }
 
         for (int i = 0; i < pipeline->n_pipelines; i++) {
                 if (pipeline->pipelines[i]) {
