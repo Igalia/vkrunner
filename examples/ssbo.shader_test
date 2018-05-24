@@ -1,0 +1,43 @@
+[require]
+fragmentStoresAndAtomics
+
+[vertex shader passthrough]
+
+[fragment shader]
+#version 450
+
+layout(location = 0) out vec4 color_out;
+
+layout(binding = 3) buffer block {
+        vec4 color_in;
+        vec3 triangle;
+        uint three;
+};
+
+void
+main()
+{
+        color_out = color_in;
+        three = 3;
+        triangle = vec3(3, 4, 5);
+}
+
+[test]
+clear
+
+# Set color_in
+ssbo 3 subdata vec4 0 0.0 1.0 0.0 1.0
+
+# Clear other values
+ssbo 3 subdata vec3 16 0.0 0.0 0.0
+ssbo 3 subdata uint 28 0
+
+draw rect -1 -1 2 2
+
+# Probe the buffer to make sure that reading the SSBO worked
+probe all rgba 0.0 1.0 0.0 1.0
+
+# Probe the SSBO to check that writing worked
+probe ssbo vec3 3 16 == 3 4 5
+probe ssbo uint 3 28 < 4
+probe ssbo uint 3 28 == 3

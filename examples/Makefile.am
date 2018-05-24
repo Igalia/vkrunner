@@ -11,4 +11,5 @@ dist_shader_test_DATA = \
 	ubo.shader_test \
 	properties.shader_test \
 	depth-buffer.shader_test \
+	ssbo.shader_test \
 	$(NULL)
