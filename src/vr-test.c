@@ -46,6 +46,16 @@ struct test_buffer {
         size_t size;
 };
 
+enum test_state {
+        /* Any rendering or computing has finished and we can read the
+         * buffers. */
+        TEST_STATE_IDLE,
+        /* The command buffer has begun */
+        TEST_STATE_COMMAND_BUFFER,
+        /* The render pass has begun */
+        TEST_STATE_RENDER_PASS
+};
+
 struct test_data {
         struct vr_window *window;
         struct vr_pipeline *pipeline;
@@ -57,7 +67,7 @@ struct test_data {
         bool ubo_descriptor_set_bound;
         VkDescriptorSet ubo_descriptor_set;
         VkPipeline bound_pipeline;
-        bool in_render_pass;
+        enum test_state test_state;
         bool first_render;
 };
 
@@ -146,12 +156,9 @@ free_test_buffer(struct test_data *data,
 }
 
 static bool
-begin_paint(struct test_data *data)
+begin_command_buffer(struct test_data *data)
 {
         VkResult res;
-
-        if (data->in_render_pass)
-                return true;
 
         VkCommandBufferBeginInfo begin_command_buffer_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
@@ -162,28 +169,6 @@ begin_paint(struct test_data *data)
                 vr_error_message("vkBeginCommandBuffer failed");
                 return false;
         }
-
-        VkRenderPassBeginInfo render_pass_begin_info = {
-                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                .renderPass = (data->first_render ?
-                               data->window->render_pass[0] :
-                               data->window->render_pass[1]),
-                .framebuffer = data->window->framebuffer,
-                .renderArea = {
-                        .offset = { 0, 0 },
-                        .extent = {
-                                VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT
-                        }
-                },
-        };
-        vr_vk.vkCmdBeginRenderPass(data->window->command_buffer,
-                                   &render_pass_begin_info,
-                                   VK_SUBPASS_CONTENTS_INLINE);
-
-        data->bound_pipeline = NULL;
-        data->ubo_descriptor_set_bound = false;
-        data->in_render_pass = true;
-        data->first_render = false;
 
         return true;
 }
@@ -220,35 +205,10 @@ invalidate_ssbos(struct test_data *data)
 }
 
 static bool
-end_paint(struct test_data *data)
+end_command_buffer(struct test_data *data)
 {
-        struct vr_window *window = data->window;
         VkResult res;
-
-        if (!data->in_render_pass)
-                return true;
-
-        vr_vk.vkCmdEndRenderPass(window->command_buffer);
-
-        VkBufferImageCopy copy_region = {
-                .bufferOffset = 0,
-                .bufferRowLength = VR_WINDOW_WIDTH,
-                .bufferImageHeight = VR_WINDOW_HEIGHT,
-                .imageSubresource = {
-                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                        .mipLevel = 0,
-                        .baseArrayLayer = 0,
-                        .layerCount = 1
-                },
-                .imageOffset = { 0, 0, 0 },
-                .imageExtent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT, 1 }
-        };
-        vr_vk.vkCmdCopyImageToBuffer(window->command_buffer,
-                                     window->color_image,
-                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                     window->linear_buffer,
-                                     1, /* regionCount */
-                                     &copy_region);
+        struct vr_window *window = data->window;
 
         res = vr_vk.vkEndCommandBuffer(window->command_buffer);
         if (res != VK_SUCCESS) {
@@ -301,7 +261,101 @@ end_paint(struct test_data *data)
 
         invalidate_ssbos(data);
 
-        data->in_render_pass = false;
+        return true;
+}
+
+static bool
+begin_render_pass(struct test_data *data)
+{
+        VkRenderPassBeginInfo render_pass_begin_info = {
+                .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+                .renderPass = (data->first_render ?
+                               data->window->render_pass[0] :
+                               data->window->render_pass[1]),
+                .framebuffer = data->window->framebuffer,
+                .renderArea = {
+                        .offset = { 0, 0 },
+                        .extent = {
+                                VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT
+                        }
+                },
+        };
+        vr_vk.vkCmdBeginRenderPass(data->window->command_buffer,
+                                   &render_pass_begin_info,
+                                   VK_SUBPASS_CONTENTS_INLINE);
+
+        data->bound_pipeline = NULL;
+        data->ubo_descriptor_set_bound = false;
+        data->first_render = false;
+
+        return true;
+}
+
+static bool
+end_render_pass(struct test_data *data)
+{
+        struct vr_window *window = data->window;
+
+        vr_vk.vkCmdEndRenderPass(window->command_buffer);
+
+        VkBufferImageCopy copy_region = {
+                .bufferOffset = 0,
+                .bufferRowLength = VR_WINDOW_WIDTH,
+                .bufferImageHeight = VR_WINDOW_HEIGHT,
+                .imageSubresource = {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .mipLevel = 0,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1
+                },
+                .imageOffset = { 0, 0, 0 },
+                .imageExtent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT, 1 }
+        };
+        vr_vk.vkCmdCopyImageToBuffer(window->command_buffer,
+                                     window->color_image,
+                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                     window->linear_buffer,
+                                     1, /* regionCount */
+                                     &copy_region);
+
+        return true;
+}
+
+static bool
+set_state(struct test_data *data,
+          enum test_state state)
+{
+        while (data->test_state < state) {
+                switch (data->test_state) {
+                case TEST_STATE_IDLE:
+                        if (!begin_command_buffer(data))
+                                return false;
+                        break;
+                case TEST_STATE_COMMAND_BUFFER:
+                        if (!begin_render_pass(data))
+                                return false;
+                        break;
+                case TEST_STATE_RENDER_PASS:
+                        vr_fatal("Unexpected test state");
+                }
+                data->test_state++;
+        }
+
+        while (data->test_state > state) {
+                switch (data->test_state) {
+                case TEST_STATE_IDLE:
+                        vr_fatal("Unexpected test state");
+                case TEST_STATE_COMMAND_BUFFER:
+                        if (!end_command_buffer(data))
+                                return false;
+                        break;
+                case TEST_STATE_RENDER_PASS:
+                        if (!end_render_pass(data))
+                                return false;
+                        break;
+                }
+                data->test_state--;
+        }
 
         return true;
 }
@@ -371,7 +425,7 @@ draw_rect(struct test_data *data,
         if (buffer == NULL)
                 return false;
 
-        if (!begin_paint(data))
+        if (!set_state(data, TEST_STATE_RENDER_PASS))
                 return false;
 
         struct vr_pipeline_vertex *v = buffer->memory_map;
@@ -479,7 +533,7 @@ draw_arrays(struct test_data *data,
                                 VK_WHOLE_SIZE);
         }
 
-        if (!begin_paint(data))
+        if (!set_state(data, TEST_STATE_RENDER_PASS))
                 return false;
 
         bind_ubo_descriptor_set(data);
@@ -561,7 +615,7 @@ probe_rect(struct test_data *data,
         int format_size = vr_format_get_size(format);
 
         /* End the paint to copy the framebuffer into the linear buffer */
-        if (!end_paint(data))
+        if (!set_state(data, TEST_STATE_IDLE))
                 return false;
 
         for (int y = 0; y < command->probe_rect.h; y++) {
@@ -597,7 +651,7 @@ static bool
 probe_ssbo(struct test_data *data,
            const struct vr_script_command *command)
 {
-        if (!end_paint(data))
+        if (!set_state(data, TEST_STATE_IDLE))
                 return false;
 
         struct test_buffer *buffer =
@@ -650,7 +704,8 @@ set_push_constant(struct test_data *data,
         const struct vr_script_value *value =
                 &command->set_push_constant.value;
 
-        if (!begin_paint(data))
+        if (data->test_state < TEST_STATE_COMMAND_BUFFER &&
+            !set_state(data, TEST_STATE_COMMAND_BUFFER))
                 return false;
 
         vr_vk.vkCmdPushConstants(data->window->command_buffer,
@@ -767,7 +822,7 @@ static bool
 clear(struct test_data *data,
       const struct vr_script_command *command)
 {
-        if (!begin_paint(data))
+        if (!set_state(data, TEST_STATE_RENDER_PASS))
                 return false;
 
         VkImageAspectFlags depth_stencil_flags = 0;
@@ -883,7 +938,7 @@ vr_test_run(struct vr_window *window,
                 .window = window,
                 .pipeline = pipeline,
                 .script = script,
-                .in_render_pass = false,
+                .test_state = TEST_STATE_IDLE,
                 .first_render = true,
         };
         bool ret = true;
@@ -896,7 +951,7 @@ vr_test_run(struct vr_window *window,
                 if (!run_commands(&data))
                         ret = false;
 
-                if (!end_paint(&data))
+                if (!set_state(&data, TEST_STATE_IDLE))
                         ret = false;
         }
 
