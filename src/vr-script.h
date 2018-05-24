@@ -47,6 +47,7 @@ enum vr_script_op {
         VR_SCRIPT_OP_DRAW_RECT,
         VR_SCRIPT_OP_DRAW_ARRAYS,
         VR_SCRIPT_OP_PROBE_RECT,
+        VR_SCRIPT_OP_PROBE_SSBO,
         VR_SCRIPT_OP_SET_PUSH_CONSTANT,
         VR_SCRIPT_OP_SET_BUFFER_SUBDATA,
         VR_SCRIPT_OP_CLEAR
@@ -165,6 +166,13 @@ struct vr_script_command {
                         int x, y, w, h;
                         double color[4];
                 } probe_rect;
+
+                struct {
+                        unsigned binding;
+                        enum vr_script_comparison comparison;
+                        size_t offset;
+                        struct vr_script_value value;
+                } probe_ssbo;
 
                 struct {
                         unsigned binding;

@@ -94,6 +94,13 @@ Sets the size of a storage buffer. This is optional if there are ssbo
 subdata commands because in that case it will just take the size of
 the largest offset.
 
+> probe ssbo _type_ _binding_ _offset_ _comparison_ _values_…
+
+Probes a value in the storage buffer at _binding_. The _comparison_
+can be one of `==`, `!=`, `<`, `>=`, `>` or `<=`. If the type has more
+than one component then they are compared individually until one of
+them fails the comparison.
+
 > clear color _r_ _g_ _b_ _a_
 
 Sets the color to use for subsequent clear commands. Defaults to all

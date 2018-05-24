@@ -35,6 +35,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 struct test_buffer {
         struct vr_list link;
@@ -187,6 +188,37 @@ begin_paint(struct test_data *data)
         return true;
 }
 
+static void
+invalidate_ssbos(struct test_data *data)
+{
+        for (unsigned i = 0; i < data->script->n_buffers; i++) {
+                if (data->script->buffers[i].type != VR_SCRIPT_BUFFER_TYPE_SSBO)
+                        continue;
+
+                const struct test_buffer *buffer = data->ubo_buffers[i];
+
+                const VkMemoryType *memory_type =
+                        (data->window->memory_properties.memoryTypes +
+                         buffer->memory_type_index);
+
+                /* We don’t need to do anything if the memory is
+                 * already coherent */
+                if ((memory_type->propertyFlags &
+                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+                        continue;
+
+                VkMappedMemoryRange memory_range = {
+                        .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
+                        .memory = data->ubo_buffers[i]->memory,
+                        .offset = 0,
+                        .size = VK_WHOLE_SIZE
+                };
+                vr_vk.vkInvalidateMappedMemoryRanges(data->window->device,
+                                                     1, /* memoryRangeCount */
+                                                     &memory_range);
+        }
+}
+
 static bool
 end_paint(struct test_data *data)
 {
@@ -267,6 +299,8 @@ end_paint(struct test_data *data)
                                                      &memory_range);
         }
 
+        invalidate_ssbos(data);
+
         data->in_render_pass = false;
 
         return true;
@@ -311,6 +345,18 @@ print_command_fail(const struct vr_script_command *command)
 {
         printf("Command failed at line %i\n",
                command->line_num);
+}
+
+static struct test_buffer *
+get_ubo_buffer_for_binding(struct test_data *data,
+                           int binding)
+{
+        for (unsigned i = 0; i < data->script->n_buffers; i++) {
+                if (data->script->buffers[i].binding == binding)
+                        return data->ubo_buffers[i];
+        }
+
+        return NULL;
 }
 
 static bool
@@ -548,6 +594,56 @@ probe_rect(struct test_data *data,
 }
 
 static bool
+probe_ssbo(struct test_data *data,
+           const struct vr_script_command *command)
+{
+        if (!end_paint(data))
+                return false;
+
+        struct test_buffer *buffer =
+                get_ubo_buffer_for_binding(data,
+                                           command->probe_ssbo.binding);
+
+        if (buffer == NULL) {
+                print_command_fail(command);
+                vr_error_message("Invalid binding in probe command");
+                return false;
+        }
+
+        const struct vr_script_value *expected = &command->probe_ssbo.value;
+        size_t type_size = vr_script_type_size(expected->type);
+
+        if (command->probe_ssbo.offset + type_size > buffer->size) {
+                print_command_fail(command);
+                vr_error_message("Invalid offset in probe command");
+                return false;
+        }
+
+        struct vr_script_value observed;
+        observed.type = expected->type;
+        memcpy(&observed.i,
+               (const uint8_t *) buffer->memory_map +
+               command->probe_ssbo.offset,
+               type_size);
+
+        if (!vr_script_compare_values(command->probe_ssbo.comparison,
+                                      &observed,
+                                      expected)) {
+                print_command_fail(command);
+                vr_error_message("SSBO probe failed");
+                if (observed.type == VR_SCRIPT_TYPE_UINT) {
+                        vr_error_message("  Reference: %u\n"
+                                         "  Observed:  %u",
+                                         expected->u,
+                                         observed.u);
+                }
+                return false;
+        }
+
+        return true;
+}
+
+static bool
 set_push_constant(struct test_data *data,
                   const struct vr_script_command *command)
 {
@@ -565,18 +661,6 @@ set_push_constant(struct test_data *data,
                                  &value->i);
 
         return true;
-}
-
-static struct test_buffer *
-get_ubo_buffer_for_binding(struct test_data *data,
-                           int binding)
-{
-        for (unsigned i = 0; i < data->script->n_buffers; i++) {
-                if (data->script->buffers[i].binding == binding)
-                        return data->ubo_buffers[i];
-        }
-
-        vr_fatal("Unexpected buffer binding encountered");
 }
 
 static bool
@@ -660,9 +744,7 @@ set_buffer_subdata(struct test_data *data,
         struct test_buffer *buffer =
                 get_ubo_buffer_for_binding(data,
                                            command->set_buffer_subdata.binding);
-
-        if (buffer == NULL)
-                return false;
+        assert(buffer);
 
         const struct vr_script_value *value =
                 &command->set_buffer_subdata.value;
@@ -768,6 +850,10 @@ run_commands(struct test_data *data)
                         break;
                 case VR_SCRIPT_OP_PROBE_RECT:
                         if (!probe_rect(data, command))
+                                ret = false;
+                        break;
+                case VR_SCRIPT_OP_PROBE_SSBO:
+                        if (!probe_ssbo(data, command))
                                 ret = false;
                         break;
                 case VR_SCRIPT_OP_SET_PUSH_CONSTANT:

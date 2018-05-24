@@ -992,6 +992,61 @@ process_probe_command(const char *p,
 }
 
 static bool
+process_probe_ssbo_command(const char *p,
+                           struct vr_script_command *command)
+{
+        if (!looking_at(&p, "probe ssbo "))
+                return false;
+
+        if (!parse_value_type(&p, &command->probe_ssbo.value.type))
+                return false;
+
+        while (isspace(*p))
+                p++;
+
+        unsigned values[2];
+        if (!parse_uints(&p, values, VR_N_ELEMENTS(values), NULL))
+                return false;
+
+        command->probe_ssbo.binding = values[0];
+        command->probe_ssbo.offset = values[1];
+
+        while (isspace(*p))
+                p++;
+
+        static const char *comparison_names[] =
+        {
+                [VR_SCRIPT_COMPARISON_EQUAL] = "==",
+                [VR_SCRIPT_COMPARISON_NOT_EQUAL] = "!=",
+                [VR_SCRIPT_COMPARISON_LESS] = "<",
+                [VR_SCRIPT_COMPARISON_GREATER_EQUAL] = ">=",
+                [VR_SCRIPT_COMPARISON_GREATER] = ">",
+                [VR_SCRIPT_COMPARISON_LESS_EQUAL] = "<=",
+        };
+
+        for (unsigned i = 0; i < VR_N_ELEMENTS(comparison_names); i++) {
+                if (looking_at(&p, comparison_names[i])) {
+                        command->probe_ssbo.comparison = i;
+                        goto found_comparison;
+                }
+        }
+        return false;
+found_comparison:
+
+        while (isspace(*p))
+                p++;
+
+        if (!parse_value(&p, &command->probe_ssbo.value))
+                return false;
+        if (!is_end(p))
+                return false;
+
+        command->op = VR_SCRIPT_OP_PROBE_SSBO;
+
+        return true;
+}
+
+static bool
 process_draw_arrays_command(struct load_state *data,
                             const char *p,
                             struct vr_script_command *command)
@@ -1421,6 +1476,9 @@ process_test_line(struct load_state *data)
                 return true;
 
         if (process_probe_command(p, command))
+                return true;
+
+        if (process_probe_ssbo_command(p, command))
                 return true;
 
         if (looking_at(&p, "draw arrays "))
