@@ -42,6 +42,7 @@ struct test_buffer {
         VkDeviceMemory memory;
         void *memory_map;
         int memory_type_index;
+        size_t size;
 };
 
 struct test_data {
@@ -71,6 +72,8 @@ allocate_test_buffer(struct test_data *data,
         VkResult res;
 
         vr_list_insert(data->buffers.prev, &buffer->link);
+
+        buffer->size = size;
 
         VkBufferCreateInfo buffer_create_info = {
                 .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
