@@ -74,6 +74,8 @@ struct load_state {
 enum base_type {
         BASE_TYPE_INT,
         BASE_TYPE_UINT,
+        BASE_TYPE_INT8,
+        BASE_TYPE_UINT8,
         BASE_TYPE_INT16,
         BASE_TYPE_UINT16,
         BASE_TYPE_INT64,
@@ -92,6 +94,8 @@ static const struct type_info
 type_infos[] = {
         [VR_SCRIPT_TYPE_INT] = { BASE_TYPE_INT, 1, 1 },
         [VR_SCRIPT_TYPE_UINT] = { BASE_TYPE_UINT, 1, 1 },
+        [VR_SCRIPT_TYPE_INT8] = { BASE_TYPE_INT8, 1, 1 },
+        [VR_SCRIPT_TYPE_UINT8] = { BASE_TYPE_UINT8, 1, 1 },
         [VR_SCRIPT_TYPE_INT16] = { BASE_TYPE_INT16, 1, 1 },
         [VR_SCRIPT_TYPE_UINT16] = { BASE_TYPE_UINT16, 1, 1 },
         [VR_SCRIPT_TYPE_INT64] = { BASE_TYPE_INT64, 4, 1 },
@@ -110,6 +114,12 @@ type_infos[] = {
         [VR_SCRIPT_TYPE_UVEC2] = { BASE_TYPE_UINT, 1, 2 },
         [VR_SCRIPT_TYPE_UVEC3] = { BASE_TYPE_UINT, 1, 3 },
         [VR_SCRIPT_TYPE_UVEC4] = { BASE_TYPE_UINT, 1, 4 },
+        [VR_SCRIPT_TYPE_I8VEC2] = { BASE_TYPE_INT8, 1, 2 },
+        [VR_SCRIPT_TYPE_I8VEC3] = { BASE_TYPE_INT8, 1, 3 },
+        [VR_SCRIPT_TYPE_I8VEC4] = { BASE_TYPE_INT8, 1, 4 },
+        [VR_SCRIPT_TYPE_U8VEC2] = { BASE_TYPE_UINT8, 1, 2 },
+        [VR_SCRIPT_TYPE_U8VEC3] = { BASE_TYPE_UINT8, 1, 3 },
+        [VR_SCRIPT_TYPE_U8VEC4] = { BASE_TYPE_UINT8, 1, 4 },
         [VR_SCRIPT_TYPE_I16VEC2] = { BASE_TYPE_INT16, 1, 2 },
         [VR_SCRIPT_TYPE_I16VEC3] = { BASE_TYPE_INT16, 1, 3 },
         [VR_SCRIPT_TYPE_I16VEC4] = { BASE_TYPE_INT16, 1, 4 },
@@ -280,6 +290,8 @@ base_type_size(enum base_type type)
         switch (type) {
         case BASE_TYPE_INT: return sizeof (int32_t);
         case BASE_TYPE_UINT: return sizeof (uint32_t);
+        case BASE_TYPE_INT8: return sizeof (int8_t);
+        case BASE_TYPE_UINT8: return sizeof (uint8_t);
         case BASE_TYPE_INT16: return sizeof (int16_t);
         case BASE_TYPE_UINT16: return sizeof (uint16_t);
         case BASE_TYPE_INT64: return sizeof (int64_t);
@@ -418,6 +430,69 @@ parse_uints(const char **p,
                 if (errno != 0 || tail == *p || v > UINT_MAX)
                         return false;
                 *(out++) = (unsigned) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
+parse_int8s(const char **p,
+            int8_t *out,
+            int n_ints,
+            const char *sep)
+{
+        long long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtoll(*p, &tail, 10);
+                if (errno != 0 || tail == *p ||
+                    v < INT8_MIN || v > INT8_MAX)
+                        return false;
+                *(out++) = (int8_t) v;
+                *p = tail;
+
+                if (sep && i < n_ints - 1) {
+                        while (isspace(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
+}
+
+static bool
+parse_uint8s(const char **p,
+             uint8_t *out,
+             int n_ints,
+             const char *sep)
+{
+        long long v;
+        char *tail;
+
+        for (int i = 0; i < n_ints; i++) {
+                while (isspace(**p))
+                        (*p)++;
+
+                errno = 0;
+                v = strtoll(*p, &tail, 10);
+                if (errno != 0 || tail == *p || v > UINT8_MAX)
+                        return false;
+                *(out++) = (uint8_t) v;
                 *p = tail;
 
                 if (sep && i < n_ints - 1) {
@@ -584,6 +659,8 @@ parse_value_type(const char **p,
         } types[] = {
                 { "int ", VR_SCRIPT_TYPE_INT },
                 { "uint ", VR_SCRIPT_TYPE_UINT },
+                { "int8_t ", VR_SCRIPT_TYPE_INT8 },
+                { "uint8_t ", VR_SCRIPT_TYPE_UINT8 },
                 { "int16_t ", VR_SCRIPT_TYPE_INT16 },
                 { "uint16_t ", VR_SCRIPT_TYPE_UINT16 },
                 { "int64_t ", VR_SCRIPT_TYPE_INT64 },
@@ -602,6 +679,12 @@ parse_value_type(const char **p,
                 { "uvec2 ", VR_SCRIPT_TYPE_UVEC2 },
                 { "uvec3 ", VR_SCRIPT_TYPE_UVEC3 },
                 { "uvec4 ", VR_SCRIPT_TYPE_UVEC4 },
+                { "i8vec2 ", VR_SCRIPT_TYPE_I8VEC2 },
+                { "i8vec3 ", VR_SCRIPT_TYPE_I8VEC3 },
+                { "i8vec4 ", VR_SCRIPT_TYPE_I8VEC4 },
+                { "u8vec2 ", VR_SCRIPT_TYPE_U8VEC2 },
+                { "u8vec3 ", VR_SCRIPT_TYPE_U8VEC3 },
+                { "u8vec4 ", VR_SCRIPT_TYPE_U8VEC4 },
                 { "i16vec2 ", VR_SCRIPT_TYPE_I16VEC2 },
                 { "i16vec3 ", VR_SCRIPT_TYPE_I16VEC3 },
                 { "i16vec4 ", VR_SCRIPT_TYPE_I16VEC4 },
@@ -672,6 +755,20 @@ parse_value(const char **p,
                                          value->uvec + col * stride,
                                          info->rows,
                                          NULL))
+                                return false;
+                        break;
+                case BASE_TYPE_INT8:
+                        if (!parse_int8s(p,
+                                          value->i8vec + col * stride,
+                                          info->rows,
+                                          NULL))
+                                return false;
+                        break;
+                case BASE_TYPE_UINT8:
+                        if (!parse_uint8s(p,
+                                           value->u8vec + col * stride,
+                                           info->rows,
+                                           NULL))
                                 return false;
                         break;
                 case BASE_TYPE_INT16:
@@ -1971,6 +2068,14 @@ compare_value(enum vr_script_comparison comparison,
                 return compare_unsigned(comparison,
                                         *(const uint32_t *) a,
                                         *(const uint32_t *) b);
+        case BASE_TYPE_INT8:
+                return compare_signed(comparison,
+                                      *(const int8_t *) a,
+                                      *(const int8_t *) b);
+        case BASE_TYPE_UINT8:
+                return compare_unsigned(comparison,
+                                        *(const uint8_t *) a,
+                                        *(const uint8_t *) b);
         case BASE_TYPE_INT16:
                 return compare_signed(comparison,
                                       *(const int16_t *) a,
