@@ -304,10 +304,10 @@ base_type_size(enum base_type type)
 }
 
 /**
- * Calculates the matrix stride of a type assuming std140 rules.
+ * Calculates the base alignment of a type assuming std140 rules.
  */
 static size_t
-type_matrix_stride(enum vr_script_type type)
+type_base_alignment(enum vr_script_type type)
 {
         const struct type_info *info = type_infos + type;
         int component_size = base_type_size(info->base_type);
@@ -320,6 +320,16 @@ type_matrix_stride(enum vr_script_type type)
 
         /* according to std140 the size is rounded up to a vec4 */
         return vr_align(base_alignment, 16);
+}
+
+/**
+ * Calculates the matrix stirde of a type assuming std140 rules.
+ */
+static size_t
+type_matrix_stride(enum vr_script_type type)
+{
+        /* The matrix stride is the same as the base alignment */
+        return type_base_alignment(type);
 }
 
 static bool
@@ -816,6 +826,35 @@ parse_value(const char **p,
                         break;
                 }
         }
+
+        return true;
+}
+
+static bool
+parse_buffer_subdata(const char **p,
+                     enum vr_script_type type,
+                     size_t *size_out,
+                     void **buffer_out)
+{
+        struct vr_buffer buffer = VR_BUFFER_STATIC_INIT;
+        size_t type_size = vr_script_type_size(type);
+        size_t alignment = type_base_alignment(type);
+
+        do {
+                vr_buffer_set_length(&buffer,
+                                     vr_align(buffer.length, alignment) +
+                                     type_size);
+
+                if (!parse_value(p,
+                                 type,
+                                 buffer.data + buffer.length - type_size)) {
+                        vr_buffer_destroy(&buffer);
+                        return false;
+                }
+        } while (!is_end(*p));
+
+        *buffer_out = buffer.data;
+        *size_out = buffer.length;
 
         return true;
 }
@@ -1439,20 +1478,21 @@ process_set_buffer_subdata(struct load_state *data,
 
         while (isspace(*p))
                 p++;
-        if (!parse_value_type(&p, &command->set_buffer_subdata.value.type))
+        enum vr_script_type value_type;
+        if (!parse_value_type(&p, &value_type))
                 goto error;
         if (!parse_size_t(&p, &command->set_buffer_subdata.offset))
                 goto error;
-        if (!parse_value(&p,
-                         command->set_buffer_subdata.value.type,
-                         &command->set_buffer_subdata.value.i))
+        if (!parse_buffer_subdata(&p,
+                                  value_type,
+                                  &command->set_buffer_subdata.size,
+                                  &command->set_buffer_subdata.data))
                 goto error;
         if (!is_end(p))
                 goto error;
 
-        size_t type_size =
-                vr_script_type_size(command->set_buffer_subdata.value.type);
-        size_t end = command->set_buffer_subdata.offset + type_size;
+        size_t end = (command->set_buffer_subdata.offset +
+                      command->set_buffer_subdata.size);
         if (end > buffer->size)
                 buffer->size = end;
 
@@ -1572,6 +1612,8 @@ process_test_line(struct load_state *data)
                  data->commands.length -
                  sizeof (struct vr_script_command));
 
+        memset(command, 0, sizeof *command);
+
         command->line_num = data->line_num;
 
         if (process_draw_rect_command(data, p, command))
@@ -1629,14 +1671,16 @@ process_test_line(struct load_state *data)
         if (looking_at(&p, "uniform ")) {
                 while (isspace(*p))
                         p++;
+                enum vr_script_type type;
                 if (!parse_value_type(&p,
-                                      &command->set_push_constant.value.type))
+                                      &type))
                         goto error;
                 if (!parse_size_t(&p, &command->set_push_constant.offset))
                         goto error;
-                if (!parse_value(&p,
-                                 command->set_push_constant.value.type,
-                                 &command->set_push_constant.value.i))
+                if (!parse_buffer_subdata(&p,
+                                          type,
+                                          &command->set_push_constant.size,
+                                          &command->set_push_constant.data))
                         goto error;
                 if (!is_end(p))
                         goto error;
@@ -1949,6 +1993,14 @@ vr_script_free(struct vr_script *script)
 {
         int stage;
         struct vr_script_shader *shader, *tmp;
+
+        for (int i = 0; i < script->n_commands; i++) {
+                struct vr_script_command *command = script->commands + i;
+                if (command->op == VR_SCRIPT_OP_SET_BUFFER_SUBDATA)
+                        vr_free(command->set_buffer_subdata.data);
+                else if (command->op == VR_SCRIPT_OP_SET_PUSH_CONSTANT)
+                        vr_free(command->set_push_constant.data);
+        }
 
         for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
                 vr_list_for_each_safe(shader,

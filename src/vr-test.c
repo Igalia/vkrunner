@@ -739,9 +739,6 @@ static bool
 set_push_constant(struct test_data *data,
                   const struct vr_script_command *command)
 {
-        const struct vr_script_value *value =
-                &command->set_push_constant.value;
-
         if (data->test_state < TEST_STATE_COMMAND_BUFFER &&
             !set_state(data, TEST_STATE_COMMAND_BUFFER))
                 return false;
@@ -750,8 +747,8 @@ set_push_constant(struct test_data *data,
                                  data->pipeline->layout,
                                  data->pipeline->stages,
                                  command->set_push_constant.offset,
-                                 vr_script_type_size(value->type),
-                                 &value->i);
+                                 command->set_push_constant.size,
+                                 command->set_push_constant.data);
 
         return true;
 }
@@ -839,19 +836,15 @@ set_buffer_subdata(struct test_data *data,
                                            command->set_buffer_subdata.binding);
         assert(buffer);
 
-        const struct vr_script_value *value =
-                &command->set_buffer_subdata.value;
-        size_t value_size = vr_script_type_size(value->type);
-
         memcpy((uint8_t *) buffer->memory_map +
                command->set_buffer_subdata.offset,
-               &value->i,
-               value_size);
+               command->set_buffer_subdata.data,
+               command->set_buffer_subdata.size);
         vr_flush_memory(data->window,
                         buffer->memory_type_index,
                         buffer->memory,
                         command->set_push_constant.offset,
-                        value_size);
+                        command->set_buffer_subdata.size);
 
         return true;
 }

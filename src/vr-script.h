@@ -194,12 +194,14 @@ struct vr_script_command {
                 struct {
                         unsigned binding;
                         size_t offset;
-                        struct vr_script_value value;
+                        size_t size;
+                        void *data;
                 } set_buffer_subdata;
 
                 struct {
                         size_t offset;
-                        struct vr_script_value value;
+                        size_t size;
+                        void *data;
                 } set_push_constant;
 
                 struct {

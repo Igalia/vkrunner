@@ -566,10 +566,8 @@ get_push_constant_size(const struct vr_script *script)
                 if (command->op != VR_SCRIPT_OP_SET_PUSH_CONSTANT)
                         continue;
 
-                enum vr_script_type type =
-                        command->set_push_constant.value.type;
-                size_t value_size = vr_script_type_size(type);
-                size_t end = command->set_push_constant.offset + value_size;
+                size_t end = (command->set_push_constant.offset +
+                              command->set_push_constant.size);
 
                 if (end > max)
                         max = end;
