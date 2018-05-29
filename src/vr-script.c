@@ -735,80 +735,81 @@ parse_value_type(const char **p,
 
 static bool
 parse_value(const char **p,
-            struct vr_script_value *value)
+            enum vr_script_type type,
+            void *value)
 {
-        const struct type_info *info = type_infos + value->type;
-        size_t stride = (type_matrix_stride(value->type) /
+        const struct type_info *info = type_infos + type;
+        size_t stride = (type_matrix_stride(type) /
                          base_type_size(info->base_type));
 
         for (int col = 0; col < info->columns; col++) {
                 switch (info->base_type) {
                 case BASE_TYPE_INT:
                         if (!parse_ints(p,
-                                        value->ivec + col * stride,
+                                        (int *) value + col * stride,
                                         info->rows,
                                         NULL))
                                 return false;
                         break;
                 case BASE_TYPE_UINT:
                         if (!parse_uints(p,
-                                         value->uvec + col * stride,
+                                         (uint *) value + col * stride,
                                          info->rows,
                                          NULL))
                                 return false;
                         break;
                 case BASE_TYPE_INT8:
                         if (!parse_int8s(p,
-                                          value->i8vec + col * stride,
-                                          info->rows,
-                                          NULL))
+                                         (int8_t *) value + col * stride,
+                                         info->rows,
+                                         NULL))
                                 return false;
                         break;
                 case BASE_TYPE_UINT8:
                         if (!parse_uint8s(p,
-                                           value->u8vec + col * stride,
-                                           info->rows,
-                                           NULL))
+                                          (uint8_t *) value + col * stride,
+                                          info->rows,
+                                          NULL))
                                 return false;
                         break;
                 case BASE_TYPE_INT16:
                         if (!parse_int16s(p,
-                                          value->i16vec + col * stride,
+                                          (int16_t *) value + col * stride,
                                           info->rows,
                                           NULL))
                                 return false;
                         break;
                 case BASE_TYPE_UINT16:
                         if (!parse_uint16s(p,
-                                           value->u16vec + col * stride,
+                                           (uint16_t *) value + col * stride,
                                            info->rows,
                                            NULL))
                                 return false;
                         break;
                 case BASE_TYPE_INT64:
                         if (!parse_int64s(p,
-                                          value->i64vec + col * stride,
+                                          (int64_t *) value + col * stride,
                                           info->rows,
                                           NULL))
                                 return false;
                         break;
                 case BASE_TYPE_UINT64:
                         if (!parse_uint64s(p,
-                                           value->u64vec + col * stride,
+                                           (uint64_t *) value + col * stride,
                                            info->rows,
                                            NULL))
                                 return false;
                         break;
                 case BASE_TYPE_FLOAT:
                         if (!parse_floats(p,
-                                          value->vec + col * stride,
+                                          (float *) value + col * stride,
                                           info->rows,
                                           NULL))
                                 return false;
                         break;
                 case BASE_TYPE_DOUBLE:
                         if (!parse_doubles(p,
-                                           value->dvec + col * stride,
+                                           (double *) value + col * stride,
                                            info->rows,
                                            NULL))
                                 return false;
@@ -1133,7 +1134,9 @@ found_comparison:
         while (isspace(*p))
                 p++;
 
-        if (!parse_value(&p, &command->probe_ssbo.value))
+        if (!parse_value(&p,
+                         command->probe_ssbo.value.type,
+                         &command->probe_ssbo.value.i))
                 return false;
         if (!is_end(p))
                 return false;
@@ -1440,7 +1443,9 @@ process_set_buffer_subdata(struct load_state *data,
                 goto error;
         if (!parse_size_t(&p, &command->set_buffer_subdata.offset))
                 goto error;
-        if (!parse_value(&p, &command->set_buffer_subdata.value))
+        if (!parse_value(&p,
+                         command->set_buffer_subdata.value.type,
+                         &command->set_buffer_subdata.value.i))
                 goto error;
         if (!is_end(p))
                 goto error;
@@ -1629,7 +1634,9 @@ process_test_line(struct load_state *data)
                         goto error;
                 if (!parse_size_t(&p, &command->set_push_constant.offset))
                         goto error;
-                if (!parse_value(&p, &command->set_push_constant.value))
+                if (!parse_value(&p,
+                                 command->set_push_constant.value.type,
+                                 &command->set_push_constant.value.i))
                         goto error;
                 if (!is_end(p))
                         goto error;
