@@ -22,15 +22,6 @@ AC_C_BIGENDIAN([AC_DEFINE([HAVE_BIG_ENDIAN], [1], [System is big-endian])],
 AC_CHECK_LIB([m], sinf)
 AC_CHECK_FUNCS([ffs ffsl])
 
-AC_MSG_CHECKING([for __builtin_popcount])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([_Static_assert(__builtin_popcount(3) == 2,
-                                                   "");],
-                                   [])],
-                  [AC_MSG_RESULT([yes])
-                   AC_DEFINE([HAVE_BUILTIN_POPCOUNT], [1],
-                             [__builtin_popcount is available])],
-                  [AC_MSG_RESULT([no])])
-
 ALL_WARNING_CFLAGS="-Wall -Wuninitialized -Wempty-body -Wformat
                     -Wformat-security -Winit-self -Wundef
                     -Wvla -Wpointer-arith -Wmissing-declarations"

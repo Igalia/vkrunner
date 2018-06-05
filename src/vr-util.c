@@ -203,23 +203,3 @@ vr_util_ffsl(long int value)
 }
 
 #endif
-
-#ifndef HAVE_BUILTIN_POPCOUNT
-
-int
-vr_util_popcount(unsigned x)
-{
-        int count = 0;
-
-        while (true) {
-                int next_bit = vr_util_ffs(x);
-
-                if (next_bit == 0)
-                        return count;
-
-                count++;
-                x >>= next_bit;
-        }
-}
-
-#endif
