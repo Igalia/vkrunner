@@ -34,9 +34,12 @@ main(int argc, char **argv)
 {
         enum vr_result result;
 
-        struct vr_config *config = vr_config_new(argc, argv);
-        if (config == NULL)
+        struct vr_config *config = vr_config_new();
+
+        if (!vr_config_process_argv(config, argc, argv)) {
+                vr_config_free(config);
                 return EXIT_FAILURE;
+        }
 
         result = vr_execute(config);
 

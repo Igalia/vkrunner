@@ -45,9 +45,9 @@ show_help(void)
                "scripts\n");
 }
 
-static void
-add_script(struct vr_config *config,
-           const char *filename)
+void
+vr_config_add_script(struct vr_config *config,
+                     const char *filename)
 {
         struct vr_config_script *script =
                 vr_alloc(sizeof *script + strlen(filename) + 1);
@@ -56,8 +56,8 @@ add_script(struct vr_config *config,
 }
 
 static bool
-add_token_replacement(struct vr_config *config,
-                      const char *arg)
+add_token_replacement_from_arg(struct vr_config *config,
+                               const char *arg)
 {
         const char *equals = strchr(arg, '=');
 
@@ -78,14 +78,23 @@ add_token_replacement(struct vr_config *config,
         return true;
 }
 
-struct vr_config *
-vr_config_new(int argc, char **argv)
+void
+vr_config_add_token_replacement(struct vr_config *config,
+                                const char *token,
+                                const char *replacement)
 {
-        struct vr_config *config = vr_calloc(sizeof *config);
+        struct vr_config_token_replacement *tr = vr_calloc(sizeof *tr);
 
-        vr_list_init(&config->scripts);
-        vr_list_init(&config->token_replacements);
+        tr->token = vr_strdup(token);
+        tr->replacement = vr_strdup(replacement);
 
+        vr_list_insert(config->token_replacements.prev, &tr->link);
+}
+
+bool
+vr_config_process_argv(struct vr_config *config,
+                       int argc, char **argv)
+{
         while (true) {
                 int opt = getopt(argc, argv, "-hi:dD:");
 
@@ -95,12 +104,12 @@ vr_config_new(int argc, char **argv)
                 switch (opt) {
                 case 'h':
                         show_help();
-                        goto error;
+                        return false;
                 case 'i':
                         if (config->image_filename) {
                                 fprintf(stderr,
                                         "duplicate -i option\n");
-                                goto error;
+                                return false;
                         }
                         config->image_filename = vr_strdup(optarg);
                         break;
@@ -108,28 +117,35 @@ vr_config_new(int argc, char **argv)
                         config->show_disassembly = true;
                         break;
                 case 'D':
-                        if (!add_token_replacement(config, optarg))
-                                goto error;
+                        if (!add_token_replacement_from_arg(config, optarg))
+                                return false;
                         break;
                 case 1:
-                        add_script(config, optarg);
+                        vr_config_add_script(config, optarg);
                         break;
                 case '?':
-                        goto error;
+                        return false;
                 }
         }
 
         if (vr_list_empty(&config->scripts)) {
                 fprintf(stderr, "no script specified\n");
                 show_help();
-                goto error;
+                return false;
         }
 
-        return config;
+        return true;
+}
 
-error:
-        vr_config_free(config);
-        return NULL;
+struct vr_config *
+vr_config_new(void)
+{
+        struct vr_config *config = vr_calloc(sizeof *config);
+
+        vr_list_init(&config->scripts);
+        vr_list_init(&config->token_replacements);
+
+        return config;
 }
 
 static void

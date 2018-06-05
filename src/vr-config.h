@@ -48,7 +48,20 @@ struct vr_config {
 };
 
 struct vr_config *
-vr_config_new(int argc, char **argv);
+vr_config_new(void);
+
+bool
+vr_config_process_argv(struct vr_config *config,
+                       int argc, char **argv);
+
+void
+vr_config_add_script(struct vr_config *config,
+                     const char *filename);
+
+void
+vr_config_add_token_replacement(struct vr_config *config,
+                                const char *token,
+                                const char *replacement);
 
 void
 vr_config_free(struct vr_config *config);
