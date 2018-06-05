@@ -23,27 +23,14 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "config.h"
+#ifndef VR_EXECUTE_H
+#define VR_EXECUTE_H
 
-#include <stdio.h>
+#include <stdbool.h>
+#include "vr-config.h"
+#include "vr-result.h"
 
-#include "vr-execute.h"
+enum vr_result
+vr_execute(const struct vr_config *config);
 
-int
-main(int argc, char **argv)
-{
-        enum vr_result result;
-
-        struct vr_config *config = vr_config_new(argc, argv);
-        if (config == NULL)
-                return EXIT_FAILURE;
-
-        result = vr_execute(config);
-
-        vr_config_free(config);
-
-        printf("PIGLIT: {\"result\": \"%s\" }\n",
-               vr_result_to_string(result));
-
-        return result == VR_RESULT_FAIL ? EXIT_FAILURE : EXIT_SUCCESS;
-}
+#endif /* VR_EXECUTE_H */

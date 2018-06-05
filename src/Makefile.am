@@ -15,6 +15,8 @@ vkrunner_SOURCES = \
 	vr-enum-table.h \
 	vr-error-message.c \
 	vr-error-message.h \
+	vr-execute.c \
+	vr-execute.h \
 	vr-feature-offsets.c \
 	vr-feature-offsets.h \
 	vr-flush-memory.c \
