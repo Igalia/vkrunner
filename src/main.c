@@ -97,7 +97,7 @@ process_script(struct vr_config *config,
         struct vr_window *window = NULL;
         struct vr_pipeline *pipeline = NULL;
 
-        script = vr_script_load(filename);
+        script = vr_script_load(config, filename);
         if (script == NULL) {
                 res = VR_RESULT_FAIL;
                 goto out;

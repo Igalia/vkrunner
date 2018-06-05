@@ -53,6 +53,7 @@ enum section {
 };
 
 struct load_state {
+        const struct vr_config *config;
         const char *filename;
         int line_num;
         struct vr_script *script;
@@ -1897,11 +1898,66 @@ compare_buffer_binding(const void *a,
                 (int) ((const struct vr_script_buffer *) b)->binding);
 }
 
+static bool
+find_replacement(const struct vr_config *config,
+                 struct vr_buffer *line,
+                 int pos)
+{
+        const struct vr_config_token_replacement *tr;
+
+        vr_list_for_each(tr, &config->token_replacements, link) {
+                int len = strlen(tr->token);
+
+                if (pos + len <= line->length &&
+                    !memcmp(line->data + pos, tr->token, len)) {
+                        int repl_len = strlen(tr->replacement);
+                        int new_line_len = line->length + repl_len - len;
+                        /* The extra “1” is to preserve the null terminator */
+                        vr_buffer_ensure_size(line, new_line_len + 1);
+                        memmove(line->data + pos + repl_len,
+                                line->data + pos + len,
+                                line->length - pos - len + 1);
+                        memcpy(line->data + pos, tr->replacement, repl_len);
+
+                        vr_buffer_set_length(line, new_line_len);
+
+                        return true;
+                }
+        }
+
+        return false;
+}
+
+static bool
+process_token_replacements(struct load_state *data)
+{
+        int count = 0;
+
+        for (int i = 0; i < data->line.length; i++) {
+                while (find_replacement(data->config, &data->line, i)) {
+                        count++;
+
+                        if (count > 1000) {
+                                fprintf(stderr,
+                                        "%s:%i: infinite recursion suspected "
+                                        "while replacing tokens\n",
+                                        data->filename,
+                                        data->line_num);
+                                return false;
+                        }
+                }
+        }
+
+        return true;
+}
+
 static struct vr_script *
-load_script_from_stream(const char *filename,
+load_script_from_stream(const struct vr_config *config,
+                        const char *filename,
                         FILE *f)
 {
         struct load_state data = {
+                .config = config,
                 .filename = filename,
                 .line_num = 1,
                 .script = vr_calloc(sizeof (struct vr_script)),
@@ -1933,6 +1989,11 @@ load_script_from_stream(const char *filename,
         do {
                 if (!read_line(f, &data.line))
                         break;
+
+                if (!process_token_replacements(&data)) {
+                        res = false;
+                        break;
+                }
 
                 res = process_line(&data);
 
@@ -1971,7 +2032,8 @@ load_script_from_stream(const char *filename,
 }
 
 struct vr_script *
-vr_script_load(const char *filename)
+vr_script_load(const struct vr_config *config,
+               const char *filename)
 {
         struct vr_script *script;
         FILE *f = fopen(filename, "r");
@@ -1981,7 +2043,7 @@ vr_script_load(const char *filename)
                 return NULL;
         }
 
-        script = load_script_from_stream(filename, f);
+        script = load_script_from_stream(config, filename, f);
 
         fclose(f);
 
