@@ -237,3 +237,4 @@ option is given to the `draw arrays` test command.
       -h            Show this help message
       -i IMG        Write the final rendering to IMG as a PPM image
       -d            Show the SPIR-V disassembly
+      -D TOK=REPL   Replace occurences of TOK with REPL in the scripts

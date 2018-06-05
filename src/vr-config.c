@@ -40,7 +40,9 @@ show_help(void)
                "  -h            Show this help message\n"
                "  -i IMG        Write the final rendering to IMG as a "
                "PPM image\n"
-               "  -d            Show the SPIR-V disassembly\n");
+               "  -d            Show the SPIR-V disassembly\n"
+               "  -D TOK=REPL   Replace occurences of TOK with REPL in the "
+               "scripts\n");
 }
 
 static void
@@ -53,15 +55,39 @@ add_script(struct vr_config *config,
         vr_list_insert(config->scripts.prev, &script->link);
 }
 
+static bool
+add_token_replacement(struct vr_config *config,
+                      const char *arg)
+{
+        const char *equals = strchr(arg, '=');
+
+        if (equals == NULL || equals == arg) {
+                fprintf(stderr,
+                        "invalid token replacement “%s”\n",
+                        arg);
+                return false;
+        }
+
+        struct vr_config_token_replacement *tr = vr_calloc(sizeof *tr);
+
+        tr->token = vr_strndup(arg, equals - arg);
+        tr->replacement = vr_strdup(equals + 1);
+
+        vr_list_insert(config->token_replacements.prev, &tr->link);
+
+        return true;
+}
+
 struct vr_config *
 vr_config_new(int argc, char **argv)
 {
         struct vr_config *config = vr_calloc(sizeof *config);
 
         vr_list_init(&config->scripts);
+        vr_list_init(&config->token_replacements);
 
         while (true) {
-                int opt = getopt(argc, argv, "-hi:d");
+                int opt = getopt(argc, argv, "-hi:dD:");
 
                 if (opt == -1)
                         break;
@@ -80,6 +106,10 @@ vr_config_new(int argc, char **argv)
                         break;
                 case 'd':
                         config->show_disassembly = true;
+                        break;
+                case 'D':
+                        if (!add_token_replacement(config, optarg))
+                                goto error;
                         break;
                 case 1:
                         add_script(config, optarg);
@@ -102,13 +132,32 @@ error:
         return NULL;
 }
 
-void
-vr_config_free(struct vr_config *config)
+static void
+free_scripts(struct vr_config *config)
 {
         struct vr_config_script *script, *tmp;
 
         vr_list_for_each_safe(script, tmp, &config->scripts, link)
                 vr_free(script);
+}
+
+static void
+free_token_replacements(struct vr_config *config)
+{
+        struct vr_config_token_replacement *tr, *tmp;
+
+        vr_list_for_each_safe(tr, tmp, &config->token_replacements, link) {
+                vr_free(tr->token);
+                vr_free(tr->replacement);
+                vr_free(tr);
+        }
+}
+
+void
+vr_config_free(struct vr_config *config)
+{
+        free_scripts(config);
+        free_token_replacements(config);
 
         vr_free(config->image_filename);
 
