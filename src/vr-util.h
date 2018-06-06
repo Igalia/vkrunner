@@ -29,6 +29,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+/* Include the right header for alloca */
+#ifdef WIN32
+#include <malloc.h>
+#else
+#include <alloca.h>
+#endif
+
 #define VR_SWAP_UINT16(x)                       \
   ((uint16_t)                                   \
    (((uint16_t) (x) >> 8) |                     \
