@@ -126,7 +126,7 @@ load_stream_contents(FILE *stream,
                      uint8_t **contents,
                      size_t *size)
 {
-        ssize_t got;
+        size_t got;
         long pos;
 
         fseek(stream, 0, SEEK_END);
