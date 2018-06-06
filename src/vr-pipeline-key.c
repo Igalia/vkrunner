@@ -29,6 +29,7 @@
 #include "vr-util.h"
 
 #include <string.h>
+#include <limits.h>
 
 static const struct vr_pipeline_key
 base_key = {
@@ -77,7 +78,7 @@ struct vr_pipeline_key_prop {
 };
 
 struct vr_pipeline_key_struct {
-        const ssize_t *pointer_offsets;
+        const size_t *pointer_offsets;
         const struct vr_pipeline_key_prop *members;
 };
 
@@ -85,16 +86,16 @@ static const struct vr_pipeline_key_struct
 structs[] = {
 #define VR_PIPELINE_STRUCT_BEGIN(m)                             \
         {                                                       \
-        .pointer_offsets = (const ssize_t[]) {                  \
+        .pointer_offsets = (const size_t[]) {                   \
                 offsetof(VkGraphicsPipelineCreateInfo, m),      \
-                -1 },                                           \
+                SIZE_MAX },                                     \
         .members = (const struct vr_pipeline_key_prop[]) {
 #define VR_PIPELINE_STRUCT_BEGIN2(m1, s2, m2)                   \
         {                                                       \
-        .pointer_offsets = (const ssize_t[]) {                  \
+        .pointer_offsets = (const size_t[]) {                   \
                 offsetof(VkGraphicsPipelineCreateInfo, m1),     \
                 offsetof(s2, m2),                               \
-                -1 },                                           \
+                SIZE_MAX },                                     \
         .members = (const struct vr_pipeline_key_prop[]) {
 #define VR_PIPELINE_PROP(t, s, n)                               \
         { .name = #n,                                           \
@@ -180,8 +181,8 @@ vr_pipeline_key_to_create_info(const struct vr_pipeline_key *key,
                 const struct vr_pipeline_key_struct *s = structs + struct_num;
                 uint8_t *struct_start = (uint8_t *) create_info;
 
-                for (const ssize_t *off = s->pointer_offsets;
-                     *off != -1;
+                for (const size_t *off = s->pointer_offsets;
+                     *off != SIZE_MAX;
                      off++)
                         struct_start = *((uint8_t **) (struct_start + *off));
 
