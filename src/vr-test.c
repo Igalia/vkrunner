@@ -723,11 +723,21 @@ probe_ssbo(struct test_data *data,
                                       expected)) {
                 print_command_fail(command);
                 vr_error_message("SSBO probe failed");
-                if (observed.type == VR_SCRIPT_TYPE_UINT) {
+                switch (observed.type) {
+                case VR_SCRIPT_TYPE_UINT:
                         vr_error_message("  Reference: %u\n"
                                          "  Observed:  %u",
                                          expected->u,
                                          observed.u);
+                        break;
+                case VR_SCRIPT_TYPE_FLOAT:
+                        vr_error_message("  Reference: %f\n"
+                                         "  Observed:  %f",
+                                         expected->f,
+                                         observed.f);
+                        break;
+                default:
+                        break;
                 }
                 return false;
         }
