@@ -31,34 +31,49 @@
 #include <unistd.h>
 #include <string.h>
 
-static void
-show_help(void)
-{
-        printf("usage: vkrunner [OPTION]... SCRIPT...\n"
-               "Runs the shader test script SCRIPT\n"
-               "\n"
-               "Options:\n"
-               "  -h            Show this help message\n"
-               "  -i IMG        Write the final rendering to IMG as a "
-               "PPM image\n"
-               "  -d            Show the SPIR-V disassembly\n"
-               "  -D TOK=REPL   Replace occurences of TOK with REPL in the "
-               "scripts\n");
-}
+typedef bool (* option_cb_t) (struct vr_config *config,
+                              const char *arg);
 
-void
-vr_config_add_script(struct vr_config *config,
-                     const char *filename)
+struct option {
+        char letter;
+        const char *description;
+        /* If the option takes an argument then this will be its name
+         * in the help. Otherwise it is NULL if the argument is just a
+         * flag.
+         */
+        char *argument_name;
+        option_cb_t cb;
+};
+
+static bool
+opt_help(struct vr_config *config,
+         const char *arg);
+
+static bool
+opt_image(struct vr_config *config,
+          const char *arg)
 {
-        struct vr_config_script *script =
-                vr_alloc(sizeof *script + strlen(filename) + 1);
-        strcpy(script->filename, filename);
-        vr_list_insert(config->scripts.prev, &script->link);
+        if (config->image_filename) {
+                fprintf(stderr, "duplicate -i option\n");
+                return false;
+        }
+
+        config->image_filename = vr_strdup(arg);
+
+        return true;
 }
 
 static bool
-add_token_replacement_from_arg(struct vr_config *config,
-                               const char *arg)
+opt_disassembly(struct vr_config *config,
+                const char *arg)
+{
+        config->show_disassembly = true;
+        return true;
+}
+
+static bool
+opt_token_replacement(struct vr_config *config,
+                      const char *arg)
 {
         const char *equals = strchr(arg, '=');
 
@@ -79,6 +94,48 @@ add_token_replacement_from_arg(struct vr_config *config,
         return true;
 }
 
+static const struct option
+options[] = {
+        { 'h', "Show this help message", NULL, opt_help },
+        { 'i', "Write the final rendering to IMG as a PPM image", "IMG",
+          opt_image },
+        { 'd', "Show the SPIR-V disassembly", NULL, opt_disassembly },
+        { 'D', "Replace occurences of TOK with REPL in the scripts",
+          "TOK=REPL", opt_token_replacement },
+};
+
+static bool
+opt_help(struct vr_config *config,
+         const char *arg)
+{
+        printf("usage: vkrunner [OPTION]... SCRIPT...\n"
+               "Runs the shader test script SCRIPT\n"
+               "\n"
+               "Options:\n");
+
+        for (int i = 0; i < VR_N_ELEMENTS(options); i++) {
+                printf("  -%c %-10s %s\n",
+                       options[i].letter,
+                       options[i].argument_name ?
+                       options[i].argument_name :
+                       "",
+                       options[i].description);
+
+        }
+
+        return false;
+}
+
+void
+vr_config_add_script(struct vr_config *config,
+                     const char *filename)
+{
+        struct vr_config_script *script =
+                vr_alloc(sizeof *script + strlen(filename) + 1);
+        strcpy(script->filename, filename);
+        vr_list_insert(config->scripts.prev, &script->link);
+}
+
 void
 vr_config_add_token_replacement(struct vr_config *config,
                                 const char *token,
@@ -92,46 +149,89 @@ vr_config_add_token_replacement(struct vr_config *config,
         vr_list_insert(config->token_replacements.prev, &tr->link);
 }
 
+static bool
+handle_option(struct vr_config *config,
+              const struct option *option,
+              const char *p,
+              int argc, char **argv,
+              int *arg_num)
+{
+        const char *arg;
+
+        if (option->argument_name) {
+                if (p[1]) {
+                        arg = p + 1;
+                } else {
+                        (*arg_num)++;
+                        if (*arg_num >= argc) {
+                                fprintf(stderr,
+                                        "option ‘%c’ expects an argument\n",
+                                        *p);
+                                opt_help(config, NULL);
+                                return false;
+                        }
+                        arg = argv[*arg_num];
+                }
+        } else {
+                arg = NULL;
+        }
+
+        return option->cb(config, arg);
+}
+
 bool
 vr_config_process_argv(struct vr_config *config,
                        int argc, char **argv)
 {
-        while (true) {
-                int opt = getopt(argc, argv, "-hi:dD:");
+        bool had_separator = false;
 
-                if (opt == -1)
-                        break;
-
-                switch (opt) {
-                case 'h':
-                        show_help();
-                        return false;
-                case 'i':
-                        if (config->image_filename) {
-                                fprintf(stderr,
-                                        "duplicate -i option\n");
-                                return false;
+        for (int i = 1; i < argc; i++) {
+                if (!had_separator && argv[i][0] == '-') {
+                        if (!strcmp(argv[i], "--")) {
+                                had_separator = true;
+                                continue;
                         }
-                        config->image_filename = vr_strdup(optarg);
-                        break;
-                case 'd':
-                        config->show_disassembly = true;
-                        break;
-                case 'D':
-                        if (!add_token_replacement_from_arg(config, optarg))
+
+                        for (const char *p = argv[i] + 1; *p; p++) {
+                                for (int option_num = 0;
+                                     option_num < VR_N_ELEMENTS(options);
+                                     option_num++) {
+                                        if (options[option_num].letter != *p)
+                                                continue;
+
+                                        if (!handle_option(config,
+                                                           options + option_num,
+                                                           p,
+                                                           argc, argv,
+                                                           &i))
+                                                return false;
+
+                                        if (options[option_num].argument_name)
+                                                goto handled_arg;
+
+                                        goto found_option;
+                                }
+
+                                fprintf(stderr,
+                                        "unknown option ‘%c’\n",
+                                        *p);
+                                opt_help(config, NULL);
                                 return false;
-                        break;
-                case 1:
-                        vr_config_add_script(config, optarg);
-                        break;
-                case '?':
-                        return false;
+
+                        found_option:
+                                (void) 0;
+                        }
+
+                handled_arg:
+                        (void) 0;
+                } else {
+                        vr_config_add_script(config, argv[i]);
                 }
         }
 
         if (vr_list_empty(&config->scripts)) {
                 fprintf(stderr, "no script specified\n");
-                show_help();
+                opt_help(config, NULL);
                 return false;
         }
 
