@@ -764,7 +764,7 @@ parse_value(const char **p,
                         break;
                 case BASE_TYPE_UINT:
                         if (!parse_uints(p,
-                                         (uint *) value + col * stride,
+                                         (unsigned *) value + col * stride,
                                          info->rows,
                                          NULL))
                                 return false;
