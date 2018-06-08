@@ -147,8 +147,18 @@ struct vr_box_type_info {
         int rows;
 };
 
+typedef bool
+(* vr_box_for_each_component_cb_t)(enum vr_box_base_type type,
+                                   size_t offset,
+                                   void *user_data);
+
 size_t
 vr_box_type_size(enum vr_box_type type);
+
+void
+vr_box_for_each_component(enum vr_box_type type,
+                          vr_box_for_each_component_cb_t cb,
+                          void *user_data);
 
 bool
 vr_box_compare(enum vr_box_comparison comparison,

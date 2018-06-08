@@ -152,6 +152,28 @@ vr_box_type_size(enum vr_box_type type)
                 return vr_box_base_type_size(info->base_type) * info->rows;
 }
 
+void
+vr_box_for_each_component(enum vr_box_type type,
+                          vr_box_for_each_component_cb_t cb,
+                          void *user_data)
+{
+        const struct vr_box_type_info *info = type_infos + type;
+        size_t stride = vr_box_type_matrix_stride(type);
+        size_t base_size = vr_box_base_type_size(info->base_type);
+        size_t offset = offsetof(struct vr_box, vec);
+
+        for (int col = 0; col < info->columns; col++) {
+                for (int row = 0; row < info->rows; row++) {
+                        if (!cb(info->base_type,
+                                offset + row * base_size,
+                                user_data)) {
+                                return;
+                        }
+                }
+                offset += stride;
+        }
+}
+
 static bool
 compare_signed(enum vr_box_comparison comparison,
                int64_t a,
@@ -273,6 +295,31 @@ compare_value(enum vr_box_comparison comparison,
         vr_fatal("Unexpected base type");
 }
 
+struct compare_closure {
+        enum vr_box_comparison comparison;
+        const struct vr_box *a;
+        const struct vr_box *b;
+        bool result;
+};
+
+static bool
+compare_cb(enum vr_box_base_type base_type,
+           size_t offset,
+           void *user_data)
+{
+        struct compare_closure *data = user_data;
+
+        if (!compare_value(data->comparison,
+                           base_type,
+                           (const uint8_t *) data->a + offset,
+                           (const uint8_t *) data->b + offset)) {
+                data->result = false;
+                return false;
+        }
+
+        return true;
+}
+
 bool
 vr_box_compare(enum vr_box_comparison comparison,
                const struct vr_box *a,
@@ -280,25 +327,16 @@ vr_box_compare(enum vr_box_comparison comparison,
 {
         assert(a->type == b->type);
 
-        const struct vr_box_type_info *info = type_infos + a->type;
-        size_t stride = vr_box_type_matrix_stride(a->type);
-        size_t base_size = vr_box_base_type_size(info->base_type);
-        const uint8_t *a_buf = (const uint8_t *) a->vec;
-        const uint8_t *b_buf = (const uint8_t *) b->vec;
+        struct compare_closure data = {
+                .comparison = comparison,
+                .a = a,
+                .b = b,
+                .result = true
+        };
 
-        for (int col = 0; col < info->columns; col++) {
-                for (int row = 0; row < info->rows; row++) {
-                        if (!compare_value(comparison,
-                                           info->base_type,
-                                           a_buf + row * base_size,
-                                           b_buf + row * base_size))
-                                return false;
-                }
-                a_buf += stride;
-                b_buf += stride;
-        }
+        vr_box_for_each_component(a->type, compare_cb, &data);
 
-        return true;
+        return data.result;
 }
 
 const struct vr_box_type_info *
