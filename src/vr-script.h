@@ -32,6 +32,7 @@
 #include "vr-format.h"
 #include "vr-pipeline-key.h"
 #include "vr-config.h"
+#include "vr-box.h"
 
 enum vr_script_shader_stage {
         VR_SCRIPT_SHADER_STAGE_VERTEX,
@@ -67,104 +68,6 @@ struct vr_script_shader {
         char source[];
 };
 
-enum vr_script_type {
-        VR_SCRIPT_TYPE_INT,
-        VR_SCRIPT_TYPE_UINT,
-        VR_SCRIPT_TYPE_INT8,
-        VR_SCRIPT_TYPE_UINT8,
-        VR_SCRIPT_TYPE_INT16,
-        VR_SCRIPT_TYPE_UINT16,
-        VR_SCRIPT_TYPE_INT64,
-        VR_SCRIPT_TYPE_UINT64,
-        VR_SCRIPT_TYPE_FLOAT,
-        VR_SCRIPT_TYPE_DOUBLE,
-        VR_SCRIPT_TYPE_VEC2,
-        VR_SCRIPT_TYPE_VEC3,
-        VR_SCRIPT_TYPE_VEC4,
-        VR_SCRIPT_TYPE_DVEC2,
-        VR_SCRIPT_TYPE_DVEC3,
-        VR_SCRIPT_TYPE_DVEC4,
-        VR_SCRIPT_TYPE_IVEC2,
-        VR_SCRIPT_TYPE_IVEC3,
-        VR_SCRIPT_TYPE_IVEC4,
-        VR_SCRIPT_TYPE_UVEC2,
-        VR_SCRIPT_TYPE_UVEC3,
-        VR_SCRIPT_TYPE_UVEC4,
-        VR_SCRIPT_TYPE_I8VEC2,
-        VR_SCRIPT_TYPE_I8VEC3,
-        VR_SCRIPT_TYPE_I8VEC4,
-        VR_SCRIPT_TYPE_U8VEC2,
-        VR_SCRIPT_TYPE_U8VEC3,
-        VR_SCRIPT_TYPE_U8VEC4,
-        VR_SCRIPT_TYPE_I16VEC2,
-        VR_SCRIPT_TYPE_I16VEC3,
-        VR_SCRIPT_TYPE_I16VEC4,
-        VR_SCRIPT_TYPE_U16VEC2,
-        VR_SCRIPT_TYPE_U16VEC3,
-        VR_SCRIPT_TYPE_U16VEC4,
-        VR_SCRIPT_TYPE_I64VEC2,
-        VR_SCRIPT_TYPE_I64VEC3,
-        VR_SCRIPT_TYPE_I64VEC4,
-        VR_SCRIPT_TYPE_U64VEC2,
-        VR_SCRIPT_TYPE_U64VEC3,
-        VR_SCRIPT_TYPE_U64VEC4,
-        VR_SCRIPT_TYPE_MAT2,
-        VR_SCRIPT_TYPE_MAT2X3,
-        VR_SCRIPT_TYPE_MAT2X4,
-        VR_SCRIPT_TYPE_MAT3X2,
-        VR_SCRIPT_TYPE_MAT3,
-        VR_SCRIPT_TYPE_MAT3X4,
-        VR_SCRIPT_TYPE_MAT4X2,
-        VR_SCRIPT_TYPE_MAT4X3,
-        VR_SCRIPT_TYPE_MAT4,
-        VR_SCRIPT_TYPE_DMAT2,
-        VR_SCRIPT_TYPE_DMAT2X3,
-        VR_SCRIPT_TYPE_DMAT2X4,
-        VR_SCRIPT_TYPE_DMAT3X2,
-        VR_SCRIPT_TYPE_DMAT3,
-        VR_SCRIPT_TYPE_DMAT3X4,
-        VR_SCRIPT_TYPE_DMAT4X2,
-        VR_SCRIPT_TYPE_DMAT4X3,
-        VR_SCRIPT_TYPE_DMAT4,
-};
-
-struct vr_script_value {
-        enum vr_script_type type;
-        union {
-                int i;
-                unsigned u;
-                int8_t i8;
-                uint8_t u8;
-                int16_t i16;
-                uint16_t u16;
-                int64_t i64;
-                uint64_t u64;
-                float f;
-                double d;
-                float vec[4];
-                double dvec[4];
-                int ivec[4];
-                unsigned uvec[4];
-                int8_t i8vec[4];
-                uint8_t u8vec[4];
-                int16_t i16vec[4];
-                uint16_t u16vec[4];
-                int64_t i64vec[4];
-                uint64_t u64vec[4];
-                float mat[16];
-                double dmat[16];
-        };
-};
-
-enum vr_script_comparison {
-        VR_SCRIPT_COMPARISON_EQUAL,
-        VR_SCRIPT_COMPARISON_NOT_EQUAL,
-        VR_SCRIPT_COMPARISON_LESS,
-        VR_SCRIPT_COMPARISON_GREATER_EQUAL,
-        VR_SCRIPT_COMPARISON_GREATER,
-        VR_SCRIPT_COMPARISON_LESS_EQUAL
-};
-
 struct vr_script_command {
         enum vr_script_op op;
         int line_num;
@@ -187,9 +90,9 @@ struct vr_script_command {
 
                 struct {
                         unsigned binding;
-                        enum vr_script_comparison comparison;
+                        enum vr_box_comparison comparison;
                         size_t offset;
-                        struct vr_script_value value;
+                        struct vr_box value;
                 } probe_ssbo;
 
                 struct {
@@ -256,13 +159,5 @@ vr_script_load(const struct vr_config *config,
 
 void
 vr_script_free(struct vr_script *script);
-
-size_t
-vr_script_type_size(enum vr_script_type type);
-
-bool
-vr_script_compare_values(enum vr_script_comparison comparison,
-                         const struct vr_script_value *a,
-                         const struct vr_script_value *b);
 
 #endif /* VR_SCRIPT_H */

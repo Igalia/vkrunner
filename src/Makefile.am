@@ -8,6 +8,8 @@ AM_CFLAGS = \
 vkrunner_SOURCES = \
 	vr-allocate-store.c \
 	vr-allocate-store.h \
+	vr-box.c \
+	vr-box.h \
 	vr-buffer.c \
 	vr-buffer.h \
 	vr-config.c \

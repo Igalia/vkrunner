@@ -72,87 +72,6 @@ struct load_state {
         unsigned clear_stencil;
 };
 
-enum base_type {
-        BASE_TYPE_INT,
-        BASE_TYPE_UINT,
-        BASE_TYPE_INT8,
-        BASE_TYPE_UINT8,
-        BASE_TYPE_INT16,
-        BASE_TYPE_UINT16,
-        BASE_TYPE_INT64,
-        BASE_TYPE_UINT64,
-        BASE_TYPE_FLOAT,
-        BASE_TYPE_DOUBLE
-};
-
-struct type_info {
-        enum base_type base_type;
-        int columns;
-        int rows;
-};
-
-static const struct type_info
-type_infos[] = {
-        [VR_SCRIPT_TYPE_INT] = { BASE_TYPE_INT, 1, 1 },
-        [VR_SCRIPT_TYPE_UINT] = { BASE_TYPE_UINT, 1, 1 },
-        [VR_SCRIPT_TYPE_INT8] = { BASE_TYPE_INT8, 1, 1 },
-        [VR_SCRIPT_TYPE_UINT8] = { BASE_TYPE_UINT8, 1, 1 },
-        [VR_SCRIPT_TYPE_INT16] = { BASE_TYPE_INT16, 1, 1 },
-        [VR_SCRIPT_TYPE_UINT16] = { BASE_TYPE_UINT16, 1, 1 },
-        [VR_SCRIPT_TYPE_INT64] = { BASE_TYPE_INT64, 4, 1 },
-        [VR_SCRIPT_TYPE_UINT64] = { BASE_TYPE_UINT64, 4, 1 },
-        [VR_SCRIPT_TYPE_FLOAT] = { BASE_TYPE_FLOAT, 1, 1 },
-        [VR_SCRIPT_TYPE_DOUBLE] = { BASE_TYPE_DOUBLE, 1, 1 },
-        [VR_SCRIPT_TYPE_VEC2] = { BASE_TYPE_FLOAT, 1, 2 },
-        [VR_SCRIPT_TYPE_VEC3] = { BASE_TYPE_FLOAT, 1, 3 },
-        [VR_SCRIPT_TYPE_VEC4] = { BASE_TYPE_FLOAT, 1, 4 },
-        [VR_SCRIPT_TYPE_DVEC2] = { BASE_TYPE_DOUBLE, 1, 2 },
-        [VR_SCRIPT_TYPE_DVEC3] = { BASE_TYPE_DOUBLE, 1, 3 },
-        [VR_SCRIPT_TYPE_DVEC4] = { BASE_TYPE_DOUBLE, 1, 4 },
-        [VR_SCRIPT_TYPE_IVEC2] = { BASE_TYPE_INT, 1, 2 },
-        [VR_SCRIPT_TYPE_IVEC3] = { BASE_TYPE_INT, 1, 3 },
-        [VR_SCRIPT_TYPE_IVEC4] = { BASE_TYPE_INT, 1, 4 },
-        [VR_SCRIPT_TYPE_UVEC2] = { BASE_TYPE_UINT, 1, 2 },
-        [VR_SCRIPT_TYPE_UVEC3] = { BASE_TYPE_UINT, 1, 3 },
-        [VR_SCRIPT_TYPE_UVEC4] = { BASE_TYPE_UINT, 1, 4 },
-        [VR_SCRIPT_TYPE_I8VEC2] = { BASE_TYPE_INT8, 1, 2 },
-        [VR_SCRIPT_TYPE_I8VEC3] = { BASE_TYPE_INT8, 1, 3 },
-        [VR_SCRIPT_TYPE_I8VEC4] = { BASE_TYPE_INT8, 1, 4 },
-        [VR_SCRIPT_TYPE_U8VEC2] = { BASE_TYPE_UINT8, 1, 2 },
-        [VR_SCRIPT_TYPE_U8VEC3] = { BASE_TYPE_UINT8, 1, 3 },
-        [VR_SCRIPT_TYPE_U8VEC4] = { BASE_TYPE_UINT8, 1, 4 },
-        [VR_SCRIPT_TYPE_I16VEC2] = { BASE_TYPE_INT16, 1, 2 },
-        [VR_SCRIPT_TYPE_I16VEC3] = { BASE_TYPE_INT16, 1, 3 },
-        [VR_SCRIPT_TYPE_I16VEC4] = { BASE_TYPE_INT16, 1, 4 },
-        [VR_SCRIPT_TYPE_U16VEC2] = { BASE_TYPE_UINT16, 1, 2 },
-        [VR_SCRIPT_TYPE_U16VEC3] = { BASE_TYPE_UINT16, 1, 3 },
-        [VR_SCRIPT_TYPE_U16VEC4] = { BASE_TYPE_UINT16, 1, 4 },
-        [VR_SCRIPT_TYPE_I64VEC2] = { BASE_TYPE_INT64, 1, 2 },
-        [VR_SCRIPT_TYPE_I64VEC3] = { BASE_TYPE_INT64, 1, 3 },
-        [VR_SCRIPT_TYPE_I64VEC4] = { BASE_TYPE_INT64, 1, 4 },
-        [VR_SCRIPT_TYPE_U64VEC2] = { BASE_TYPE_UINT64, 1, 2 },
-        [VR_SCRIPT_TYPE_U64VEC3] = { BASE_TYPE_UINT64, 1, 3 },
-        [VR_SCRIPT_TYPE_U64VEC4] = { BASE_TYPE_UINT64, 1, 4 },
-        [VR_SCRIPT_TYPE_MAT2] = { BASE_TYPE_FLOAT, 2, 2 },
-        [VR_SCRIPT_TYPE_MAT2X3] = { BASE_TYPE_FLOAT, 2, 3 },
-        [VR_SCRIPT_TYPE_MAT2X4] = { BASE_TYPE_FLOAT, 2, 4 },
-        [VR_SCRIPT_TYPE_MAT3X2] = { BASE_TYPE_FLOAT, 3, 2 },
-        [VR_SCRIPT_TYPE_MAT3] = { BASE_TYPE_FLOAT, 3, 3 },
-        [VR_SCRIPT_TYPE_MAT3X4] = { BASE_TYPE_FLOAT, 3, 4 },
-        [VR_SCRIPT_TYPE_MAT4X2] = { BASE_TYPE_FLOAT, 4, 2 },
-        [VR_SCRIPT_TYPE_MAT4X3] = { BASE_TYPE_FLOAT, 4, 3 },
-        [VR_SCRIPT_TYPE_MAT4] = { BASE_TYPE_FLOAT, 4, 4 },
-        [VR_SCRIPT_TYPE_DMAT2] = { BASE_TYPE_DOUBLE, 2, 2 },
-        [VR_SCRIPT_TYPE_DMAT2X3] = { BASE_TYPE_DOUBLE, 2, 3 },
-        [VR_SCRIPT_TYPE_DMAT2X4] = { BASE_TYPE_DOUBLE, 2, 4 },
-        [VR_SCRIPT_TYPE_DMAT3X2] = { BASE_TYPE_DOUBLE, 3, 2 },
-        [VR_SCRIPT_TYPE_DMAT3] = { BASE_TYPE_DOUBLE, 3, 3 },
-        [VR_SCRIPT_TYPE_DMAT3X4] = { BASE_TYPE_DOUBLE, 3, 4 },
-        [VR_SCRIPT_TYPE_DMAT4X2] = { BASE_TYPE_DOUBLE, 4, 2 },
-        [VR_SCRIPT_TYPE_DMAT4X3] = { BASE_TYPE_DOUBLE, 4, 3 },
-        [VR_SCRIPT_TYPE_DMAT4] = { BASE_TYPE_DOUBLE, 4, 4 },
-};
-
 static const char *
 stage_names[VR_SCRIPT_N_STAGES] = {
         "vertex shader",
@@ -283,54 +202,6 @@ is_end(const char *p)
                 p++;
 
         return *p == '\0';
-}
-
-static size_t
-base_type_size(enum base_type type)
-{
-        switch (type) {
-        case BASE_TYPE_INT: return sizeof (int32_t);
-        case BASE_TYPE_UINT: return sizeof (uint32_t);
-        case BASE_TYPE_INT8: return sizeof (int8_t);
-        case BASE_TYPE_UINT8: return sizeof (uint8_t);
-        case BASE_TYPE_INT16: return sizeof (int16_t);
-        case BASE_TYPE_UINT16: return sizeof (uint16_t);
-        case BASE_TYPE_INT64: return sizeof (int64_t);
-        case BASE_TYPE_UINT64: return sizeof (uint64_t);
-        case BASE_TYPE_FLOAT: return sizeof (float);
-        case BASE_TYPE_DOUBLE: return sizeof (double);
-        }
-
-        vr_fatal("Unknown base type");
-}
-
-/**
- * Calculates the base alignment of a type assuming std140 rules.
- */
-static size_t
-type_base_alignment(enum vr_script_type type)
-{
-        const struct type_info *info = type_infos + type;
-        int component_size = base_type_size(info->base_type);
-        int base_alignment;
-
-        if (info->rows == 3)
-                base_alignment = component_size * 4;
-        else
-                base_alignment = component_size * info->rows;
-
-        /* according to std140 the size is rounded up to a vec4 */
-        return vr_align(base_alignment, 16);
-}
-
-/**
- * Calculates the matrix stirde of a type assuming std140 rules.
- */
-static size_t
-type_matrix_stride(enum vr_script_type type)
-{
-        /* The matrix stride is the same as the base alignment */
-        return type_base_alignment(type);
 }
 
 static bool
@@ -662,76 +533,76 @@ parse_size_t(const char **p,
 
 static bool
 parse_value_type(const char **p,
-                 enum vr_script_type *type)
+                 enum vr_box_type *type)
 {
         static const struct {
                 const char *name;
-                enum vr_script_type type;
+                enum vr_box_type type;
         } types[] = {
-                { "int ", VR_SCRIPT_TYPE_INT },
-                { "uint ", VR_SCRIPT_TYPE_UINT },
-                { "int8_t ", VR_SCRIPT_TYPE_INT8 },
-                { "uint8_t ", VR_SCRIPT_TYPE_UINT8 },
-                { "int16_t ", VR_SCRIPT_TYPE_INT16 },
-                { "uint16_t ", VR_SCRIPT_TYPE_UINT16 },
-                { "int64_t ", VR_SCRIPT_TYPE_INT64 },
-                { "uint64_t ", VR_SCRIPT_TYPE_UINT64 },
-                { "float ", VR_SCRIPT_TYPE_FLOAT },
-                { "double ", VR_SCRIPT_TYPE_DOUBLE },
-                { "vec2 ", VR_SCRIPT_TYPE_VEC2 },
-                { "vec3 ", VR_SCRIPT_TYPE_VEC3 },
-                { "vec4 ", VR_SCRIPT_TYPE_VEC4 },
-                { "dvec2 ", VR_SCRIPT_TYPE_DVEC2 },
-                { "dvec3 ", VR_SCRIPT_TYPE_DVEC3 },
-                { "dvec4 ", VR_SCRIPT_TYPE_DVEC4 },
-                { "ivec2 ", VR_SCRIPT_TYPE_IVEC2 },
-                { "ivec3 ", VR_SCRIPT_TYPE_IVEC3 },
-                { "ivec4 ", VR_SCRIPT_TYPE_IVEC4 },
-                { "uvec2 ", VR_SCRIPT_TYPE_UVEC2 },
-                { "uvec3 ", VR_SCRIPT_TYPE_UVEC3 },
-                { "uvec4 ", VR_SCRIPT_TYPE_UVEC4 },
-                { "i8vec2 ", VR_SCRIPT_TYPE_I8VEC2 },
-                { "i8vec3 ", VR_SCRIPT_TYPE_I8VEC3 },
-                { "i8vec4 ", VR_SCRIPT_TYPE_I8VEC4 },
-                { "u8vec2 ", VR_SCRIPT_TYPE_U8VEC2 },
-                { "u8vec3 ", VR_SCRIPT_TYPE_U8VEC3 },
-                { "u8vec4 ", VR_SCRIPT_TYPE_U8VEC4 },
-                { "i16vec2 ", VR_SCRIPT_TYPE_I16VEC2 },
-                { "i16vec3 ", VR_SCRIPT_TYPE_I16VEC3 },
-                { "i16vec4 ", VR_SCRIPT_TYPE_I16VEC4 },
-                { "u16vec2 ", VR_SCRIPT_TYPE_U16VEC2 },
-                { "u16vec3 ", VR_SCRIPT_TYPE_U16VEC3 },
-                { "u16vec4 ", VR_SCRIPT_TYPE_U16VEC4 },
-                { "i64vec2 ", VR_SCRIPT_TYPE_I64VEC2 },
-                { "i64vec3 ", VR_SCRIPT_TYPE_I64VEC3 },
-                { "i64vec4 ", VR_SCRIPT_TYPE_I64VEC4 },
-                { "u64vec2 ", VR_SCRIPT_TYPE_U64VEC2 },
-                { "u64vec3 ", VR_SCRIPT_TYPE_U64VEC3 },
-                { "u64vec4 ", VR_SCRIPT_TYPE_U64VEC4 },
-                { "mat2 ", VR_SCRIPT_TYPE_MAT2 },
-                { "mat2x2 ", VR_SCRIPT_TYPE_MAT2 },
-                { "mat2x3 ", VR_SCRIPT_TYPE_MAT2X3 },
-                { "mat2x4 ", VR_SCRIPT_TYPE_MAT2X4 },
-                { "mat3x2 ", VR_SCRIPT_TYPE_MAT3X2 },
-                { "mat3 ", VR_SCRIPT_TYPE_MAT3 },
-                { "mat3x3 ", VR_SCRIPT_TYPE_MAT3 },
-                { "mat3x4 ", VR_SCRIPT_TYPE_MAT3X4 },
-                { "mat4x2 ", VR_SCRIPT_TYPE_MAT4X2 },
-                { "mat4x3 ", VR_SCRIPT_TYPE_MAT4X3 },
-                { "mat4 ", VR_SCRIPT_TYPE_MAT4 },
-                { "mat4x4 ", VR_SCRIPT_TYPE_MAT4 },
-                { "dmat2 ", VR_SCRIPT_TYPE_DMAT2 },
-                { "dmat2x2 ", VR_SCRIPT_TYPE_DMAT2 },
-                { "dmat2x3 ", VR_SCRIPT_TYPE_DMAT2X3 },
-                { "dmat2x4 ", VR_SCRIPT_TYPE_DMAT2X4 },
-                { "dmat3x2 ", VR_SCRIPT_TYPE_DMAT3X2 },
-                { "dmat3 ", VR_SCRIPT_TYPE_DMAT3 },
-                { "dmat3x3 ", VR_SCRIPT_TYPE_DMAT3 },
-                { "dmat3x4 ", VR_SCRIPT_TYPE_DMAT3X4 },
-                { "dmat4x2 ", VR_SCRIPT_TYPE_DMAT4X2 },
-                { "dmat4x3 ", VR_SCRIPT_TYPE_DMAT4X3 },
-                { "dmat4 ", VR_SCRIPT_TYPE_DMAT4 },
-                { "dmat4x4 ", VR_SCRIPT_TYPE_DMAT4 },
+                { "int ", VR_BOX_TYPE_INT },
+                { "uint ", VR_BOX_TYPE_UINT },
+                { "int8_t ", VR_BOX_TYPE_INT8 },
+                { "uint8_t ", VR_BOX_TYPE_UINT8 },
+                { "int16_t ", VR_BOX_TYPE_INT16 },
+                { "uint16_t ", VR_BOX_TYPE_UINT16 },
+                { "int64_t ", VR_BOX_TYPE_INT64 },
+                { "uint64_t ", VR_BOX_TYPE_UINT64 },
+                { "float ", VR_BOX_TYPE_FLOAT },
+                { "double ", VR_BOX_TYPE_DOUBLE },
+                { "vec2 ", VR_BOX_TYPE_VEC2 },
+                { "vec3 ", VR_BOX_TYPE_VEC3 },
+                { "vec4 ", VR_BOX_TYPE_VEC4 },
+                { "dvec2 ", VR_BOX_TYPE_DVEC2 },
+                { "dvec3 ", VR_BOX_TYPE_DVEC3 },
+                { "dvec4 ", VR_BOX_TYPE_DVEC4 },
+                { "ivec2 ", VR_BOX_TYPE_IVEC2 },
+                { "ivec3 ", VR_BOX_TYPE_IVEC3 },
+                { "ivec4 ", VR_BOX_TYPE_IVEC4 },
+                { "uvec2 ", VR_BOX_TYPE_UVEC2 },
+                { "uvec3 ", VR_BOX_TYPE_UVEC3 },
+                { "uvec4 ", VR_BOX_TYPE_UVEC4 },
+                { "i8vec2 ", VR_BOX_TYPE_I8VEC2 },
+                { "i8vec3 ", VR_BOX_TYPE_I8VEC3 },
+                { "i8vec4 ", VR_BOX_TYPE_I8VEC4 },
+                { "u8vec2 ", VR_BOX_TYPE_U8VEC2 },
+                { "u8vec3 ", VR_BOX_TYPE_U8VEC3 },
+                { "u8vec4 ", VR_BOX_TYPE_U8VEC4 },
+                { "i16vec2 ", VR_BOX_TYPE_I16VEC2 },
+                { "i16vec3 ", VR_BOX_TYPE_I16VEC3 },
+                { "i16vec4 ", VR_BOX_TYPE_I16VEC4 },
+                { "u16vec2 ", VR_BOX_TYPE_U16VEC2 },
+                { "u16vec3 ", VR_BOX_TYPE_U16VEC3 },
+                { "u16vec4 ", VR_BOX_TYPE_U16VEC4 },
+                { "i64vec2 ", VR_BOX_TYPE_I64VEC2 },
+                { "i64vec3 ", VR_BOX_TYPE_I64VEC3 },
+                { "i64vec4 ", VR_BOX_TYPE_I64VEC4 },
+                { "u64vec2 ", VR_BOX_TYPE_U64VEC2 },
+                { "u64vec3 ", VR_BOX_TYPE_U64VEC3 },
+                { "u64vec4 ", VR_BOX_TYPE_U64VEC4 },
+                { "mat2 ", VR_BOX_TYPE_MAT2 },
+                { "mat2x2 ", VR_BOX_TYPE_MAT2 },
+                { "mat2x3 ", VR_BOX_TYPE_MAT2X3 },
+                { "mat2x4 ", VR_BOX_TYPE_MAT2X4 },
+                { "mat3x2 ", VR_BOX_TYPE_MAT3X2 },
+                { "mat3 ", VR_BOX_TYPE_MAT3 },
+                { "mat3x3 ", VR_BOX_TYPE_MAT3 },
+                { "mat3x4 ", VR_BOX_TYPE_MAT3X4 },
+                { "mat4x2 ", VR_BOX_TYPE_MAT4X2 },
+                { "mat4x3 ", VR_BOX_TYPE_MAT4X3 },
+                { "mat4 ", VR_BOX_TYPE_MAT4 },
+                { "mat4x4 ", VR_BOX_TYPE_MAT4 },
+                { "dmat2 ", VR_BOX_TYPE_DMAT2 },
+                { "dmat2x2 ", VR_BOX_TYPE_DMAT2 },
+                { "dmat2x3 ", VR_BOX_TYPE_DMAT2X3 },
+                { "dmat2x4 ", VR_BOX_TYPE_DMAT2X4 },
+                { "dmat3x2 ", VR_BOX_TYPE_DMAT3X2 },
+                { "dmat3 ", VR_BOX_TYPE_DMAT3 },
+                { "dmat3x3 ", VR_BOX_TYPE_DMAT3 },
+                { "dmat3x4 ", VR_BOX_TYPE_DMAT3X4 },
+                { "dmat4x2 ", VR_BOX_TYPE_DMAT4X2 },
+                { "dmat4x3 ", VR_BOX_TYPE_DMAT4X3 },
+                { "dmat4 ", VR_BOX_TYPE_DMAT4 },
+                { "dmat4x4 ", VR_BOX_TYPE_DMAT4 },
         };
 
         for (int i = 0; i < VR_N_ELEMENTS(types); i++) {
@@ -746,79 +617,79 @@ parse_value_type(const char **p,
 
 static bool
 parse_value(const char **p,
-            enum vr_script_type type,
+            enum vr_box_type type,
             void *value)
 {
-        const struct type_info *info = type_infos + type;
-        size_t stride = (type_matrix_stride(type) /
-                         base_type_size(info->base_type));
+        const struct vr_box_type_info *info = vr_box_type_get_info(type);
+        size_t stride = (vr_box_type_matrix_stride(type) /
+                         vr_box_base_type_size(info->base_type));
 
         for (int col = 0; col < info->columns; col++) {
                 switch (info->base_type) {
-                case BASE_TYPE_INT:
+                case VR_BOX_BASE_TYPE_INT:
                         if (!parse_ints(p,
                                         (int *) value + col * stride,
                                         info->rows,
                                         NULL))
                                 return false;
                         break;
-                case BASE_TYPE_UINT:
+                case VR_BOX_BASE_TYPE_UINT:
                         if (!parse_uints(p,
                                          (unsigned *) value + col * stride,
                                          info->rows,
                                          NULL))
                                 return false;
                         break;
-                case BASE_TYPE_INT8:
+                case VR_BOX_BASE_TYPE_INT8:
                         if (!parse_int8s(p,
                                          (int8_t *) value + col * stride,
                                          info->rows,
                                          NULL))
                                 return false;
                         break;
-                case BASE_TYPE_UINT8:
+                case VR_BOX_BASE_TYPE_UINT8:
                         if (!parse_uint8s(p,
                                           (uint8_t *) value + col * stride,
                                           info->rows,
                                           NULL))
                                 return false;
                         break;
-                case BASE_TYPE_INT16:
+                case VR_BOX_BASE_TYPE_INT16:
                         if (!parse_int16s(p,
                                           (int16_t *) value + col * stride,
                                           info->rows,
                                           NULL))
                                 return false;
                         break;
-                case BASE_TYPE_UINT16:
+                case VR_BOX_BASE_TYPE_UINT16:
                         if (!parse_uint16s(p,
                                            (uint16_t *) value + col * stride,
                                            info->rows,
                                            NULL))
                                 return false;
                         break;
-                case BASE_TYPE_INT64:
+                case VR_BOX_BASE_TYPE_INT64:
                         if (!parse_int64s(p,
                                           (int64_t *) value + col * stride,
                                           info->rows,
                                           NULL))
                                 return false;
                         break;
-                case BASE_TYPE_UINT64:
+                case VR_BOX_BASE_TYPE_UINT64:
                         if (!parse_uint64s(p,
                                            (uint64_t *) value + col * stride,
                                            info->rows,
                                            NULL))
                                 return false;
                         break;
-                case BASE_TYPE_FLOAT:
+                case VR_BOX_BASE_TYPE_FLOAT:
                         if (!parse_floats(p,
                                           (float *) value + col * stride,
                                           info->rows,
                                           NULL))
                                 return false;
                         break;
-                case BASE_TYPE_DOUBLE:
+                case VR_BOX_BASE_TYPE_DOUBLE:
                         if (!parse_doubles(p,
                                            (double *) value + col * stride,
                                            info->rows,
@@ -833,13 +704,13 @@ parse_value(const char **p,
 
 static bool
 parse_buffer_subdata(const char **p,
-                     enum vr_script_type type,
+                     enum vr_box_type type,
                      size_t *size_out,
                      void **buffer_out)
 {
         struct vr_buffer buffer = VR_BUFFER_STATIC_INIT;
-        size_t type_size = vr_script_type_size(type);
-        size_t alignment = type_base_alignment(type);
+        size_t type_size = vr_box_type_size(type);
+        size_t alignment = vr_box_type_base_alignment(type);
 
         do {
                 vr_buffer_set_length(&buffer,
@@ -1154,12 +1025,12 @@ process_probe_ssbo_command(const char *p,
 
         static const char *comparison_names[] =
         {
-                [VR_SCRIPT_COMPARISON_EQUAL] = "==",
-                [VR_SCRIPT_COMPARISON_NOT_EQUAL] = "!=",
-                [VR_SCRIPT_COMPARISON_LESS] = "<",
-                [VR_SCRIPT_COMPARISON_GREATER_EQUAL] = ">=",
-                [VR_SCRIPT_COMPARISON_GREATER] = ">",
-                [VR_SCRIPT_COMPARISON_LESS_EQUAL] = "<=",
+                [VR_BOX_COMPARISON_EQUAL] = "==",
+                [VR_BOX_COMPARISON_NOT_EQUAL] = "!=",
+                [VR_BOX_COMPARISON_LESS] = "<",
+                [VR_BOX_COMPARISON_GREATER_EQUAL] = ">=",
+                [VR_BOX_COMPARISON_GREATER] = ">",
+                [VR_BOX_COMPARISON_LESS_EQUAL] = "<=",
         };
 
         for (unsigned i = 0; i < VR_N_ELEMENTS(comparison_names); i++) {
@@ -1479,7 +1350,7 @@ process_set_buffer_subdata(struct load_state *data,
 
         while (isspace(*p))
                 p++;
-        enum vr_script_type value_type;
+        enum vr_box_type value_type;
         if (!parse_value_type(&p, &value_type))
                 goto error;
         if (!parse_size_t(&p, &command->set_buffer_subdata.offset))
@@ -1672,7 +1543,7 @@ process_test_line(struct load_state *data)
         if (looking_at(&p, "uniform ")) {
                 while (isspace(*p))
                         p++;
-                enum vr_script_type type;
+                enum vr_box_type type;
                 if (!parse_value_type(&p,
                                       &type))
                         goto error;
@@ -2092,164 +1963,4 @@ vr_script_free(struct vr_script *script)
         }
 
         vr_free(script);
-}
-
-size_t
-vr_script_type_size(enum vr_script_type type)
-{
-        const struct type_info *info = type_infos + type;
-
-        if (info->columns > 1)
-                return type_matrix_stride(type) * info->columns;
-        else
-                return base_type_size(info->base_type) * info->rows;
-}
-
-static bool
-compare_signed(enum vr_script_comparison comparison,
-               int64_t a,
-               int64_t b)
-{
-        switch (comparison) {
-        case VR_SCRIPT_COMPARISON_EQUAL:
-                return a == b;
-        case VR_SCRIPT_COMPARISON_NOT_EQUAL:
-                return a != b;
-        case VR_SCRIPT_COMPARISON_LESS:
-                return a < b;
-        case VR_SCRIPT_COMPARISON_GREATER_EQUAL:
-                return a >= b;
-        case VR_SCRIPT_COMPARISON_GREATER:
-                return a > b;
-        case VR_SCRIPT_COMPARISON_LESS_EQUAL:
-                return a <= b;
-        }
-
-        vr_fatal("Unexpected comparison");
-}
-
-static bool
-compare_unsigned(enum vr_script_comparison comparison,
-                 uint64_t a,
-                 uint64_t b)
-{
-        switch (comparison) {
-        case VR_SCRIPT_COMPARISON_EQUAL:
-                return a == b;
-        case VR_SCRIPT_COMPARISON_NOT_EQUAL:
-                return a != b;
-        case VR_SCRIPT_COMPARISON_LESS:
-                return a < b;
-        case VR_SCRIPT_COMPARISON_GREATER_EQUAL:
-                return a >= b;
-        case VR_SCRIPT_COMPARISON_GREATER:
-                return a > b;
-        case VR_SCRIPT_COMPARISON_LESS_EQUAL:
-                return a <= b;
-        }
-
-        vr_fatal("Unexpected comparison");
-}
-
-static bool
-compare_double(enum vr_script_comparison comparison,
-               double a,
-               double b)
-{
-        switch (comparison) {
-        case VR_SCRIPT_COMPARISON_EQUAL:
-                return a == b;
-        case VR_SCRIPT_COMPARISON_NOT_EQUAL:
-                return a != b;
-        case VR_SCRIPT_COMPARISON_LESS:
-                return a < b;
-        case VR_SCRIPT_COMPARISON_GREATER_EQUAL:
-                return a >= b;
-        case VR_SCRIPT_COMPARISON_GREATER:
-                return a > b;
-        case VR_SCRIPT_COMPARISON_LESS_EQUAL:
-                return a <= b;
-        }
-
-        vr_fatal("Unexpected comparison");
-}
-
-static bool
-compare_value(enum vr_script_comparison comparison,
-              enum base_type type,
-              const void *a,
-              const void *b)
-{
-        switch (type) {
-        case BASE_TYPE_INT:
-                return compare_signed(comparison,
-                                      *(const int32_t *) a,
-                                      *(const int32_t *) b);
-        case BASE_TYPE_UINT:
-                return compare_unsigned(comparison,
-                                        *(const uint32_t *) a,
-                                        *(const uint32_t *) b);
-        case BASE_TYPE_INT8:
-                return compare_signed(comparison,
-                                      *(const int8_t *) a,
-                                      *(const int8_t *) b);
-        case BASE_TYPE_UINT8:
-                return compare_unsigned(comparison,
-                                        *(const uint8_t *) a,
-                                        *(const uint8_t *) b);
-        case BASE_TYPE_INT16:
-                return compare_signed(comparison,
-                                      *(const int16_t *) a,
-                                      *(const int16_t *) b);
-        case BASE_TYPE_UINT16:
-                return compare_unsigned(comparison,
-                                        *(const uint16_t *) a,
-                                        *(const uint16_t *) b);
-        case BASE_TYPE_INT64:
-                return compare_signed(comparison,
-                                      *(const int64_t *) a,
-                                      *(const int64_t *) b);
-        case BASE_TYPE_UINT64:
-                return compare_unsigned(comparison,
-                                        *(const uint64_t *) a,
-                                        *(const uint64_t *) b);
-        case BASE_TYPE_FLOAT:
-                return compare_double(comparison,
-                                      *(const float *) a,
-                                      *(const float *) b);
-        case BASE_TYPE_DOUBLE:
-                return compare_double(comparison,
-                                      *(const double *) a,
-                                      *(const double *) b);
-        }
-
-        vr_fatal("Unexpected base type");
-}
-
-bool
-vr_script_compare_values(enum vr_script_comparison comparison,
-                         const struct vr_script_value *a,
-                         const struct vr_script_value *b)
-{
-        assert(a->type == b->type);
-
-        const struct type_info *info = type_infos + a->type;
-        size_t stride = type_matrix_stride(a->type);
-        size_t base_size = base_type_size(info->base_type);
-        const uint8_t *a_buf = (const uint8_t *) a->vec;
-        const uint8_t *b_buf = (const uint8_t *) b->vec;
-
-        for (int col = 0; col < info->columns; col++) {
-                for (int row = 0; row < info->rows; row++) {
-                        if (!compare_value(comparison,
-                                           info->base_type,
-                                           a_buf + row * base_size,
-                                           b_buf + row * base_size))
-                                return false;
-                }
-                a_buf += stride;
-                b_buf += stride;
-        }
-
-        return true;
 }

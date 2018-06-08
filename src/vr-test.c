@@ -31,6 +31,7 @@
 #include "vr-error-message.h"
 #include "vr-allocate-store.h"
 #include "vr-flush-memory.h"
+#include "vr-box.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -702,8 +703,8 @@ probe_ssbo(struct test_data *data,
                 return false;
         }
 
-        const struct vr_script_value *expected = &command->probe_ssbo.value;
-        size_t type_size = vr_script_type_size(expected->type);
+        const struct vr_box *expected = &command->probe_ssbo.value;
+        size_t type_size = vr_box_type_size(expected->type);
 
         if (command->probe_ssbo.offset + type_size > buffer->size) {
                 print_command_fail(command);
@@ -711,26 +712,26 @@ probe_ssbo(struct test_data *data,
                 return false;
         }
 
-        struct vr_script_value observed;
+        struct vr_box observed;
         observed.type = expected->type;
         memcpy(&observed.i,
                (const uint8_t *) buffer->memory_map +
                command->probe_ssbo.offset,
                type_size);
 
-        if (!vr_script_compare_values(command->probe_ssbo.comparison,
-                                      &observed,
-                                      expected)) {
+        if (!vr_box_compare(command->probe_ssbo.comparison,
+                            &observed,
+                            expected)) {
                 print_command_fail(command);
                 vr_error_message("SSBO probe failed");
                 switch (observed.type) {
-                case VR_SCRIPT_TYPE_UINT:
+                case VR_BOX_TYPE_UINT:
                         vr_error_message("  Reference: %u\n"
                                          "  Observed:  %u",
                                          expected->u,
                                          observed.u);
                         break;
-                case VR_SCRIPT_TYPE_FLOAT:
+                case VR_BOX_TYPE_FLOAT:
                         vr_error_message("  Reference: %f\n"
                                          "  Observed:  %f",
                                          expected->f,
