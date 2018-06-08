@@ -32,11 +32,13 @@
 #include "vr-allocate-store.h"
 #include "vr-flush-memory.h"
 #include "vr-box.h"
+#include "vr-buffer.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <inttypes.h>
 
 struct test_buffer {
         struct vr_list link;
@@ -686,6 +688,83 @@ probe_rect(struct test_data *data,
         return true;
 }
 
+struct append_box_closure {
+        struct vr_buffer *buf;
+        const struct vr_box *value;
+};
+
+static bool
+append_box_cb(enum vr_box_base_type base_type,
+              size_t offset,
+              void *user_data)
+{
+        struct append_box_closure *data = user_data;
+        const uint8_t *p = (const uint8_t *) data->value + offset;
+
+        vr_buffer_append_c(data->buf, ' ');
+
+        switch (base_type) {
+        case VR_BOX_BASE_TYPE_INT:
+                vr_buffer_append_printf(data->buf, "%i", *(const int *) p);
+                break;
+        case VR_BOX_BASE_TYPE_UINT:
+                vr_buffer_append_printf(data->buf, "%u", *(const unsigned *) p);
+                break;
+        case VR_BOX_BASE_TYPE_INT8:
+                vr_buffer_append_printf(data->buf,
+                                        "%" PRIi8,
+                                        *(const int8_t *) p);
+                break;
+        case VR_BOX_BASE_TYPE_UINT8:
+                vr_buffer_append_printf(data->buf,
+                                        "%" PRIu8,
+                                        *(const uint8_t *) p);
+                break;
+        case VR_BOX_BASE_TYPE_INT16:
+                vr_buffer_append_printf(data->buf,
+                                        "%" PRIi16,
+                                        *(const int16_t *) p);
+                break;
+        case VR_BOX_BASE_TYPE_UINT16:
+                vr_buffer_append_printf(data->buf,
+                                        "%" PRIu16,
+                                        *(const uint16_t *) p);
+                break;
+        case VR_BOX_BASE_TYPE_INT64:
+                vr_buffer_append_printf(data->buf,
+                                        "%" PRIi64,
+                                        *(const int64_t *) p);
+                break;
+        case VR_BOX_BASE_TYPE_UINT64:
+                vr_buffer_append_printf(data->buf,
+                                        "%" PRIu64,
+                                        *(const uint64_t *) p);
+                break;
+        case VR_BOX_BASE_TYPE_FLOAT:
+                vr_buffer_append_printf(data->buf, "%f", *(const float *) p);
+                break;
+        case VR_BOX_BASE_TYPE_DOUBLE:
+                vr_buffer_append_printf(data->buf, "%f", *(const double *) p);
+                break;
+        }
+
+        return true;
+}
+
+static void
+append_box(struct vr_buffer *buf,
+           const struct vr_box *value)
+{
+        struct append_box_closure data = {
+                .buf = buf,
+                .value = value
+        };
+
+        vr_box_for_each_component(value->type,
+                                  append_box_cb,
+                                  &data);
+}
+
 static bool
 probe_ssbo(struct test_data *data,
            const struct vr_script_command *command)
@@ -723,23 +802,19 @@ probe_ssbo(struct test_data *data,
                             &observed,
                             expected)) {
                 print_command_fail(command);
-                vr_error_message("SSBO probe failed");
-                switch (observed.type) {
-                case VR_BOX_TYPE_UINT:
-                        vr_error_message("  Reference: %u\n"
-                                         "  Observed:  %u",
-                                         expected->u,
-                                         observed.u);
-                        break;
-                case VR_BOX_TYPE_FLOAT:
-                        vr_error_message("  Reference: %f\n"
-                                         "  Observed:  %f",
-                                         expected->f,
-                                         observed.f);
-                        break;
-                default:
-                        break;
-                }
+
+                struct vr_buffer buf = VR_BUFFER_STATIC_INIT;
+                vr_buffer_append_string(&buf,
+                                        "SSBO probe failed\n"
+                                        "  Reference:");
+                append_box(&buf, expected);
+                vr_buffer_append_string(&buf,
+                                        "\n"
+                                        "  Observed: ");
+                append_box(&buf, &observed);
+                vr_error_message("%s", (const char *) buf.data);
+                vr_buffer_destroy(&buf);
+
                 return false;
         }
 
