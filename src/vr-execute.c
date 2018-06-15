@@ -182,13 +182,22 @@ process_script(const struct vr_config *config,
                 }
         }
 
-        for (int i = 0; i < config->n_frames; i++) {
-                if (!vr_test_run(window, pipeline, script, i))
-                        res = VR_RESULT_FAIL;
-                if (sink && !write_frame(window, sink)) {
-                        res = VR_RESULT_FAIL;
-                        break;
+        struct vr_test_data *test_data =
+                vr_test_start(window, pipeline, script);
+
+        if (test_data == NULL) {
+                res = VR_RESULT_FAIL;
+        } else {
+                for (int i = 0; i < config->n_frames; i++) {
+                        if (!vr_test_run_frame(test_data, i))
+                                res = VR_RESULT_FAIL;
+                        if (sink && !write_frame(window, sink)) {
+                                res = VR_RESULT_FAIL;
+                                break;
+                        }
                 }
+
+                vr_test_finish(test_data);
         }
 
         if (config->image_filename) {

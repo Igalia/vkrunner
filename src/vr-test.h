@@ -32,10 +32,16 @@
 #include "vr-script.h"
 #include "vr-window.h"
 
+struct vr_test_data *
+vr_test_start(struct vr_window *window,
+              struct vr_pipeline *pipeline,
+              const struct vr_script *script);
+
 bool
-vr_test_run(struct vr_window *window,
-            struct vr_pipeline *pipeline,
-            const struct vr_script *script,
-            unsigned frame_num);
+vr_test_run_frame(struct vr_test_data *data,
+                  unsigned frame_num);
+
+void
+vr_test_finish(struct vr_test_data *data);
 
 #endif /* VR_TEST_H */

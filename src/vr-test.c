@@ -59,7 +59,7 @@ enum test_state {
         TEST_STATE_RENDER_PASS
 };
 
-struct test_data {
+struct vr_test_data {
         struct vr_window *window;
         struct vr_pipeline *pipeline;
         struct vr_list buffers;
@@ -79,7 +79,7 @@ static const double
 tolerance[4] = { 0.01, 0.01, 0.01, 0.01 };
 
 static struct test_buffer *
-allocate_test_buffer(struct test_data *data,
+allocate_test_buffer(struct vr_test_data *data,
                      size_t size,
                      VkBufferUsageFlagBits usage)
 {
@@ -135,7 +135,7 @@ allocate_test_buffer(struct test_data *data,
 }
 
 static void
-free_test_buffer(struct test_data *data,
+free_test_buffer(struct vr_test_data *data,
                  struct test_buffer *buffer)
 {
         struct vr_window *window = data->window;
@@ -160,7 +160,7 @@ free_test_buffer(struct test_data *data,
 }
 
 static bool
-begin_command_buffer(struct test_data *data)
+begin_command_buffer(struct vr_test_data *data)
 {
         VkResult res;
 
@@ -178,7 +178,7 @@ begin_command_buffer(struct test_data *data)
 }
 
 static void
-invalidate_ssbos(struct test_data *data)
+invalidate_ssbos(struct vr_test_data *data)
 {
         for (unsigned i = 0; i < data->script->n_buffers; i++) {
                 if (data->script->buffers[i].type != VR_SCRIPT_BUFFER_TYPE_SSBO)
@@ -209,7 +209,7 @@ invalidate_ssbos(struct test_data *data)
 }
 
 static bool
-end_command_buffer(struct test_data *data)
+end_command_buffer(struct vr_test_data *data)
 {
         VkResult res;
         struct vr_window *window = data->window;
@@ -269,7 +269,7 @@ end_command_buffer(struct test_data *data)
 }
 
 static bool
-begin_render_pass(struct test_data *data)
+begin_render_pass(struct vr_test_data *data)
 {
         VkRenderPassBeginInfo render_pass_begin_info = {
                 .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -296,7 +296,7 @@ begin_render_pass(struct test_data *data)
 }
 
 static bool
-end_render_pass(struct test_data *data)
+end_render_pass(struct vr_test_data *data)
 {
         struct vr_window *window = data->window;
 
@@ -326,7 +326,7 @@ end_render_pass(struct test_data *data)
 }
 
 static bool
-set_state(struct test_data *data,
+set_state(struct vr_test_data *data,
           enum test_state state)
 {
         while (data->test_state < state) {
@@ -365,7 +365,7 @@ set_state(struct test_data *data,
 }
 
 static void
-bind_ubo_descriptor_set(struct test_data *data)
+bind_ubo_descriptor_set(struct vr_test_data *data)
 {
         if (data->ubo_descriptor_set_bound ||
             data->ubo_descriptor_set == NULL)
@@ -397,7 +397,7 @@ bind_ubo_descriptor_set(struct test_data *data)
 }
 
 static void
-bind_pipeline_for_command(struct test_data *data,
+bind_pipeline_for_command(struct vr_test_data *data,
                           const struct vr_script_command *command)
 {
         VkPipeline pipeline = vr_pipeline_for_command(data->pipeline, command);
@@ -426,7 +426,7 @@ print_command_fail(const struct vr_script_command *command)
 }
 
 static struct test_buffer *
-get_ubo_buffer_for_binding(struct test_data *data,
+get_ubo_buffer_for_binding(struct vr_test_data *data,
                            int binding)
 {
         for (unsigned i = 0; i < data->script->n_buffers; i++) {
@@ -438,7 +438,7 @@ get_ubo_buffer_for_binding(struct test_data *data,
 }
 
 static bool
-draw_rect(struct test_data *data,
+draw_rect(struct vr_test_data *data,
           const struct vr_script_command *command)
 {
         struct test_buffer *buffer;
@@ -498,7 +498,7 @@ draw_rect(struct test_data *data,
 }
 
 static bool
-ensure_index_buffer(struct test_data *data)
+ensure_index_buffer(struct vr_test_data *data)
 {
         if (data->index_buffer)
                 return true;
@@ -525,7 +525,7 @@ ensure_index_buffer(struct test_data *data)
 }
 
 static bool
-ensure_vbo_buffer(struct test_data *data)
+ensure_vbo_buffer(struct vr_test_data *data)
 {
         struct vr_vbo *vbo = data->script->vertex_data;
 
@@ -554,7 +554,7 @@ ensure_vbo_buffer(struct test_data *data)
 }
 
 static bool
-draw_arrays(struct test_data *data,
+draw_arrays(struct vr_test_data *data,
             const struct vr_script_command *command)
 {
         if (!set_state(data, TEST_STATE_RENDER_PASS))
@@ -602,7 +602,7 @@ draw_arrays(struct test_data *data,
 }
 
 static bool
-dispatch_compute(struct test_data *data,
+dispatch_compute(struct vr_test_data *data,
                  const struct vr_script_command *command)
 {
         if (!set_state(data, TEST_STATE_COMMAND_BUFFER))
@@ -657,7 +657,7 @@ print_bad_pixel(int x, int y,
 }
 
 static bool
-probe_rect(struct test_data *data,
+probe_rect(struct vr_test_data *data,
            const struct vr_script_command *command)
 {
         int n_components = command->probe_rect.n_components;
@@ -775,7 +775,7 @@ append_box(struct vr_buffer *buf,
 }
 
 static bool
-probe_ssbo(struct test_data *data,
+probe_ssbo(struct vr_test_data *data,
            const struct vr_script_command *command)
 {
         if (!set_state(data, TEST_STATE_IDLE))
@@ -831,7 +831,7 @@ probe_ssbo(struct test_data *data,
 }
 
 static bool
-set_push_constant(struct test_data *data,
+set_push_constant(struct vr_test_data *data,
                   const struct vr_script_command *command)
 {
         if (data->test_state < TEST_STATE_COMMAND_BUFFER &&
@@ -849,7 +849,7 @@ set_push_constant(struct test_data *data,
 }
 
 static bool
-set_uniform_frame_num(struct test_data *data,
+set_uniform_frame_num(struct vr_test_data *data,
                       const struct vr_script_command *command)
 {
         uint32_t frame_num = data->frame_num;
@@ -869,7 +869,7 @@ set_uniform_frame_num(struct test_data *data,
 }
 
 static bool
-allocate_ubo_buffers(struct test_data *data)
+allocate_ubo_buffers(struct vr_test_data *data)
 {
         VkResult res;
         VkDescriptorSetAllocateInfo allocate_info = {
@@ -943,7 +943,7 @@ allocate_ubo_buffers(struct test_data *data)
 }
 
 static bool
-set_buffer_subdata(struct test_data *data,
+set_buffer_subdata(struct vr_test_data *data,
                    const struct vr_script_command *command)
 {
         struct test_buffer *buffer =
@@ -965,7 +965,7 @@ set_buffer_subdata(struct test_data *data,
 }
 
 static bool
-clear(struct test_data *data,
+clear(struct vr_test_data *data,
       const struct vr_script_command *command)
 {
         if (!set_state(data, TEST_STATE_RENDER_PASS))
@@ -1032,7 +1032,7 @@ clear(struct test_data *data,
 }
 
 static bool
-run_commands(struct test_data *data)
+run_commands(struct vr_test_data *data)
 {
         const struct vr_script *script = data->script;
         bool ret = true;
@@ -1083,47 +1083,61 @@ run_commands(struct test_data *data)
         return ret;
 }
 
-bool
-vr_test_run(struct vr_window *window,
-            struct vr_pipeline *pipeline,
-            const struct vr_script *script,
-            unsigned frame_num)
+struct vr_test_data *
+vr_test_start(struct vr_window *window,
+              struct vr_pipeline *pipeline,
+              const struct vr_script *script)
 {
-        struct test_data data = {
-                .window = window,
-                .pipeline = pipeline,
-                .script = script,
-                .test_state = TEST_STATE_IDLE,
-                .first_render = true,
-                .frame_num = frame_num
-        };
+        struct vr_test_data *data = vr_calloc(sizeof *data);
+
+        data->window = window;
+        data->pipeline = pipeline;
+        data->script = script;
+        data->test_state = TEST_STATE_IDLE;
+        data->first_render = true;
+        data->frame_num = 0;
+
+        vr_list_init(&data->buffers);
+
+        if (script->n_buffers > 0 && !allocate_ubo_buffers(data)) {
+                vr_test_finish(data);
+                return NULL;
+        }
+
+        return data;
+}
+
+bool
+vr_test_run_frame(struct vr_test_data *data,
+                  unsigned frame_num)
+{
         bool ret = true;
 
-        vr_list_init(&data.buffers);
+        data->frame_num = frame_num;
 
-        if (script->n_buffers > 0 && !allocate_ubo_buffers(&data)) {
+        if (!run_commands(data))
                 ret = false;
-        } else {
-                if (!run_commands(&data))
-                        ret = false;
 
-                if (!set_state(&data, TEST_STATE_IDLE))
-                        ret = false;
-        }
-
-        struct test_buffer *buffer, *tmp;
-        vr_list_for_each_safe(buffer, tmp, &data.buffers, link) {
-                free_test_buffer(&data, buffer);
-        }
-
-        vr_free(data.ubo_buffers);
-
-        if (data.ubo_descriptor_set) {
-                vr_vk.vkFreeDescriptorSets(window->device,
-                                           window->descriptor_pool,
-                                           1, /* descriptorSetCount */
-                                           &data.ubo_descriptor_set);
-        }
+        if (!set_state(data, TEST_STATE_IDLE))
+                ret = false;
 
         return ret;
+}
+
+void
+vr_test_finish(struct vr_test_data *data)
+{
+        struct test_buffer *buffer, *tmp;
+        vr_list_for_each_safe(buffer, tmp, &data->buffers, link) {
+                free_test_buffer(data, buffer);
+        }
+
+        vr_free(data->ubo_buffers);
+
+        if (data->ubo_descriptor_set) {
+                vr_vk.vkFreeDescriptorSets(data->window->device,
+                                           data->window->descriptor_pool,
+                                           1, /* descriptorSetCount */
+                                           &data->ubo_descriptor_set);
+        }
 }
