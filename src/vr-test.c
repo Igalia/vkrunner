@@ -524,49 +524,57 @@ ensure_index_buffer(struct test_data *data)
 }
 
 static bool
-draw_arrays(struct test_data *data,
-            const struct vr_script_command *command)
+ensure_vbo_buffer(struct test_data *data)
 {
         struct vr_vbo *vbo = data->script->vertex_data;
 
-        if (vbo == NULL) {
-                print_command_fail(command);
-                vr_error_message("draw arrays command used with no vertex "
-                                 "data section");
+        if (vbo == NULL || data->vbo_buffer)
+                return true;
+
+        data->vbo_buffer =
+                allocate_test_buffer(data,
+                                     vbo->stride *
+                                     vbo->num_rows,
+                                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+        if (data->vbo_buffer == NULL)
                 return false;
-        }
 
-        if (data->vbo_buffer == NULL) {
-                data->vbo_buffer =
-                        allocate_test_buffer(data,
-                                             vbo->stride *
-                                             vbo->num_rows,
-                                             VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-                if (data->vbo_buffer == NULL)
-                        return false;
+        memcpy(data->vbo_buffer->memory_map,
+               vbo->raw_data,
+               vbo->stride * vbo->num_rows);
 
-                memcpy(data->vbo_buffer->memory_map,
-                       vbo->raw_data,
-                       vbo->stride * vbo->num_rows);
+        vr_flush_memory(data->window,
+                        data->vbo_buffer->memory_type_index,
+                        data->vbo_buffer->memory,
+                        0, /* offset */
+                        VK_WHOLE_SIZE);
 
-                vr_flush_memory(data->window,
-                                data->vbo_buffer->memory_type_index,
-                                data->vbo_buffer->memory,
-                                0, /* offset */
-                                VK_WHOLE_SIZE);
-        }
+        return true;
+}
 
+static bool
+draw_arrays(struct test_data *data,
+            const struct vr_script_command *command)
+{
         if (!set_state(data, TEST_STATE_RENDER_PASS))
                 return false;
 
+        struct vr_vbo *vbo = data->script->vertex_data;
+
+        if (vbo) {
+                if (!ensure_vbo_buffer(data))
+                        return false;
+
+                vr_vk.vkCmdBindVertexBuffers(data->window->command_buffer,
+                                             0, /* firstBinding */
+                                             1, /* bindingCount */
+                                             &data->vbo_buffer->buffer,
+                                             (VkDeviceSize[]) { 0 });
+
+        }
+
         bind_ubo_descriptor_set(data);
         bind_pipeline_for_command(data, command);
-
-        vr_vk.vkCmdBindVertexBuffers(data->window->command_buffer,
-                                     0, /* firstBinding */
-                                     1, /* bindingCount */
-                                     &data->vbo_buffer->buffer,
-                                     (VkDeviceSize[]) { 0 });
 
         if (command->draw_arrays.indexed) {
                 if (!ensure_index_buffer(data))

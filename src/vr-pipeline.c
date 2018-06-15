@@ -356,16 +356,21 @@ set_vertex_input_state(const struct vr_script *script,
                        VkPipelineVertexInputStateCreateInfo *state,
                        const struct vr_pipeline_key *key)
 {
+        memset(state, 0, sizeof *state);
+
+        state->sType =
+                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+        if (key->source == VR_PIPELINE_KEY_SOURCE_VERTEX_DATA &&
+            script->vertex_data == NULL)
+                return;
+
         VkVertexInputBindingDescription *input_binding =
                 vr_calloc(sizeof *input_binding);
 
         input_binding[0].binding = 0;
         input_binding[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-        memset(state, 0, sizeof *state);
-
-        state->sType =
-                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         state->vertexBindingDescriptionCount = 1;
         state->pVertexBindingDescriptions = input_binding;
 
