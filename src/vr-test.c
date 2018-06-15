@@ -1032,13 +1032,14 @@ clear(struct vr_test_data *data,
 }
 
 static bool
-run_commands(struct vr_test_data *data)
+run_commands(struct vr_test_data *data,
+             int n_commands,
+             const struct vr_script_command *commands)
 {
-        const struct vr_script *script = data->script;
         bool ret = true;
 
-        for (int i = 0; i < script->n_commands; i++) {
-                const struct vr_script_command *command = script->commands + i;
+        for (int i = 0; i < n_commands; i++) {
+                const struct vr_script_command *command = commands + i;
 
                 switch (command->op) {
                 case VR_SCRIPT_OP_DRAW_RECT:
@@ -1099,12 +1100,27 @@ vr_test_start(struct vr_window *window,
 
         vr_list_init(&data->buffers);
 
-        if (script->n_buffers > 0 && !allocate_ubo_buffers(data)) {
-                vr_test_finish(data);
-                return NULL;
-        }
+        if (script->n_buffers > 0 && !allocate_ubo_buffers(data))
+                goto error;
+
+        bool ret = true;
+
+        if (!run_commands(data,
+                          data->script->n_init_commands,
+                          data->script->commands))
+                ret = false;
+
+        if (!set_state(data, TEST_STATE_IDLE))
+                ret = false;
+
+        if (!ret)
+                goto error;
 
         return data;
+
+error:
+        vr_test_finish(data);
+        return NULL;
 }
 
 bool
@@ -1115,7 +1131,11 @@ vr_test_run_frame(struct vr_test_data *data,
 
         data->frame_num = frame_num;
 
-        if (!run_commands(data))
+        if (!run_commands(data,
+                          data->script->n_commands -
+                          data->script->n_init_commands,
+                          data->script->commands +
+                          data->script->n_init_commands))
                 ret = false;
 
         if (!set_state(data, TEST_STATE_IDLE))

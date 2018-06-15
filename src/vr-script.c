@@ -49,6 +49,7 @@ enum section {
         SECTION_SHADER,
         SECTION_VERTEX_DATA,
         SECTION_INDICES,
+        SECTION_TEST_INIT,
         SECTION_TEST
 };
 
@@ -161,6 +162,12 @@ end_section(struct load_state *data)
                 return end_vertex_data(data);
 
         case SECTION_INDICES:
+                break;
+
+        case SECTION_TEST_INIT:
+                data->script->n_init_commands =
+                        (data->commands.length /
+                         sizeof (struct vr_script_command));
                 break;
 
         case SECTION_TEST:
@@ -1684,6 +1691,18 @@ process_section_header(struct load_state *data)
                 return true;
         }
 
+        if (is_string("test init", start, end)) {
+                if (data->commands.length > 0) {
+                        vr_error_message("%s:%i: Test init section specified "
+                                         "after other test commands",
+                                         data->filename,
+                                         data->line_num);
+                        return false;
+                }
+                data->current_section = SECTION_TEST_INIT;
+                return true;
+        }
+
         if (is_string("test", start, end)) {
                 data->current_section = SECTION_TEST;
                 return true;
@@ -1740,6 +1759,7 @@ process_line(struct load_state *data)
         case SECTION_INDICES:
                 return process_indices_line(data);
 
+        case SECTION_TEST_INIT:
         case SECTION_TEST:
                 return process_test_line(data);
         }
