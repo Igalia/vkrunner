@@ -65,8 +65,8 @@ device_functions[] = {
 #undef VR_VK_FUNC
 
 typedef void *
-(* func_getter)(void *object,
-                const char *func_name);
+(VKAPI_PTR * func_getter)(void *object,
+                          const char *func_name);
 
 static void
 init_functions(func_getter getter,
