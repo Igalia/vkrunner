@@ -39,7 +39,7 @@
 #include "vr-script.h"
 #include "vr-pipeline.h"
 #include "vr-test.h"
-#include "vr-config.h"
+#include "vr-config-private.h"
 #include "vr-error-message.h"
 
 static bool

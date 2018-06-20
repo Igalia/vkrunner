@@ -23,41 +23,28 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_PIPELINE_H
-#define VR_PIPELINE_H
+#ifndef VR_CONFIG_PRIVATE_H
+#define VR_CONFIG_PRIVATE_H
 
-#include "vr-script.h"
-#include "vr-window.h"
-#include "vr-config-private.h"
-#include "vr-pipeline-key.h"
+#include "vr-config.h"
+#include "vr-list.h"
 
-struct vr_pipeline {
-        struct vr_window *window;
-        VkPipelineLayout layout;
-        VkDescriptorSetLayout descriptor_set_layout;
-        struct vr_pipeline_key *keys;
-        int n_pipelines;
-        VkPipeline *pipelines;
-        VkPipelineCache pipeline_cache;
-        VkPipeline compute_pipeline;
-        VkShaderModule modules[VR_SCRIPT_N_STAGES];
-        VkShaderStageFlagBits stages;
+struct vr_config_script {
+        struct vr_list link;
+        char filename[];
 };
 
-struct vr_pipeline_vertex {
-        float x, y, z;
+struct vr_config_token_replacement {
+        struct vr_list link;
+        char *token;
+        char *replacement;
 };
 
-struct vr_pipeline *
-vr_pipeline_create(const struct vr_config *config,
-                   struct vr_window *window,
-                   const struct vr_script *script);
+struct vr_config {
+        char *image_filename;
+        struct vr_list scripts;
+        struct vr_list token_replacements;
+        bool show_disassembly;
+};
 
-VkPipeline
-vr_pipeline_for_command(struct vr_pipeline *pipeline,
-                        const struct vr_script_command *command);
-
-void
-vr_pipeline_free(struct vr_pipeline *pipeline);
-
-#endif /* VR_PIPELINE_H */
+#endif /* VR_CONFIG_PRIVATE_H */

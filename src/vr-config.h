@@ -27,25 +27,8 @@
 #define VR_CONFIG_H
 
 #include <stdbool.h>
-#include "vr-list.h"
 
-struct vr_config_script {
-        struct vr_list link;
-        char filename[];
-};
-
-struct vr_config_token_replacement {
-        struct vr_list link;
-        char *token;
-        char *replacement;
-};
-
-struct vr_config {
-        char *image_filename;
-        struct vr_list scripts;
-        struct vr_list token_replacements;
-        bool show_disassembly;
-};
+struct vr_config;
 
 struct vr_config *
 vr_config_new(void);

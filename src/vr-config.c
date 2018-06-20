@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#include "vr-config.h"
+#include "vr-config-private.h"
 
 #include <stdio.h>
 #include <unistd.h>
