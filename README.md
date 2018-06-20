@@ -7,8 +7,8 @@ possible.
 
 ## Building
 
-- Install [autoconf](https://www.gnu.org/software/autoconf/autoconf.html)
-- Run `./autogen.sh && make`
+- Install [cmake](https://cmake.org/)
+- Run `cmake . && make`
 - You can find `vkrunner` under `src/`
 
 ## Running

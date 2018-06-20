@@ -4,13 +4,13 @@ set -e
 
 CONFIG_GUESS_URL="http://git.savannah.gnu.org/gitweb/?p=automake.git;a=blob_plain;f=lib/config.guess"
 
-SRC_BUILD_DIR=`dirname "$0"`
-SRC_DIR=`cd "$SRC_BUILD_DIR"/.. && pwd`
-DOWNLOADS_DIR="$SRC_DIR/downloads"
-DEPS_DIR="$SRC_DIR/deps"
-INSTALL_DIR="$SRC_DIR/install"
-RESULT_FILE="$SRC_DIR/vkrunner.zip"
-RESULT_DIR="$SRC_DIR/result"
+SRC_DIR=$(cd $(dirname "$0") && pwd)
+BUILD_DIR="$SRC_DIR/build-win32"
+DOWNLOADS_DIR="$BUILD_DIR/downloads"
+DEPS_DIR="$BUILD_DIR/deps"
+INSTALL_DIR="$BUILD_DIR/install"
+RESULT_FILE="$BUILD_DIR/vkrunner.zip"
+RESULT_DIR="$BUILD_DIR/result"
 
 function find_compiler ()
 {
@@ -119,20 +119,21 @@ Libs: -L\${libdir} -lvulkan-1
 Cflags: -I\${includedir}
 EOF
 
-cd "$SRC_DIR"
+cd "$BUILD_DIR"
 
-./autogen.sh --prefix="$INSTALL_DIR" \
-    --host="$TARGET" \
-    --target="$TARGET" \
-    --build="$BUILD" \
-    CFLAGS="-mms-bitfields -I$INSTALL_DIR/include -O3" \
-    PKG_CONFIG="$RUN_PKG_CONFIG"
+cmake -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+      -DCMAKE_C_FLAGS="-mms-bitfields -I$INSTALL_DIR/include -O3" \
+      -DPKG_CONFIG_EXECUTABLE="$RUN_PKG_CONFIG" \
+      -DCMAKE_SYSTEM_NAME=Windows \
+      -DCMAKE_C_COMPILER=${MINGW_TOOL_PREFIX}gcc \
+      -DCMAKE_CXX_COMPILER=${MINGW_TOOL_PREFIX}g++ \
+      "$SRC_DIR"
 
 make -j4
 make install
 
 cp "$INSTALL_DIR/bin/vkrunner.exe" "$RESULT_DIR"
-cp -r "$INSTALL_DIR/share/vkrunner/examples" "$RESULT_DIR"
+cp -r "$SRC_DIR/examples" "$RESULT_DIR"
 cp "$SRC_DIR/"{README.md,COPYING} "$RESULT_DIR"
 
 cd "$RESULT_DIR"
