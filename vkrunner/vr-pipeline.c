@@ -331,6 +331,47 @@ out:
 }
 
 static VkShaderModule
+load_binary_stage(const struct vr_config *config,
+                  struct vr_window *window,
+                  const struct vr_script_shader *shader)
+{
+        struct vr_vk *vkfn = &window->vkfn;
+        VkShaderModule module = NULL;
+        bool res;
+
+        if (config->show_disassembly) {
+                FILE *module_stream;
+                char *module_filename;
+
+                if (create_named_temp_file(&module_stream, &module_filename)) {
+                        fwrite(shader->source,
+                               1, shader->length,
+                               module_stream);
+                        fclose(module_stream);
+
+                        show_disassembly(module_filename);
+
+                        unlink(module_filename);
+                        vr_free(module_filename);
+                }
+        }
+
+        VkShaderModuleCreateInfo shader_module_create_info = {
+                        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                        .codeSize = shader->length,
+                        .pCode = (const uint32_t *) shader->source
+        };
+        res = vkfn->vkCreateShaderModule(window->device,
+                                         &shader_module_create_info,
+                                         NULL, /* allocator */
+                                         &module);
+        if (res != VK_SUCCESS)
+                vr_error_message("vkCreateShaderModule failed");
+
+        return module;
+}
+
+static VkShaderModule
 build_stage(const struct vr_config *config,
             struct vr_window *window,
             const struct vr_script *script,
@@ -348,6 +389,8 @@ build_stage(const struct vr_config *config,
                 return compile_stage(config, window, script, stage);
         case VR_SCRIPT_SOURCE_TYPE_SPIRV:
                 return assemble_stage(config, window, shader);
+        case VR_SCRIPT_SOURCE_TYPE_BINARY:
+                return load_binary_stage(config, window, shader);
         }
 
         vr_fatal("should not be reached");

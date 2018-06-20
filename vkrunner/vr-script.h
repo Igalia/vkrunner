@@ -58,7 +58,8 @@ enum vr_script_op {
 
 enum vr_script_source_type {
         VR_SCRIPT_SOURCE_TYPE_GLSL,
-        VR_SCRIPT_SOURCE_TYPE_SPIRV
+        VR_SCRIPT_SOURCE_TYPE_SPIRV,
+        VR_SCRIPT_SOURCE_TYPE_BINARY
 };
 
 struct vr_script_shader {

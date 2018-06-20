@@ -41,6 +41,7 @@
 #include "vr-error-message.h"
 #include "vr-feature-offsets.h"
 #include "vr-window.h"
+#include "vr-base64.h"
 
 enum section {
         SECTION_NONE,
@@ -59,6 +60,7 @@ struct load_state {
         struct vr_script *script;
         struct vr_buffer buffer;
         struct vr_buffer line;
+        struct vr_base64_data base64_decoder;
         enum vr_script_shader_stage current_stage;
         enum vr_script_source_type current_source_type;
         enum section current_section;
@@ -121,14 +123,25 @@ add_shader(struct load_state *data,
         vr_list_insert(data->script->stages[stage].prev, &shader->link);
 }
 
-static void
+static bool
 end_shader(struct load_state *data)
 {
+        if (data->current_source_type == VR_SCRIPT_SOURCE_TYPE_BINARY &&
+            !vr_base64_decode_end(&data->base64_decoder,
+                                  &data->buffer)) {
+                vr_error_message("%s:%i: Invalid base64 data",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
         add_shader(data,
                    data->current_stage,
                    data->current_source_type,
                    data->buffer.length,
                    (const char *) data->buffer.data);
+
+        return true;
 }
 
 static bool
@@ -154,8 +167,7 @@ end_section(struct load_state *data)
                 break;
 
         case SECTION_SHADER:
-                end_shader(data);
-                break;
+                return end_shader(data);
 
         case SECTION_VERTEX_DATA:
                 return end_vertex_data(data);
@@ -1593,16 +1605,33 @@ is_stage_section(struct load_state *data,
                 }
         }
 
-        if (end - start <= 6 || memcmp(" spirv", end - 6, 6))
-                return false;
+        if (end - start > 6 && !memcmp(" spirv", end - 6, 6)) {
+                end -= 6;
 
-        end -= 6;
-
-        for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
-                if (is_string(stage_names[stage], start, end)) {
-                        data->current_source_type = VR_SCRIPT_SOURCE_TYPE_SPIRV;
-                        goto found;
+                for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
+                        if (is_string(stage_names[stage], start, end)) {
+                                data->current_source_type =
+                                        VR_SCRIPT_SOURCE_TYPE_SPIRV;
+                                goto found;
+                        }
                 }
+
+                return false;
+        }
+
+        if (end - start > 7 && !memcmp(" binary", end - 7, 7)) {
+                end -= 7;
+
+                for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
+                        if (is_string(stage_names[stage], start, end)) {
+                                data->current_source_type =
+                                        VR_SCRIPT_SOURCE_TYPE_BINARY;
+                                vr_base64_decode_start(&data->base64_decoder);
+                                goto found;
+                        }
+                }
+
+                return false;
         }
 
         return false;
@@ -1631,6 +1660,20 @@ start_spirv_shader(struct load_state *data,
 }
 
 static bool
+is_spirv_shader(enum vr_script_source_type type)
+{
+        switch (type) {
+        case VR_SCRIPT_SOURCE_TYPE_BINARY:
+        case VR_SCRIPT_SOURCE_TYPE_SPIRV:
+                return true;
+        case VR_SCRIPT_SOURCE_TYPE_GLSL:
+                return false;
+        }
+
+        vr_fatal("Unexpected source type");
+}
+
+static bool
 process_section_header(struct load_state *data)
 {
         if (!end_section(data))
@@ -1646,7 +1689,7 @@ process_section_header(struct load_state *data)
         }
 
         if (is_stage_section(data, start, end)) {
-                if (data->current_source_type == VR_SCRIPT_SOURCE_TYPE_SPIRV &&
+                if (is_spirv_shader(data->current_source_type) &&
                     !start_spirv_shader(data, data->current_stage))
                         return false;
 
@@ -1722,6 +1765,23 @@ process_line(struct load_state *data)
                 return process_require_line(data);
 
         case SECTION_SHADER:
+                if (data->current_source_type == VR_SCRIPT_SOURCE_TYPE_BINARY) {
+                        if (!vr_base64_decode(&data->base64_decoder,
+                                              data->line.data,
+                                              data->line.length,
+                                              &data->buffer)) {
+                                vr_error_message("%s:%i: Invalid base64 data",
+                                                 data->filename,
+                                                 data->line_num);
+                                return false;
+                        }
+                } else {
+                        vr_buffer_append(&data->buffer,
+                                         data->line.data,
+                                         data->line.length);
+                }
+                return true;
+
         case SECTION_VERTEX_DATA:
                 vr_buffer_append(&data->buffer,
                                  data->line.data,
