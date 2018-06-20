@@ -84,27 +84,27 @@ stage_names[VR_SCRIPT_N_STAGES] = {
         "compute shader",
 };
 
-static const char
-vertex_shader_passthrough[] =
-        "               OpCapability Shader\n"
-        "               OpMemoryModel Logical GLSL450\n"
-        "               OpEntryPoint Vertex %main \"main\" %pos_in %pos_out\n"
-        "               OpDecorate %pos_in Location 0\n"
-        "               OpDecorate %pos_out BuiltIn Position\n"
-        "       %void = OpTypeVoid\n"
-        "  %func_type = OpTypeFunction %void\n"
-        "      %float = OpTypeFloat 32\n"
-        "    %v4float = OpTypeVector %float 4\n"
-        "%_ptr_Input_v4float = OpTypePointer Input %v4float\n"
-        "%_ptr_Output_v4float = OpTypePointer Output %v4float\n"
-        "     %pos_in = OpVariable %_ptr_Input_v4float Input\n"
-        "    %pos_out = OpVariable %_ptr_Output_v4float Output\n"
-        "       %main = OpFunction %void None %func_type\n"
-        " %main_label = OpLabel\n"
-        " %pos_in_val = OpLoad %v4float %pos_in\n"
-        "               OpStore %pos_out %pos_in_val\n"
-        "               OpReturn\n"
-        "               OpFunctionEnd\n";
+static uint32_t
+vertex_shader_passthrough[] = {
+        0x07230203, 0x00010300, 0x00070000, 0x0000000c,
+        0x00000000, 0x00020011, 0x00000001, 0x0003000e,
+        0x00000000, 0x00000001, 0x0007000f, 0x00000000,
+        0x00000001, 0x6e69616d, 0x00000000, 0x00000002,
+        0x00000003, 0x00040047, 0x00000002, 0x0000001e,
+        0x00000000, 0x00040047, 0x00000003, 0x0000000b,
+        0x00000000, 0x00020013, 0x00000004, 0x00030021,
+        0x00000005, 0x00000004, 0x00030016, 0x00000006,
+        0x00000020, 0x00040017, 0x00000007, 0x00000006,
+        0x00000004, 0x00040020, 0x00000008, 0x00000001,
+        0x00000007, 0x00040020, 0x00000009, 0x00000003,
+        0x00000007, 0x0004003b, 0x00000008, 0x00000002,
+        0x00000001, 0x0004003b, 0x00000009, 0x00000003,
+        0x00000003, 0x00050036, 0x00000004, 0x00000001,
+        0x00000000, 0x00000005, 0x000200f8, 0x0000000a,
+        0x0004003d, 0x00000007, 0x0000000b, 0x00000002,
+        0x0003003e, 0x00000003, 0x0000000b, 0x000100fd,
+        0x00010038
+};
 
 static void
 add_shader(struct load_state *data,
@@ -1702,9 +1702,9 @@ process_section_header(struct load_state *data)
                 data->current_section = SECTION_NONE;
                 add_shader(data,
                            VR_SCRIPT_SHADER_STAGE_VERTEX,
-                           VR_SCRIPT_SOURCE_TYPE_SPIRV,
-                           (sizeof vertex_shader_passthrough) - 1,
-                           vertex_shader_passthrough);
+                           VR_SCRIPT_SOURCE_TYPE_BINARY,
+                           sizeof vertex_shader_passthrough,
+                           (const char *) vertex_shader_passthrough);
                 return true;
         }
 
