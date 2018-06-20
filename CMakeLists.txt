@@ -43,4 +43,5 @@ configure_file(
   "${PROJECT_BINARY_DIR}/config.h"
   )
 
+add_subdirectory(vkrunner)
 add_subdirectory(src)

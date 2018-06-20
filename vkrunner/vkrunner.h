@@ -23,31 +23,11 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "config.h"
+#ifndef VKRUNNER_H
+#define VKRUNNER_H
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <vkrunner/vr-config.h>
+#include <vkrunner/vr-execute.h>
+#include <vkrunner/vr-result.h>
 
-#include <vkrunner/vkrunner.h>
-
-int
-main(int argc, char **argv)
-{
-        enum vr_result result;
-
-        struct vr_config *config = vr_config_new();
-
-        if (!vr_config_process_argv(config, argc, argv)) {
-                vr_config_free(config);
-                return EXIT_FAILURE;
-        }
-
-        result = vr_execute(config);
-
-        vr_config_free(config);
-
-        printf("PIGLIT: {\"result\": \"%s\" }\n",
-               vr_result_to_string(result));
-
-        return result == VR_RESULT_FAIL ? EXIT_FAILURE : EXIT_SUCCESS;
-}
+#endif /* VKRUNNER_H */

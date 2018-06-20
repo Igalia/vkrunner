@@ -27,8 +27,8 @@
 #define VR_EXECUTE_H
 
 #include <stdbool.h>
-#include "vr-config.h"
-#include "vr-result.h"
+#include <vkrunner/vr-config.h>
+#include <vkrunner/vr-result.h>
 
 enum vr_result
 vr_execute(const struct vr_config *config);
