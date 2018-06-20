@@ -82,6 +82,7 @@ allocate_test_buffer(struct test_data *data,
                      size_t size,
                      VkBufferUsageFlagBits usage)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
         struct test_buffer *buffer = vr_calloc(sizeof *buffer);
         VkResult res;
 
@@ -95,7 +96,7 @@ allocate_test_buffer(struct test_data *data,
                 .usage = usage,
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         };
-        res = vr_vk.vkCreateBuffer(data->window->device,
+        res = vkfn->vkCreateBuffer(data->window->device,
                                    &buffer_create_info,
                                    NULL, /* allocator */
                                    &buffer->buffer);
@@ -118,7 +119,7 @@ allocate_test_buffer(struct test_data *data,
                 return NULL;
         }
 
-        res = vr_vk.vkMapMemory(data->window->device,
+        res = vkfn->vkMapMemory(data->window->device,
                                 buffer->memory,
                                 0, /* offset */
                                 VK_WHOLE_SIZE,
@@ -138,18 +139,19 @@ free_test_buffer(struct test_data *data,
                  struct test_buffer *buffer)
 {
         struct vr_window *window = data->window;
+        struct vr_vk *vkfn = &window->vkfn;
 
         if (buffer->memory_map) {
-                vr_vk.vkUnmapMemory(window->device,
+                vkfn->vkUnmapMemory(window->device,
                                     buffer->memory);
         }
         if (buffer->memory) {
-                vr_vk.vkFreeMemory(window->device,
+                vkfn->vkFreeMemory(window->device,
                                    buffer->memory,
                                    NULL /* allocator */);
         }
         if (buffer->buffer) {
-                vr_vk.vkDestroyBuffer(window->device,
+                vkfn->vkDestroyBuffer(window->device,
                                       buffer->buffer,
                                       NULL /* allocator */);
         }
@@ -161,12 +163,13 @@ free_test_buffer(struct test_data *data,
 static bool
 begin_command_buffer(struct test_data *data)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
         VkResult res;
 
         VkCommandBufferBeginInfo begin_command_buffer_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
         };
-        res = vr_vk.vkBeginCommandBuffer(data->window->command_buffer,
+        res = vkfn->vkBeginCommandBuffer(data->window->command_buffer,
                                          &begin_command_buffer_info);
         if (res != VK_SUCCESS) {
                 vr_error_message("vkBeginCommandBuffer failed");
@@ -179,6 +182,8 @@ begin_command_buffer(struct test_data *data)
 static void
 invalidate_ssbos(struct test_data *data)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
+
         for (unsigned i = 0; i < data->script->n_buffers; i++) {
                 if (data->script->buffers[i].type != VR_SCRIPT_BUFFER_TYPE_SSBO)
                         continue;
@@ -201,7 +206,7 @@ invalidate_ssbos(struct test_data *data)
                         .offset = 0,
                         .size = VK_WHOLE_SIZE
                 };
-                vr_vk.vkInvalidateMappedMemoryRanges(data->window->device,
+                vkfn->vkInvalidateMappedMemoryRanges(data->window->device,
                                                      1, /* memoryRangeCount */
                                                      &memory_range);
         }
@@ -212,14 +217,15 @@ end_command_buffer(struct test_data *data)
 {
         VkResult res;
         struct vr_window *window = data->window;
+        struct vr_vk *vkfn = &window->vkfn;
 
-        res = vr_vk.vkEndCommandBuffer(window->command_buffer);
+        res = vkfn->vkEndCommandBuffer(window->command_buffer);
         if (res != VK_SUCCESS) {
                 vr_error_message("vkEndCommandBuffer failed");
                 return false;
         }
 
-        vr_vk.vkResetFences(window->device,
+        vkfn->vkResetFences(window->device,
                             1, /* fenceCount */
                             &window->vk_fence);
 
@@ -231,7 +237,7 @@ end_command_buffer(struct test_data *data)
                 (VkPipelineStageFlagBits[])
                 { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT }
         };
-        res = vr_vk.vkQueueSubmit(window->queue,
+        res = vkfn->vkQueueSubmit(window->queue,
                                   1, /* submitCount */
                                   &submit_info,
                                   window->vk_fence);
@@ -240,7 +246,7 @@ end_command_buffer(struct test_data *data)
                 return false;
         }
 
-        res = vr_vk.vkWaitForFences(window->device,
+        res = vkfn->vkWaitForFences(window->device,
                                     1, /* fenceCount */
                                     &window->vk_fence,
                                     VK_TRUE, /* waitAll */
@@ -257,7 +263,7 @@ end_command_buffer(struct test_data *data)
                         .offset = 0,
                         .size = VK_WHOLE_SIZE
                 };
-                vr_vk.vkInvalidateMappedMemoryRanges(window->device,
+                vkfn->vkInvalidateMappedMemoryRanges(window->device,
                                                      1, /* memoryRangeCount */
                                                      &memory_range);
         }
@@ -270,6 +276,8 @@ end_command_buffer(struct test_data *data)
 static bool
 begin_render_pass(struct test_data *data)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
+
         VkRenderPassBeginInfo render_pass_begin_info = {
                 .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
                 .renderPass = (data->first_render ?
@@ -283,7 +291,7 @@ begin_render_pass(struct test_data *data)
                         }
                 },
         };
-        vr_vk.vkCmdBeginRenderPass(data->window->command_buffer,
+        vkfn->vkCmdBeginRenderPass(data->window->command_buffer,
                                    &render_pass_begin_info,
                                    VK_SUBPASS_CONTENTS_INLINE);
 
@@ -298,8 +306,9 @@ static bool
 end_render_pass(struct test_data *data)
 {
         struct vr_window *window = data->window;
+        struct vr_vk *vkfn = &window->vkfn;
 
-        vr_vk.vkCmdEndRenderPass(window->command_buffer);
+        vkfn->vkCmdEndRenderPass(window->command_buffer);
 
         VkBufferImageCopy copy_region = {
                 .bufferOffset = 0,
@@ -314,7 +323,7 @@ end_render_pass(struct test_data *data)
                 .imageOffset = { 0, 0, 0 },
                 .imageExtent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT, 1 }
         };
-        vr_vk.vkCmdCopyImageToBuffer(window->command_buffer,
+        vkfn->vkCmdCopyImageToBuffer(window->command_buffer,
                                      window->color_image,
                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                      window->linear_buffer,
@@ -366,12 +375,14 @@ set_state(struct test_data *data,
 static void
 bind_ubo_descriptor_set(struct test_data *data)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
+
         if (data->ubo_descriptor_set_bound ||
             data->ubo_descriptor_set == NULL)
                 return;
 
         if (data->pipeline->stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
-                vr_vk.vkCmdBindDescriptorSets(data->window->command_buffer,
+                vkfn->vkCmdBindDescriptorSets(data->window->command_buffer,
                                               VK_PIPELINE_BIND_POINT_GRAPHICS,
                                               data->pipeline->layout,
                                               0, /* firstSet */
@@ -382,7 +393,7 @@ bind_ubo_descriptor_set(struct test_data *data)
         }
 
         if (data->pipeline->compute_pipeline) {
-                vr_vk.vkCmdBindDescriptorSets(data->window->command_buffer,
+                vkfn->vkCmdBindDescriptorSets(data->window->command_buffer,
                                               VK_PIPELINE_BIND_POINT_COMPUTE,
                                               data->pipeline->layout,
                                               0, /* firstSet */
@@ -399,17 +410,18 @@ static void
 bind_pipeline_for_command(struct test_data *data,
                           const struct vr_script_command *command)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
         VkPipeline pipeline = vr_pipeline_for_command(data->pipeline, command);
 
         if (pipeline == data->bound_pipeline)
                 return;
 
         if (pipeline == data->pipeline->compute_pipeline) {
-                vr_vk.vkCmdBindPipeline(data->window->command_buffer,
+                vkfn->vkCmdBindPipeline(data->window->command_buffer,
                                         VK_PIPELINE_BIND_POINT_COMPUTE,
                                         pipeline);
         } else {
-                vr_vk.vkCmdBindPipeline(data->window->command_buffer,
+                vkfn->vkCmdBindPipeline(data->window->command_buffer,
                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
                                         pipeline);
         }
@@ -440,6 +452,7 @@ static bool
 draw_rect(struct test_data *data,
           const struct vr_script_command *command)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
         struct test_buffer *buffer;
 
         buffer = allocate_test_buffer(data,
@@ -482,12 +495,12 @@ draw_rect(struct test_data *data,
         bind_ubo_descriptor_set(data);
         bind_pipeline_for_command(data, command);
 
-        vr_vk.vkCmdBindVertexBuffers(data->window->command_buffer,
+        vkfn->vkCmdBindVertexBuffers(data->window->command_buffer,
                                      0, /* firstBinding */
                                      1, /* bindingCount */
                                      &buffer->buffer,
                                      (VkDeviceSize[]) { 0 });
-        vr_vk.vkCmdDraw(data->window->command_buffer,
+        vkfn->vkCmdDraw(data->window->command_buffer,
                         4, /* vertexCount */
                         1, /* instanceCount */
                         0, /* firstVertex */
@@ -556,6 +569,8 @@ static bool
 draw_arrays(struct test_data *data,
             const struct vr_script_command *command)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
+
         if (!set_state(data, TEST_STATE_RENDER_PASS))
                 return false;
 
@@ -565,7 +580,7 @@ draw_arrays(struct test_data *data,
                 if (!ensure_vbo_buffer(data))
                         return false;
 
-                vr_vk.vkCmdBindVertexBuffers(data->window->command_buffer,
+                vkfn->vkCmdBindVertexBuffers(data->window->command_buffer,
                                              0, /* firstBinding */
                                              1, /* bindingCount */
                                              &data->vbo_buffer->buffer,
@@ -579,18 +594,18 @@ draw_arrays(struct test_data *data,
         if (command->draw_arrays.indexed) {
                 if (!ensure_index_buffer(data))
                         return false;
-                vr_vk.vkCmdBindIndexBuffer(data->window->command_buffer,
+                vkfn->vkCmdBindIndexBuffer(data->window->command_buffer,
                                            data->index_buffer->buffer,
                                            0, /* offset */
                                            VK_INDEX_TYPE_UINT16);
-                vr_vk.vkCmdDrawIndexed(data->window->command_buffer,
+                vkfn->vkCmdDrawIndexed(data->window->command_buffer,
                                        command->draw_arrays.vertex_count,
                                        command->draw_arrays.instance_count,
                                        0, /* firstIndex */
                                        command->draw_arrays.first_vertex,
                                        command->draw_arrays.first_instance);
         } else {
-                vr_vk.vkCmdDraw(data->window->command_buffer,
+                vkfn->vkCmdDraw(data->window->command_buffer,
                                 command->draw_arrays.vertex_count,
                                 command->draw_arrays.instance_count,
                                 command->draw_arrays.first_vertex,
@@ -604,13 +619,15 @@ static bool
 dispatch_compute(struct test_data *data,
                  const struct vr_script_command *command)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
+
         if (!set_state(data, TEST_STATE_COMMAND_BUFFER))
                 return false;
 
         bind_ubo_descriptor_set(data);
         bind_pipeline_for_command(data, command);
 
-        vr_vk.vkCmdDispatch(data->window->command_buffer,
+        vkfn->vkCmdDispatch(data->window->command_buffer,
                             command->dispatch_compute.x,
                             command->dispatch_compute.y,
                             command->dispatch_compute.z);
@@ -833,11 +850,13 @@ static bool
 set_push_constant(struct test_data *data,
                   const struct vr_script_command *command)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
+
         if (data->test_state < TEST_STATE_COMMAND_BUFFER &&
             !set_state(data, TEST_STATE_COMMAND_BUFFER))
                 return false;
 
-        vr_vk.vkCmdPushConstants(data->window->command_buffer,
+        vkfn->vkCmdPushConstants(data->window->command_buffer,
                                  data->pipeline->layout,
                                  data->pipeline->stages,
                                  command->set_push_constant.offset,
@@ -850,6 +869,8 @@ set_push_constant(struct test_data *data,
 static bool
 allocate_ubo_buffers(struct test_data *data)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
+
         VkResult res;
         VkDescriptorSetAllocateInfo allocate_info = {
                 .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -857,7 +878,7 @@ allocate_ubo_buffers(struct test_data *data)
                 .descriptorSetCount = 1,
                 .pSetLayouts = &data->pipeline->descriptor_set_layout
         };
-        res = vr_vk.vkAllocateDescriptorSets(data->window->device,
+        res = vkfn->vkAllocateDescriptorSets(data->window->device,
                                              &allocate_info,
                                              &data->ubo_descriptor_set);
         if (res != VK_SUCCESS) {
@@ -911,7 +932,7 @@ allocate_ubo_buffers(struct test_data *data)
                         .descriptorType = descriptor_type,
                         .pBufferInfo = &buffer_info
                 };
-                vr_vk.vkUpdateDescriptorSets(data->window->device,
+                vkfn->vkUpdateDescriptorSets(data->window->device,
                                              1, /* descriptorWriteCount */
                                              &write,
                                              0, /* descriptorCopyCount */
@@ -947,6 +968,8 @@ static bool
 clear(struct test_data *data,
       const struct vr_script_command *command)
 {
+        struct vr_vk *vkfn = &data->window->vkfn;
+
         if (!set_state(data, TEST_STATE_RENDER_PASS))
                 return false;
 
@@ -1002,7 +1025,7 @@ clear(struct test_data *data,
         else
                 n_attachments = 1;
 
-        vr_vk.vkCmdClearAttachments(data->window->command_buffer,
+        vkfn->vkCmdClearAttachments(data->window->command_buffer,
                                     n_attachments,
                                     clear_attachments,
                                     1,
@@ -1063,6 +1086,8 @@ vr_test_run(struct vr_window *window,
             struct vr_pipeline *pipeline,
             const struct vr_script *script)
 {
+        struct vr_vk *vkfn = &window->vkfn;
+
         struct test_data data = {
                 .window = window,
                 .pipeline = pipeline,
@@ -1092,7 +1117,7 @@ vr_test_run(struct vr_window *window,
         vr_free(data.ubo_buffers);
 
         if (data.ubo_descriptor_set) {
-                vr_vk.vkFreeDescriptorSets(window->device,
+                vkfn->vkFreeDescriptorSets(window->device,
                                            window->descriptor_pool,
                                            1, /* descriptorSetCount */
                                            &data.ubo_descriptor_set);

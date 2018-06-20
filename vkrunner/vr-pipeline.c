@@ -172,6 +172,7 @@ compile_stage(const struct vr_config *config,
               const struct vr_script *script,
               enum vr_script_shader_stage stage)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         const int n_base_args = 6;
         int n_shaders = vr_list_length(&script->stages[stage]);
         char **args = alloca((n_base_args + n_shaders + 1) * sizeof args[0]);
@@ -223,7 +224,7 @@ compile_stage(const struct vr_config *config,
                         .codeSize = module_size,
                         .pCode = (const uint32_t *) module_binary
         };
-        res = vr_vk.vkCreateShaderModule(window->device,
+        res = vkfn->vkCreateShaderModule(window->device,
                                          &shader_module_create_info,
                                          NULL, /* allocator */
                                          &module);
@@ -258,6 +259,7 @@ assemble_stage(const struct vr_config *config,
                struct vr_window *window,
                const struct vr_script_shader *shader)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         FILE *module_stream = NULL;
         char *module_filename;
         char *source_filename = NULL;
@@ -300,7 +302,7 @@ assemble_stage(const struct vr_config *config,
                         .codeSize = module_size,
                         .pCode = (const uint32_t *) module_binary
         };
-        res = vr_vk.vkCreateShaderModule(window->device,
+        res = vkfn->vkCreateShaderModule(window->device,
                                          &shader_module_create_info,
                                          NULL, /* allocator */
                                          &module);
@@ -417,6 +419,7 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                    VkPipeline parent_pipeline)
 {
         struct vr_window *window = pipeline->window;
+        struct vr_vk *vkfn = &window->vkfn;
         VkResult res;
         int num_stages = 0;
 
@@ -503,7 +506,7 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
 
         VkPipeline vk_pipeline;
 
-        res = vr_vk.vkCreateGraphicsPipelines(window->device,
+        res = vkfn->vkCreateGraphicsPipelines(window->device,
                                               pipeline->pipeline_cache,
                                               1, /* nCreateInfos */
                                               &info,
@@ -525,6 +528,7 @@ static VkPipeline
 create_compute_pipeline(struct vr_pipeline *pipeline)
 {
         struct vr_window *window = pipeline->window;
+        struct vr_vk *vkfn = &window->vkfn;
         VkResult res;
 
         VkComputePipelineCreateInfo info = {
@@ -545,7 +549,7 @@ create_compute_pipeline(struct vr_pipeline *pipeline)
 
         VkPipeline vk_pipeline;
 
-        res = vr_vk.vkCreateComputePipelines(window->device,
+        res = vkfn->vkCreateComputePipelines(window->device,
                                              pipeline->pipeline_cache,
                                              1, /* nCreateInfos */
                                              &info,
@@ -598,6 +602,7 @@ static VkPipelineLayout
 create_vk_layout(struct vr_pipeline *pipeline,
                  const struct vr_script *script)
 {
+        struct vr_vk *vkfn = &pipeline->window->vkfn;
         VkResult res;
 
         VkPushConstantRange push_constant_range = {
@@ -622,7 +627,7 @@ create_vk_layout(struct vr_pipeline *pipeline,
         }
 
         VkPipelineLayout layout;
-        res = vr_vk.vkCreatePipelineLayout(pipeline->window->device,
+        res = vkfn->vkCreatePipelineLayout(pipeline->window->device,
                                            &pipeline_layout_create_info,
                                            NULL, /* allocator */
                                            &layout);
@@ -638,6 +643,7 @@ static VkDescriptorSetLayout
 create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
                                 const struct vr_script *script)
 {
+        struct vr_vk *vkfn = &pipeline->window->vkfn;
         VkResult res;
         size_t n_buffers = script->n_buffers;
         VkDescriptorSetLayoutBinding *bindings =
@@ -670,7 +676,7 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
 
         VkDescriptorSetLayout descriptor_set_layout;
 
-        res = vr_vk.vkCreateDescriptorSetLayout(pipeline->window->device,
+        res = vkfn->vkCreateDescriptorSetLayout(pipeline->window->device,
                                                 &create_info,
                                                 NULL, /* allocator */
                                                 &descriptor_set_layout);
@@ -779,6 +785,7 @@ vr_pipeline_create(const struct vr_config *config,
                    struct vr_window *window,
                    const struct vr_script *script)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         VkResult res;
         struct vr_pipeline *pipeline = vr_calloc(sizeof *pipeline);
 
@@ -796,7 +803,7 @@ vr_pipeline_create(const struct vr_config *config,
         VkPipelineCacheCreateInfo pipeline_cache_create_info = {
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO
         };
-        res = vr_vk.vkCreatePipelineCache(window->device,
+        res = vkfn->vkCreatePipelineCache(window->device,
                                           &pipeline_cache_create_info,
                                           NULL, /* allocator */
                                           &pipeline->pipeline_cache);
@@ -856,16 +863,17 @@ void
 vr_pipeline_free(struct vr_pipeline *pipeline)
 {
         struct vr_window *window = pipeline->window;
+        struct vr_vk *vkfn = &window->vkfn;
 
         if (pipeline->compute_pipeline) {
-                vr_vk.vkDestroyPipeline(window->device,
+                vkfn->vkDestroyPipeline(window->device,
                                         pipeline->compute_pipeline,
                                         NULL /* allocator */);
         }
 
         for (int i = 0; i < pipeline->n_pipelines; i++) {
                 if (pipeline->pipelines[i]) {
-                        vr_vk.vkDestroyPipeline(window->device,
+                        vkfn->vkDestroyPipeline(window->device,
                                                 pipeline->pipelines[i],
                                                 NULL /* allocator */);
                 }
@@ -874,20 +882,20 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
         vr_free(pipeline->keys);
 
         if (pipeline->pipeline_cache) {
-                vr_vk.vkDestroyPipelineCache(window->device,
+                vkfn->vkDestroyPipelineCache(window->device,
                                              pipeline->pipeline_cache,
                                              NULL /* allocator */);
         }
 
         if (pipeline->layout) {
-                vr_vk.vkDestroyPipelineLayout(window->device,
+                vkfn->vkDestroyPipelineLayout(window->device,
                                               pipeline->layout,
                                               NULL /* allocator */);
         }
 
         if (pipeline->descriptor_set_layout) {
                 VkDescriptorSetLayout dsl = pipeline->descriptor_set_layout;
-                vr_vk.vkDestroyDescriptorSetLayout(window->device,
+                vkfn->vkDestroyDescriptorSetLayout(window->device,
                                                    dsl,
                                                    NULL /* allocator */);
         }
@@ -895,7 +903,7 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
         for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
                 if (pipeline->modules[i] == NULL)
                         continue;
-                vr_vk.vkDestroyShaderModule(window->device,
+                vkfn->vkDestroyShaderModule(window->device,
                                             pipeline->modules[i],
                                             NULL /* allocator */);
         }

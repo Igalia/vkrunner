@@ -68,7 +68,7 @@ struct vr_window {
         const struct vr_format *framebuffer_format;
         const struct vr_format *depth_stencil_format;
 
-        bool libvulkan_loaded;
+        struct vr_vk vkfn;
 };
 
 enum vr_result

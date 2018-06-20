@@ -35,10 +35,6 @@
 #include "vr-util.h"
 #include "vr-error-message.h"
 
-struct vr_vk vr_vk;
-
-static void *lib_vulkan;
-
 struct function {
         const char *name;
         size_t offset;
@@ -69,7 +65,8 @@ typedef void *
                           const char *func_name);
 
 static void
-init_functions(func_getter getter,
+init_functions(struct vr_vk *vkfn,
+               func_getter getter,
                void *object,
                const struct function *functions,
                int n_functions)
@@ -79,41 +76,42 @@ init_functions(func_getter getter,
 
         for (i = 0; i < n_functions; i++) {
                 function = functions + i;
-                *(void **) ((char *) &vr_vk + function->offset) =
+                *(void **) ((char *) vkfn + function->offset) =
                         getter(object, function->name);
         }
 }
 
 bool
-vr_vk_load_libvulkan(void)
+vr_vk_load_libvulkan(struct vr_vk *vkfn)
 {
 #ifdef WIN32
 
-        lib_vulkan = LoadLibrary("vulkan-1.dll");
+        vkfn->lib_vulkan = LoadLibrary("vulkan-1.dll");
 
-        if (lib_vulkan == NULL) {
+        if (vkfn->lib_vulkan == NULL) {
                 vr_error_message("Error openining vulkan-1.dll");
                 return false;
         }
 
-        vr_vk.vkGetInstanceProcAddr = (void *)
-                GetProcAddress(lib_vulkan, "vkGetInstanceProcAddr");
+        vkfn->vkGetInstanceProcAddr = (void *)
+                GetProcAddress(vkfn->lib_vulkan, "vkGetInstanceProcAddr");
 
 #else
-        lib_vulkan = dlopen("libvulkan.so.1", RTLD_LAZY | RTLD_GLOBAL);
+        vkfn->lib_vulkan = dlopen("libvulkan.so.1", RTLD_LAZY | RTLD_GLOBAL);
 
-        if (lib_vulkan == NULL) {
+        if (vkfn->lib_vulkan == NULL) {
                 vr_error_message("Error openining libvulkan.so.1: %s",
                                  dlerror());
                 return false;
         }
 
-        vr_vk.vkGetInstanceProcAddr =
-                dlsym(lib_vulkan, "vkGetInstanceProcAddr");
+        vkfn->vkGetInstanceProcAddr =
+                dlsym(vkfn->lib_vulkan, "vkGetInstanceProcAddr");
 
 #endif /* WIN32 */
 
-        init_functions((func_getter) vr_vk.vkGetInstanceProcAddr,
+        init_functions(vkfn,
+                       (func_getter) vkfn->vkGetInstanceProcAddr,
                        NULL, /* object */
                        core_functions,
                        VR_N_ELEMENTS(core_functions));
@@ -122,29 +120,33 @@ vr_vk_load_libvulkan(void)
 }
 
 void
-vr_vk_init_instance(VkInstance instance)
+vr_vk_init_instance(struct vr_vk *vkfn,
+                    VkInstance instance)
 {
-        init_functions((func_getter) vr_vk.vkGetInstanceProcAddr,
+        init_functions(vkfn,
+                       (func_getter) vkfn->vkGetInstanceProcAddr,
                        instance,
                        instance_functions,
                        VR_N_ELEMENTS(instance_functions));
 }
 
 void
-vr_vk_init_device(VkDevice device)
+vr_vk_init_device(struct vr_vk *vkfn,
+                  VkDevice device)
 {
-        init_functions((func_getter) vr_vk.vkGetDeviceProcAddr,
+        init_functions(vkfn,
+                       (func_getter) vkfn->vkGetDeviceProcAddr,
                        device,
                        device_functions,
                        VR_N_ELEMENTS(device_functions));
 }
 
 void
-vr_vk_unload_libvulkan(void)
+vr_vk_unload_libvulkan(struct vr_vk *vkfn)
 {
 #ifdef WIN32
-        FreeLibrary(lib_vulkan);
+        FreeLibrary(vkfn->lib_vulkan);
 #else
-        dlclose(lib_vulkan);
+        dlclose(vkfn->lib_vulkan);
 #endif
 }

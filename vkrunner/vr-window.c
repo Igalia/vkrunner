@@ -39,17 +39,18 @@ static int
 find_queue_family(struct vr_window *window,
                   VkPhysicalDevice physical_device)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         VkQueueFamilyProperties *queues;
         uint32_t count = 0;
         uint32_t i;
 
-        vr_vk.vkGetPhysicalDeviceQueueFamilyProperties(physical_device,
+        vkfn->vkGetPhysicalDeviceQueueFamilyProperties(physical_device,
                                                        &count,
                                                        NULL /* queues */);
 
         queues = vr_alloc(sizeof *queues * count);
 
-        vr_vk.vkGetPhysicalDeviceQueueFamilyProperties(physical_device,
+        vkfn->vkGetPhysicalDeviceQueueFamilyProperties(physical_device,
                                                        &count,
                                                        queues);
 
@@ -70,61 +71,63 @@ find_queue_family(struct vr_window *window,
 static void
 destroy_framebuffer_resources(struct vr_window *window)
 {
+        struct vr_vk *vkfn = &window->vkfn;
+
         if (window->color_image_view) {
-                vr_vk.vkDestroyImageView(window->device,
+                vkfn->vkDestroyImageView(window->device,
                                          window->color_image_view,
                                          NULL /* allocator */);
                 window->color_image_view = NULL;
         }
         if (window->framebuffer) {
-                vr_vk.vkDestroyFramebuffer(window->device,
+                vkfn->vkDestroyFramebuffer(window->device,
                                            window->framebuffer,
                                            NULL /* allocator */);
                 window->framebuffer = NULL;
         }
         if (window->linear_memory_map) {
-                vr_vk.vkUnmapMemory(window->device,
+                vkfn->vkUnmapMemory(window->device,
                                     window->linear_memory);
                 window->linear_memory_map = NULL;
         }
         if (window->linear_memory) {
-                vr_vk.vkFreeMemory(window->device,
+                vkfn->vkFreeMemory(window->device,
                                    window->linear_memory,
                                    NULL /* allocator */);
                 window->linear_memory = NULL;
         }
         if (window->memory) {
-                vr_vk.vkFreeMemory(window->device,
+                vkfn->vkFreeMemory(window->device,
                                    window->memory,
                                    NULL /* allocator */);
                 window->memory = NULL;
         }
         if (window->linear_buffer) {
-                vr_vk.vkDestroyBuffer(window->device,
+                vkfn->vkDestroyBuffer(window->device,
                                       window->linear_buffer,
                                       NULL /* allocator */);
                 window->linear_buffer = NULL;
         }
         if (window->color_image) {
-                vr_vk.vkDestroyImage(window->device,
+                vkfn->vkDestroyImage(window->device,
                                      window->color_image,
                                      NULL /* allocator */);
                 window->color_image = NULL;
         }
         if (window->depth_image_view) {
-                vr_vk.vkDestroyImageView(window->device,
+                vkfn->vkDestroyImageView(window->device,
                                          window->depth_image_view,
                                          NULL /* allocator */);
                 window->depth_image_view = NULL;
         }
         if (window->depth_image_memory) {
-                vr_vk.vkFreeMemory(window->device,
+                vkfn->vkFreeMemory(window->device,
                                    window->depth_image_memory,
                                    NULL /* allocator */);
                 window->depth_image_memory = NULL;
         }
         if (window->depth_image) {
-                vr_vk.vkDestroyImage(window->device,
+                vkfn->vkDestroyImage(window->device,
                                      window->depth_image,
                                      NULL /* allocator */);
                 window->depth_image = NULL;
@@ -134,6 +137,7 @@ destroy_framebuffer_resources(struct vr_window *window)
 static bool
 init_depth_stencil_resources(struct vr_window *window)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         VkResult res;
 
         VkImageCreateInfo image_create_info = {
@@ -153,7 +157,7 @@ init_depth_stencil_resources(struct vr_window *window)
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
                 .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
         };
-        res = vr_vk.vkCreateImage(window->device,
+        res = vkfn->vkCreateImage(window->device,
                                   &image_create_info,
                                   NULL, /* allocator */
                                   &window->depth_image);
@@ -193,7 +197,7 @@ init_depth_stencil_resources(struct vr_window *window)
                         .layerCount = 1
                 }
         };
-        res = vr_vk.vkCreateImageView(window->device,
+        res = vkfn->vkCreateImageView(window->device,
                                       &image_view_create_info,
                                       NULL, /* allocator */
                                       &window->depth_image_view);
@@ -209,6 +213,7 @@ init_depth_stencil_resources(struct vr_window *window)
 static bool
 init_framebuffer_resources(struct vr_window *window)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         VkResult res;
         int linear_memory_type;
 
@@ -230,7 +235,7 @@ init_framebuffer_resources(struct vr_window *window)
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
                 .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
         };
-        res = vr_vk.vkCreateImage(window->device,
+        res = vkfn->vkCreateImage(window->device,
                                   &image_create_info,
                                   NULL, /* allocator */
                                   &window->color_image);
@@ -255,7 +260,7 @@ init_framebuffer_resources(struct vr_window *window)
                 .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         };
-        res = vr_vk.vkCreateBuffer(window->device,
+        res = vkfn->vkCreateBuffer(window->device,
                                    &buffer_create_info,
                                    NULL, /* allocator */
                                    &window->linear_buffer);
@@ -282,7 +287,7 @@ init_framebuffer_resources(struct vr_window *window)
                  memoryTypes[linear_memory_type].propertyFlags &
                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0;
 
-        res = vr_vk.vkMapMemory(window->device,
+        res = vkfn->vkMapMemory(window->device,
                                 window->linear_memory,
                                 0, /* offset */
                                 VK_WHOLE_SIZE,
@@ -312,7 +317,7 @@ init_framebuffer_resources(struct vr_window *window)
                         .layerCount = 1
                 }
         };
-        res = vr_vk.vkCreateImageView(window->device,
+        res = vkfn->vkCreateImageView(window->device,
                                       &image_view_create_info,
                                       NULL, /* allocator */
                                       &window->color_image_view);
@@ -340,7 +345,7 @@ init_framebuffer_resources(struct vr_window *window)
                 .height = VR_WINDOW_HEIGHT,
                 .layers = 1
         };
-        res = vr_vk.vkCreateFramebuffer(window->device,
+        res = vkfn->vkCreateFramebuffer(window->device,
                                         &framebuffer_create_info,
                                         NULL, /* allocator */
                                         &window->framebuffer);
@@ -356,48 +361,50 @@ init_framebuffer_resources(struct vr_window *window)
 static void
 deinit_vk(struct vr_window *window)
 {
+        struct vr_vk *vkfn = &window->vkfn;
+
         destroy_framebuffer_resources(window);
 
         if (window->vk_fence) {
-                vr_vk.vkDestroyFence(window->device,
+                vkfn->vkDestroyFence(window->device,
                                      window->vk_fence,
                                      NULL /* allocator */);
                 window->vk_fence = NULL;
         }
         for (int i = 0; i < VR_N_ELEMENTS(window->render_pass); i++) {
                 if (window->render_pass[i]) {
-                        vr_vk.vkDestroyRenderPass(window->device,
+                        vkfn->vkDestroyRenderPass(window->device,
                                                   window->render_pass[i],
                                                   NULL /* allocator */);
                         window->render_pass[i] = NULL;
                 }
         }
         if (window->descriptor_pool) {
-                vr_vk.vkDestroyDescriptorPool(window->device,
+                vkfn->vkDestroyDescriptorPool(window->device,
                                               window->descriptor_pool,
                                               NULL /* allocator */);
                 window->descriptor_pool = NULL;
         }
         if (window->command_buffer) {
-                vr_vk.vkFreeCommandBuffers(window->device,
+                vkfn->vkFreeCommandBuffers(window->device,
                                            window->command_pool,
                                            1, /* commandBufferCount */
                                            &window->command_buffer);
                 window->command_buffer = NULL;
         }
         if (window->command_pool) {
-                vr_vk.vkDestroyCommandPool(window->device,
+                vkfn->vkDestroyCommandPool(window->device,
                                            window->command_pool,
                                            NULL /* allocator */);
                 window->command_pool = NULL;
         }
         if (window->device) {
-                vr_vk.vkDestroyDevice(window->device,
+                vkfn->vkDestroyDevice(window->device,
                                       NULL /* allocator */);
                 window->device = NULL;
         }
         if (window->vk_instance) {
-                vr_vk.vkDestroyInstance(window->vk_instance,
+                vkfn->vkDestroyInstance(window->vk_instance,
                                         NULL /* allocator */);
                 window->vk_instance = NULL;
         }
@@ -440,13 +447,15 @@ find_extension(uint32_t property_count,
 }
 
 static bool
-check_extensions(VkPhysicalDevice device,
+check_extensions(struct vr_window *window,
+                 VkPhysicalDevice device,
                  const char *const *extensions)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         VkResult res;
         uint32_t property_count;
 
-        res = vr_vk.vkEnumerateDeviceExtensionProperties(device,
+        res = vkfn->vkEnumerateDeviceExtensionProperties(device,
                                                          NULL, /* layerName */
                                                          &property_count,
                                                          NULL /* properties */);
@@ -456,7 +465,7 @@ check_extensions(VkPhysicalDevice device,
         VkExtensionProperties *props = vr_alloc(property_count * sizeof *props);
         bool ret = true;
 
-        res = vr_vk.vkEnumerateDeviceExtensionProperties(device,
+        res = vkfn->vkEnumerateDeviceExtensionProperties(device,
                                                          NULL, /* layerName */
                                                          &property_count,
                                                          props);
@@ -482,12 +491,13 @@ find_physical_device(struct vr_window *window,
                      const char *const *extensions)
 
 {
+        struct vr_vk *vkfn = &window->vkfn;
         VkResult res;
         uint32_t count;
         VkPhysicalDevice *devices;
         int i, queue_family;
 
-        res = vr_vk.vkEnumeratePhysicalDevices(window->vk_instance,
+        res = vkfn->vkEnumeratePhysicalDevices(window->vk_instance,
                                                &count,
                                                NULL);
         if (res != VK_SUCCESS) {
@@ -497,7 +507,7 @@ find_physical_device(struct vr_window *window,
 
         devices = alloca(count * sizeof *devices);
 
-        res = vr_vk.vkEnumeratePhysicalDevices(window->vk_instance,
+        res = vkfn->vkEnumeratePhysicalDevices(window->vk_instance,
                                                &count,
                                                devices);
         if (res != VK_SUCCESS) {
@@ -507,11 +517,11 @@ find_physical_device(struct vr_window *window,
 
         for (i = 0; i < count; i++) {
                 VkPhysicalDeviceFeatures features;
-                vr_vk.vkGetPhysicalDeviceFeatures(devices[i], &features);
+                vkfn->vkGetPhysicalDeviceFeatures(devices[i], &features);
                 if (!check_features(&features, requires))
                         continue;
 
-                if (!check_extensions(devices[i], extensions))
+                if (!check_extensions(window, devices[i], extensions))
                         continue;
 
                 queue_family = find_queue_family(window, devices[i]);
@@ -534,6 +544,7 @@ create_render_pass(struct vr_window *window,
                    bool first_render,
                    VkRenderPass *render_pass_out)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         VkResult res;
         bool has_stencil = false;
 
@@ -611,7 +622,7 @@ create_render_pass(struct vr_window *window,
                 render_pass_create_info.attachmentCount--;
                 subpass_descriptions[0].pDepthStencilAttachment = NULL;
         }
-        res = vr_vk.vkCreateRenderPass(window->device,
+        res = vkfn->vkCreateRenderPass(window->device,
                                        &render_pass_create_info,
                                        NULL, /* allocator */
                                        render_pass_out);
@@ -629,9 +640,10 @@ check_format(struct vr_window *window,
              const struct vr_format *format,
              VkFormatFeatureFlags flags)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         VkFormatProperties format_properties;
 
-        vr_vk.vkGetPhysicalDeviceFormatProperties(window->physical_device,
+        vkfn->vkGetPhysicalDeviceFormatProperties(window->physical_device,
                                                   format->vk_format,
                                                   &format_properties);
 
@@ -643,6 +655,7 @@ init_vk(struct vr_window *window,
         const VkPhysicalDeviceFeatures *requires,
         const char *const *extensions)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         VkPhysicalDeviceMemoryProperties *memory_properties =
                 &window->memory_properties;
         enum vr_result vres = VR_RESULT_PASS;
@@ -656,7 +669,7 @@ init_vk(struct vr_window *window,
                         .apiVersion = VK_MAKE_VERSION(1, 0, 2)
                 },
         };
-        res = vr_vk.vkCreateInstance(&instance_create_info,
+        res = vkfn->vkCreateInstance(&instance_create_info,
                                      NULL, /* allocator */
                                      &window->vk_instance);
 
@@ -666,17 +679,17 @@ init_vk(struct vr_window *window,
                 goto error;
         }
 
-        vr_vk_init_instance(window->vk_instance);
+        vr_vk_init_instance(vkfn, window->vk_instance);
 
         vres = find_physical_device(window, requires, extensions);
         if (vres != VR_RESULT_PASS)
                 goto error;
 
-        vr_vk.vkGetPhysicalDeviceProperties(window->physical_device,
+        vkfn->vkGetPhysicalDeviceProperties(window->physical_device,
                                             &window->device_properties);
-        vr_vk.vkGetPhysicalDeviceMemoryProperties(window->physical_device,
+        vkfn->vkGetPhysicalDeviceMemoryProperties(window->physical_device,
                                                   memory_properties);
-        vr_vk.vkGetPhysicalDeviceFeatures(window->physical_device,
+        vkfn->vkGetPhysicalDeviceFeatures(window->physical_device,
                                           &window->features);
 
         if (!check_format(window,
@@ -717,7 +730,7 @@ init_vk(struct vr_window *window,
                 .ppEnabledExtensionNames = n_extensions ? extensions : NULL,
                 .pEnabledFeatures = requires
         };
-        res = vr_vk.vkCreateDevice(window->physical_device,
+        res = vkfn->vkCreateDevice(window->physical_device,
                                    &device_create_info,
                                    NULL, /* allocator */
                                    &window->device);
@@ -727,9 +740,9 @@ init_vk(struct vr_window *window,
                 goto error;
         }
 
-        vr_vk_init_device(window->device);
+        vr_vk_init_device(vkfn, window->device);
 
-        vr_vk.vkGetDeviceQueue(window->device,
+        vkfn->vkGetDeviceQueue(window->device,
                                window->queue_family,
                                0, /* queueIndex */
                                &window->queue);
@@ -739,7 +752,7 @@ init_vk(struct vr_window *window,
                 .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
                 .queueFamilyIndex = window->queue_family
         };
-        res = vr_vk.vkCreateCommandPool(window->device,
+        res = vkfn->vkCreateCommandPool(window->device,
                                         &command_pool_create_info,
                                         NULL, /* allocator */
                                         &window->command_pool);
@@ -755,7 +768,7 @@ init_vk(struct vr_window *window,
                 .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                 .commandBufferCount = 1
         };
-        res = vr_vk.vkAllocateCommandBuffers(window->device,
+        res = vkfn->vkAllocateCommandBuffers(window->device,
                                              &command_buffer_allocate_info,
                                              &window->command_buffer);
 
@@ -786,7 +799,7 @@ init_vk(struct vr_window *window,
                 .poolSizeCount = VR_N_ELEMENTS(pool_sizes),
                 .pPoolSizes = pool_sizes
         };
-        res = vr_vk.vkCreateDescriptorPool(window->device,
+        res = vkfn->vkCreateDescriptorPool(window->device,
                                            &descriptor_pool_create_info,
                                            NULL, /* allocator */
                                            &window->descriptor_pool);
@@ -812,7 +825,7 @@ init_vk(struct vr_window *window,
         VkFenceCreateInfo fence_create_info = {
                 .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
         };
-        res = vr_vk.vkCreateFence(window->device,
+        res = vkfn->vkCreateFence(window->device,
                                   &fence_create_info,
                                   NULL, /* allocator */
                                   &window->vk_fence);
@@ -842,14 +855,14 @@ vr_window_new(const VkPhysicalDeviceFeatures *requires,
               struct vr_window **window_out)
 {
         struct vr_window *window = vr_calloc(sizeof *window);
+        struct vr_vk *vkfn = &window->vkfn;
         enum vr_result vres;
 
-        if (!vr_vk_load_libvulkan()) {
+        if (!vr_vk_load_libvulkan(vkfn)) {
                 vres = VR_RESULT_FAIL;
                 goto error;
         }
 
-        window->libvulkan_loaded = true;
         window->framebuffer_format = framebuffer_format;
         window->depth_stencil_format = depth_stencil_format;
 
@@ -870,8 +883,8 @@ vr_window_free(struct vr_window *window)
 {
         deinit_vk(window);
 
-        if (window->libvulkan_loaded)
-                vr_vk_unload_libvulkan();
+        if (window->vkfn.lib_vulkan)
+                vr_vk_unload_libvulkan(&window->vkfn);
 
         vr_free(window);
 }

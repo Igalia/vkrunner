@@ -30,6 +30,8 @@
 #include <stdbool.h>
 
 struct vr_vk {
+        void *lib_vulkan;
+
         PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr;
 
 #define VR_VK_FUNC(name) PFN_ ## name name;
@@ -39,18 +41,18 @@ struct vr_vk {
 #undef VR_VK_FUNC
 };
 
-extern struct vr_vk vr_vk;
-
 bool
-vr_vk_load_libvulkan(void);
+vr_vk_load_libvulkan(struct vr_vk *vkfn);
 
 void
-vr_vk_init_instance(VkInstance instance);
+vr_vk_init_instance(struct vr_vk *vkfn,
+                    VkInstance instance);
 
 void
-vr_vk_init_device(VkDevice device);
+vr_vk_init_device(struct vr_vk *vkfn,
+                  VkDevice device);
 
 void
-vr_vk_unload_libvulkan(void);
+vr_vk_unload_libvulkan(struct vr_vk *vkfn);
 
 #endif /* VR_VK_H */

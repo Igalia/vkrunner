@@ -59,6 +59,7 @@ vr_allocate_store_buffer(struct vr_window *window,
                          int *memory_type_index_out,
                          int *offsets)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         VkDeviceMemory memory;
         VkMemoryRequirements reqs;
         VkResult res;
@@ -74,7 +75,7 @@ vr_allocate_store_buffer(struct vr_window *window,
         granularity = window->device_properties.limits.bufferImageGranularity;
 
         for (i = 0; i < n_buffers; i++) {
-                vr_vk.vkGetBufferMemoryRequirements(window->device,
+                vkfn->vkGetBufferMemoryRequirements(window->device,
                                                     buffers[i],
                                                     &reqs);
                 offset = vr_align(offset, granularity);
@@ -96,7 +97,7 @@ vr_allocate_store_buffer(struct vr_window *window,
                 .allocationSize = offset,
                 .memoryTypeIndex = memory_type_index
         };
-        res = vr_vk.vkAllocateMemory(window->device,
+        res = vkfn->vkAllocateMemory(window->device,
                                      &allocate_info,
                                      NULL, /* allocator */
                                      &memory);
@@ -104,7 +105,7 @@ vr_allocate_store_buffer(struct vr_window *window,
                 return res;
 
         for (i = 0; i < n_buffers; i++) {
-                vr_vk.vkBindBufferMemory(window->device,
+                vkfn->vkBindBufferMemory(window->device,
                                          buffers[i],
                                          memory,
                                          offsets[i]);
@@ -125,6 +126,7 @@ vr_allocate_store_image(struct vr_window *window,
                         VkDeviceMemory *memory_out,
                         int *memory_type_index_out)
 {
+        struct vr_vk *vkfn = &window->vkfn;
         VkDeviceMemory memory;
         VkMemoryRequirements reqs;
         VkResult res;
@@ -138,7 +140,7 @@ vr_allocate_store_image(struct vr_window *window,
         granularity = window->device_properties.limits.bufferImageGranularity;
 
         for (i = 0; i < n_images; i++) {
-                vr_vk.vkGetImageMemoryRequirements(window->device,
+                vkfn->vkGetImageMemoryRequirements(window->device,
                                                    images[i],
                                                    &reqs);
                 offset = vr_align(offset, granularity);
@@ -160,7 +162,7 @@ vr_allocate_store_image(struct vr_window *window,
                 .allocationSize = offset,
                 .memoryTypeIndex = memory_type_index
         };
-        res = vr_vk.vkAllocateMemory(window->device,
+        res = vkfn->vkAllocateMemory(window->device,
                                      &allocate_info,
                                      NULL, /* allocator */
                                      &memory);
@@ -168,7 +170,7 @@ vr_allocate_store_image(struct vr_window *window,
                 return res;
 
         for (i = 0; i < n_images; i++) {
-                vr_vk.vkBindImageMemory(window->device,
+                vkfn->vkBindImageMemory(window->device,
                                         images[i],
                                         memory,
                                         offsets[i]);
