@@ -7,6 +7,7 @@ include(CheckCCompilerFlag)
 include(FindPkgConfig)
 
 project(VkRunner)
+set(VKRUNNER_VERSION 0.1)
 
 TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
 if(IS_BIG_ENDIAN)

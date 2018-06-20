@@ -62,12 +62,17 @@ set(VKRUNNER_SOURCE_FILES
 
 add_library(vkrunner STATIC ${VKRUNNER_SOURCE_FILES})
 
+macro(vkrunner_add_lib libname)
+  set(VKRUNNER_PRIVATE_LIBS "${VKRUNNER_PRIVATE_LIBS} -l${libname}")
+  target_link_libraries(vkrunner ${libname})
+endmacro()
+
 if(NEED_LIBM)
-  target_link_libraries(vkrunner m)
+  vkrunner_add_lib(m)
 endif()
 
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  target_link_libraries(vkrunner dl)
+  vkrunner_add_lib(dl)
 endif()
 
 target_include_directories(vkrunner PUBLIC ${VULKAN_INCLUDE_DIRS})
@@ -75,3 +80,11 @@ target_compile_options(vkrunner PUBLIC ${VULKAN_CFLAGS_OTHER})
 
 install(TARGETS vkrunner DESTINATION lib)
 install(FILES ${VKRUNNER_PUBLIC_HEADERS} DESTINATION include/vkrunner)
+
+configure_file(
+  "${PROJECT_SOURCE_DIR}/vkrunner/vkrunner.pc.in"
+  "${PROJECT_BINARY_DIR}/vkrunner/vkrunner.pc"
+  @ONLY
+  )
+install(FILES "${PROJECT_BINARY_DIR}/vkrunner/vkrunner.pc"
+  DESTINATION lib/pkgconfig)
