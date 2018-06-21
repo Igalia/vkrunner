@@ -238,3 +238,18 @@ option is given to the `draw arrays` test command.
       -i IMG        Write the final rendering to IMG as a PPM image
       -d            Show the SPIR-V disassembly
       -D TOK=REPL   Replace occurences of TOK with REPL in the scripts
+
+## Precompiling shaders
+
+As an alternative to specifying the shaders in GLSL or SPIR-V
+assembly, the test scripts can contain a base-64 encoded binary dump
+of the SPIR-V. That way VkRunner does not need to invoke the compiler
+or assembler to run the script. This can be useful either to speed up
+the execution of the tests or to run them on hardware where installing
+the compiler is not practical. VkRunner also includes a Python script
+to precompile the test scripts to binary. It can be run for example as
+below:
+
+    mkdir compiled-examples
+    ./precompile-script.py -o compiled-examples examples/*.shader_test
+    ./src/vkrunner compiled-examples/*.shader_test
