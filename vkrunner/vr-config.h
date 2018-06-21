@@ -34,10 +34,6 @@ struct vr_config;
 struct vr_config *
 vr_config_new(void);
 
-bool
-vr_config_process_argv(struct vr_config *config,
-                       int argc, char **argv);
-
 void
 vr_config_add_script(struct vr_config *config,
                      const char *filename);
