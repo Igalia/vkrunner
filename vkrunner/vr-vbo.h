@@ -29,6 +29,7 @@
 
 #include "vr-list.h"
 #include "vr-format.h"
+#include "vr-config.h"
 
 struct vr_vbo_attrib {
         struct vr_list link;
@@ -69,7 +70,9 @@ struct vr_vbo {
 };
 
 struct vr_vbo *
-vr_vbo_parse(const char *text, size_t text_length);
+vr_vbo_parse(const struct vr_config *config,
+             const char *text,
+             size_t text_length);
 
 void
 vr_vbo_free(struct vr_vbo *vbo);

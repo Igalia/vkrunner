@@ -238,6 +238,20 @@ vr_config_process_argv(struct vr_config *config,
         return true;
 }
 
+void
+vr_config_set_user_data(struct vr_config *config,
+                        void *user_data)
+{
+        config->user_data = user_data;
+}
+
+void
+vr_config_set_error_cb(struct vr_config *config,
+                       vr_config_error_cb error_cb)
+{
+        config->error_cb = error_cb;
+}
+
 struct vr_config *
 vr_config_new(void)
 {

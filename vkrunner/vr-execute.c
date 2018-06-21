@@ -51,7 +51,7 @@ write_ppm(struct vr_window *window,
         FILE *out = fopen(filename, "w");
 
         if (out == NULL) {
-                vr_error_message("%s: %s", filename, strerror(errno));
+                vr_error_message(window->config, "%s: %s", filename, strerror(errno));
                 return false;
         }
 
@@ -105,7 +105,8 @@ process_script(const struct vr_config *config,
                 goto out;
         }
 
-        res = vr_window_new(&script->required_features,
+        res = vr_window_new(config,
+                            &script->required_features,
                             script->extensions,
                             script->framebuffer_format,
                             script->depth_stencil_format,

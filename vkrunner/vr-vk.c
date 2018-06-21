@@ -82,14 +82,15 @@ init_functions(struct vr_vk *vkfn,
 }
 
 bool
-vr_vk_load_libvulkan(struct vr_vk *vkfn)
+vr_vk_load_libvulkan(const struct vr_config *config,
+                     struct vr_vk *vkfn)
 {
 #ifdef WIN32
 
         vkfn->lib_vulkan = LoadLibrary("vulkan-1.dll");
 
         if (vkfn->lib_vulkan == NULL) {
-                vr_error_message("Error openining vulkan-1.dll");
+                vr_error_message(config, "Error openining vulkan-1.dll");
                 return false;
         }
 
@@ -100,7 +101,7 @@ vr_vk_load_libvulkan(struct vr_vk *vkfn)
         vkfn->lib_vulkan = dlopen("libvulkan.so.1", RTLD_LAZY | RTLD_GLOBAL);
 
         if (vkfn->lib_vulkan == NULL) {
-                vr_error_message("Error openining libvulkan.so.1: %s",
+                vr_error_message(config, "Error openining libvulkan.so.1: %s",
                                  dlerror());
                 return false;
         }

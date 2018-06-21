@@ -129,7 +129,8 @@ end_shader(struct load_state *data)
         if (data->current_source_type == VR_SCRIPT_SOURCE_TYPE_BINARY &&
             !vr_base64_decode_end(&data->base64_decoder,
                                   &data->buffer)) {
-                vr_error_message("%s:%i: Invalid base64 data",
+                vr_error_message(data->config,
+                                 "%s:%i: Invalid base64 data",
                                  data->filename,
                                  data->line_num);
                 return false;
@@ -147,7 +148,8 @@ end_shader(struct load_state *data)
 static bool
 end_vertex_data(struct load_state *data)
 {
-        data->script->vertex_data = vr_vbo_parse((const char *)
+        data->script->vertex_data = vr_vbo_parse(data->config,
+                                                 (const char *)
                                                  data->buffer.data,
                                                  data->buffer.length);
         return data->script->vertex_data != NULL;
@@ -755,7 +757,8 @@ parse_format(struct load_state *data,
                 end++;
 
         if (!is_end(end)) {
-                vr_error_message("%s:%i: Missing format name",
+                vr_error_message(data->config,
+                                 "%s:%i: Missing format name",
                                  data->filename,
                                  data->line_num);
                 return false;
@@ -766,7 +769,8 @@ parse_format(struct load_state *data,
         bool ret;
 
         if (format == NULL) {
-                vr_error_message("%s:%i: Unknown format: %s",
+                vr_error_message(data->config,
+                                 "%s:%i: Unknown format: %s",
                                  data->filename,
                                  data->line_num,
                                  format_name);
@@ -790,7 +794,8 @@ process_none_line(struct load_state *data)
                 start++;
 
         if (*start != '#' && *start != '\0') {
-                vr_error_message("%s:%i expected empty line",
+                vr_error_message(data->config,
+                                 "%s:%i expected empty line",
                                  data->filename,
                                  data->line_num);
                 return false;
@@ -856,7 +861,8 @@ process_require_line(struct load_state *data)
                 return true;
         }
 
-        vr_error_message("%s:%i: Invalid require line",
+        vr_error_message(data->config,
+                         "%s:%i: Invalid require line",
                          data->filename,
                          data->line_num);
 
@@ -1137,7 +1143,8 @@ process_draw_arrays_command(struct load_state *data,
                 }
         }
 
-        vr_error_message("%s:%i: Unknown topology in draw arrays command",
+        vr_error_message(data->config,
+                         "%s:%i: Unknown topology in draw arrays command",
                          data->filename,
                          data->line_num);
         return false;
@@ -1145,7 +1152,8 @@ process_draw_arrays_command(struct load_state *data,
 found_topology:
         if (!parse_ints(&p, args, n_args, NULL) ||
             !is_end(p)) {
-                vr_error_message("%s:%i: Invalid draw arrays command",
+                vr_error_message(data->config,
+                                 "%s:%i: Invalid draw arrays command",
                                  data->filename,
                                  data->line_num);
                 return false;
@@ -1179,7 +1187,8 @@ process_indices_line(struct load_state *data)
                 unsigned value = strtoul(p, &tail, 10);
 
                 if (errno || value > UINT16_MAX) {
-                        vr_error_message("%s:%i: Invalid index",
+                        vr_error_message(data->config,
+                                         "%s:%i: Invalid index",
                                          data->filename,
                                          data->line_num);
                         return false;
@@ -1212,7 +1221,8 @@ process_bool_property(struct load_state *data,
         return true;
 
 error:
-        vr_error_message("%s:%i: Invalid boolean value",
+        vr_error_message(data->config,
+                         "%s:%i: Invalid boolean value",
                          data->filename,
                          data->line_num);
         return false;
@@ -1265,7 +1275,8 @@ process_int_property(struct load_state *data,
         return true;
 
 error:
-        vr_error_message("%s:%i: Invalid int value",
+        vr_error_message(data->config,
+                         "%s:%i: Invalid int value",
                          data->filename,
                          data->line_num);
         return false;
@@ -1280,7 +1291,8 @@ process_float_property(struct load_state *data,
                 p++;
 
         if (!parse_floats(&p, &value->f, 1, NULL) || !is_end(p)) {
-                vr_error_message("%s:%i: Invalid float value",
+                vr_error_message(data->config,
+                                 "%s:%i: Invalid float value",
                                  data->filename,
                                  data->line_num);
                 return false;
@@ -1323,7 +1335,8 @@ get_buffer(struct load_state *data,
         for (unsigned i = 0; i < n_buffers; i++) {
                 if (buffer[i].binding == binding) {
                         if (buffer[i].type != type) {
-                                vr_error_message("%s:%i: Buffer binding point "
+                                vr_error_message(data->config,
+                                                 "%s:%i: Buffer binding point "
                                                  "%u used with different types",
                                                  data->filename,
                                                  data->line_num,
@@ -1385,7 +1398,8 @@ process_set_buffer_subdata(struct load_state *data,
         return true;
 
 error:
-        vr_error_message("%s:%i: Invalid set buffer subdata command",
+        vr_error_message(data->config,
+                         "%s:%i: Invalid set buffer subdata command",
                          data->filename,
                          data->line_num);
         return false;
@@ -1585,7 +1599,8 @@ process_test_line(struct load_state *data)
         }
 
 error:
-        vr_error_message("%s:%i: Invalid test command",
+        vr_error_message(data->config,
+                         "%s:%i: Invalid test command",
                          data->filename,
                          data->line_num);
         return false;
@@ -1648,7 +1663,8 @@ start_spirv_shader(struct load_state *data,
                    enum vr_script_shader_stage stage)
 {
         if (!vr_list_empty(&data->script->stages[stage])) {
-                vr_error_message("%s:%i: SPIR-V source can not be "
+                vr_error_message(data->config,
+                                 "%s:%i: SPIR-V source can not be "
                                  "linked with other shaders in the "
                                  "same stage",
                                  data->filename,
@@ -1682,7 +1698,8 @@ process_section_header(struct load_state *data)
         const char *start = (char *) data->line.data + 1;
         const char *end = strchr(start, ']');
         if (end == NULL) {
-                vr_error_message("%s:%i: Missing ']'",
+                vr_error_message(data->config,
+                                 "%s:%i: Missing ']'",
                                  data->filename,
                                  data->line_num);
                 return false;
@@ -1730,7 +1747,8 @@ process_section_header(struct load_state *data)
 
         if (is_string("vertex data", start, end)) {
                 if (data->script->vertex_data) {
-                        vr_error_message("%s:%i: Duplicate vertex data section",
+                        vr_error_message(data->config,
+                                         "%s:%i: Duplicate vertex data section",
                                          data->filename,
                                          data->line_num);
                         return false;
@@ -1740,7 +1758,8 @@ process_section_header(struct load_state *data)
                 return true;
         }
 
-        vr_error_message("%s:%i: Unknown section “%.*s”",
+        vr_error_message(data->config,
+                         "%s:%i: Unknown section “%.*s”",
                          data->filename,
                          data->line_num,
                          (int) (end - start),
@@ -1770,7 +1789,8 @@ process_line(struct load_state *data)
                                               data->line.data,
                                               data->line.length,
                                               &data->buffer)) {
-                                vr_error_message("%s:%i: Invalid base64 data",
+                                vr_error_message(data->config,
+                                                 "%s:%i: Invalid base64 data",
                                                  data->filename,
                                                  data->line_num);
                                 return false;
@@ -1970,7 +1990,7 @@ vr_script_load(const struct vr_config *config,
         FILE *f = fopen(filename, "r");
 
         if (f == NULL) {
-                vr_error_message("%s: %s", filename, strerror(errno));
+                vr_error_message(config, "%s: %s", filename, strerror(errno));
                 return NULL;
         }
 

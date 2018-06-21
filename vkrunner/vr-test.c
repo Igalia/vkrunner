@@ -102,7 +102,7 @@ allocate_test_buffer(struct test_data *data,
                                    &buffer->buffer);
         if (res != VK_SUCCESS) {
                 buffer->buffer = NULL;
-                vr_error_message("Error creating buffer");
+                vr_error_message(data->window->config, "Error creating buffer");
                 return NULL;
         }
 
@@ -115,7 +115,8 @@ allocate_test_buffer(struct test_data *data,
                                        NULL /* offsets */);
         if (res != VK_SUCCESS) {
                 buffer->memory = NULL;
-                vr_error_message("Error allocating memory");
+                vr_error_message(data->window->config,
+                                 "Error allocating memory");
                 return NULL;
         }
 
@@ -127,7 +128,7 @@ allocate_test_buffer(struct test_data *data,
                                 &buffer->memory_map);
         if (res != VK_SUCCESS) {
                 buffer->memory_map = NULL;
-                vr_error_message("Error mapping memory");
+                vr_error_message(data->window->config, "Error mapping memory");
                 return NULL;
         }
 
@@ -172,7 +173,8 @@ begin_command_buffer(struct test_data *data)
         res = vkfn->vkBeginCommandBuffer(data->window->command_buffer,
                                          &begin_command_buffer_info);
         if (res != VK_SUCCESS) {
-                vr_error_message("vkBeginCommandBuffer failed");
+                vr_error_message(data->window->config,
+                                 "vkBeginCommandBuffer failed");
                 return false;
         }
 
@@ -221,7 +223,8 @@ end_command_buffer(struct test_data *data)
 
         res = vkfn->vkEndCommandBuffer(window->command_buffer);
         if (res != VK_SUCCESS) {
-                vr_error_message("vkEndCommandBuffer failed");
+                vr_error_message(data->window->config,
+                                 "vkEndCommandBuffer failed");
                 return false;
         }
 
@@ -242,7 +245,7 @@ end_command_buffer(struct test_data *data)
                                   &submit_info,
                                   window->vk_fence);
         if (res != VK_SUCCESS) {
-                vr_error_message("vkQueueSubmit failed");
+                vr_error_message(window->config, "vkQueueSubmit failed");
                 return false;
         }
 
@@ -252,7 +255,7 @@ end_command_buffer(struct test_data *data)
                                     VK_TRUE, /* waitAll */
                                     UINT64_MAX);
         if (res != VK_SUCCESS) {
-                vr_error_message("vkWaitForFences failed");
+                vr_error_message(window->config, "vkWaitForFences failed");
                 return false;
         }
 
@@ -803,7 +806,8 @@ probe_ssbo(struct test_data *data,
 
         if (buffer == NULL) {
                 print_command_fail(command);
-                vr_error_message("Invalid binding in probe command");
+                vr_error_message(data->window->config,
+                                 "Invalid binding in probe command");
                 return false;
         }
 
@@ -812,7 +816,8 @@ probe_ssbo(struct test_data *data,
 
         if (command->probe_ssbo.offset + type_size > buffer->size) {
                 print_command_fail(command);
-                vr_error_message("Invalid offset in probe command");
+                vr_error_message(data->window->config,
+                                 "Invalid offset in probe command");
                 return false;
         }
 
@@ -837,7 +842,9 @@ probe_ssbo(struct test_data *data,
                                         "\n"
                                         "  Observed: ");
                 append_box(&buf, &observed);
-                vr_error_message("%s", (const char *) buf.data);
+                vr_error_message(data->window->config,
+                                 "%s",
+                                 (const char *) buf.data);
                 vr_buffer_destroy(&buf);
 
                 return false;
@@ -883,7 +890,8 @@ allocate_ubo_buffers(struct test_data *data)
                                              &data->ubo_descriptor_set);
         if (res != VK_SUCCESS) {
                 data->ubo_descriptor_set = NULL;
-                vr_error_message("Error allocationg descriptor set");
+                vr_error_message(data->window->config,
+                                 "Error allocationg descriptor set");
                 return false;
         }
 

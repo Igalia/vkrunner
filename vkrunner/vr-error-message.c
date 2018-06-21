@@ -29,14 +29,27 @@
 #include <stdarg.h>
 
 #include "vr-error-message.h"
+#include "vr-config-private.h"
+#include "vr-buffer.h"
 
 void
-vr_error_message(const char *format, ...)
+vr_error_message(const struct vr_config *config,
+                 const char *format, ...)
 {
         va_list ap;
 
         va_start(ap, format);
-        vfprintf(stderr, format, ap);
-        fputc('\n', stderr);
+
+        if (config->error_cb) {
+                struct vr_buffer buf = VR_BUFFER_STATIC_INIT;
+                vr_buffer_append_vprintf(&buf, format, ap);
+                config->error_cb((const char *) buf.data,
+                                 config->user_data);
+                vr_buffer_destroy(&buf);
+        } else {
+                vfprintf(stderr, format, ap);
+                fputc('\n', stderr);
+        }
+
         va_end(ap);
 }

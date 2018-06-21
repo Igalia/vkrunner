@@ -80,7 +80,8 @@ base_multisample_state = {
 };
 
 static bool
-create_named_temp_file(FILE **stream_out,
+create_named_temp_file(const struct vr_config *config,
+                       FILE **stream_out,
                        char **filename_out)
 {
         char filename[] = "/tmp/vkrunner-XXXXXX";
@@ -88,13 +89,13 @@ create_named_temp_file(FILE **stream_out,
         FILE *stream;
 
         if (fd == -1) {
-                vr_error_message("mkstemp: %s", strerror(errno));
+                vr_error_message(config, "mkstemp: %s", strerror(errno));
                 return false;
         }
 
         stream = fdopen(fd, "r+");
         if (stream == NULL) {
-                vr_error_message("%s: %s", filename, strerror(errno));
+                vr_error_message(config, "%s: %s", filename, strerror(errno));
                 close(fd);
                 return false;
         }
@@ -106,12 +107,13 @@ create_named_temp_file(FILE **stream_out,
 }
 
 static char *
-create_file_for_shader(const struct vr_script_shader *shader)
+create_file_for_shader(const struct vr_config *config,
+                       const struct vr_script_shader *shader)
 {
         char *filename;
         FILE *out;
 
-        if (!create_named_temp_file(&out, &filename))
+        if (!create_named_temp_file(config, &out, &filename))
                 return NULL;
 
         fwrite(shader->source, 1, shader->length, out);
@@ -122,7 +124,8 @@ create_file_for_shader(const struct vr_script_shader *shader)
 }
 
 static bool
-load_stream_contents(FILE *stream,
+load_stream_contents(const struct vr_config *config,
+                     FILE *stream,
                      uint8_t **contents,
                      size_t *size)
 {
@@ -133,7 +136,7 @@ load_stream_contents(FILE *stream,
         pos = ftell(stream);
 
         if (pos == -1) {
-                vr_error_message("ftell failed");
+                vr_error_message(config, "ftell failed");
                 return false;
         }
 
@@ -143,7 +146,7 @@ load_stream_contents(FILE *stream,
 
         got = fread(*contents, 1, *size, stream);
         if (got != *size) {
-                vr_error_message("Error reading file contents");
+                vr_error_message(config, "Error reading file contents");
                 vr_free(contents);
                 return false;
         }
@@ -152,7 +155,8 @@ load_stream_contents(FILE *stream,
 }
 
 static bool
-show_disassembly(const char *filename)
+show_disassembly(const struct vr_config *config,
+                 const char *filename)
 {
         char *args[] = {
                 getenv("PIGLIT_SPIRV_DIS_BINARY"),
@@ -163,7 +167,7 @@ show_disassembly(const char *filename)
         if (args[0] == NULL)
                 args[0] = "spirv-dis";
 
-        return vr_subprocess_command(args);
+        return vr_subprocess_command(config, args);
 }
 
 static VkShaderModule
@@ -185,7 +189,7 @@ compile_stage(const struct vr_config *config,
         bool res;
         int i;
 
-        if (!create_named_temp_file(&module_stream, &module_filename))
+        if (!create_named_temp_file(config, &module_stream, &module_filename))
                 goto out;
 
         args[0] = getenv("PIGLIT_GLSLANG_VALIDATOR_BINARY");
@@ -201,22 +205,25 @@ compile_stage(const struct vr_config *config,
 
         i = n_base_args;
         vr_list_for_each(shader, &script->stages[stage], link) {
-                args[i] = create_file_for_shader(shader);
+                args[i] = create_file_for_shader(config, shader);
                 if (args[i] == 0)
                         goto out;
                 i++;
         }
 
-        res = vr_subprocess_command(args);
+        res = vr_subprocess_command(config, args);
         if (!res) {
-                vr_error_message("glslangValidator failed");
+                vr_error_message(config, "glslangValidator failed");
                 goto out;
         }
 
         if (config->show_disassembly)
-                show_disassembly(module_filename);
+                show_disassembly(config, module_filename);
 
-        if (!load_stream_contents(module_stream, &module_binary, &module_size))
+        if (!load_stream_contents(config,
+                                  module_stream,
+                                  &module_binary,
+                                  &module_size))
                 goto out;
 
         VkShaderModuleCreateInfo shader_module_create_info = {
@@ -229,7 +236,7 @@ compile_stage(const struct vr_config *config,
                                          NULL, /* allocator */
                                          &module);
         if (res != VK_SUCCESS) {
-                vr_error_message("vkCreateShaderModule failed");
+                vr_error_message(config, "vkCreateShaderModule failed");
                 module = NULL;
                 goto out;
         }
@@ -268,10 +275,10 @@ assemble_stage(const struct vr_config *config,
         size_t module_size;
         bool res;
 
-        if (!create_named_temp_file(&module_stream, &module_filename))
+        if (!create_named_temp_file(config, &module_stream, &module_filename))
                 goto out;
 
-        source_filename = create_file_for_shader(shader);
+        source_filename = create_file_for_shader(config, shader);
         if (source_filename == NULL)
                 goto out;
 
@@ -285,16 +292,19 @@ assemble_stage(const struct vr_config *config,
         if (args[0] == NULL)
                 args[0] = "spirv-as";
 
-        res = vr_subprocess_command(args);
+        res = vr_subprocess_command(config, args);
         if (!res) {
-                vr_error_message("spirv-as failed");
+                vr_error_message(config, "spirv-as failed");
                 goto out;
         }
 
         if (config->show_disassembly)
-                show_disassembly(module_filename);
+                show_disassembly(config, module_filename);
 
-        if (!load_stream_contents(module_stream, &module_binary, &module_size))
+        if (!load_stream_contents(config,
+                                  module_stream,
+                                  &module_binary,
+                                  &module_size))
                 goto out;
 
         VkShaderModuleCreateInfo shader_module_create_info = {
@@ -307,7 +317,7 @@ assemble_stage(const struct vr_config *config,
                                          NULL, /* allocator */
                                          &module);
         if (res != VK_SUCCESS) {
-                vr_error_message("vkCreateShaderModule failed");
+                vr_error_message(config, "vkCreateShaderModule failed");
                 module = NULL;
                 goto out;
         }
@@ -343,13 +353,15 @@ load_binary_stage(const struct vr_config *config,
                 FILE *module_stream;
                 char *module_filename;
 
-                if (create_named_temp_file(&module_stream, &module_filename)) {
+                if (create_named_temp_file(config,
+                                           &module_stream,
+                                           &module_filename)) {
                         fwrite(shader->source,
                                1, shader->length,
                                module_stream);
                         fclose(module_stream);
 
-                        show_disassembly(module_filename);
+                        show_disassembly(config, module_filename);
 
                         unlink(module_filename);
                         vr_free(module_filename);
@@ -366,7 +378,7 @@ load_binary_stage(const struct vr_config *config,
                                          NULL, /* allocator */
                                          &module);
         if (res != VK_SUCCESS)
-                vr_error_message("vkCreateShaderModule failed");
+                vr_error_message(config, "vkCreateShaderModule failed");
 
         return module;
 }
@@ -560,7 +572,7 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
         vr_free((void *) vertex_input_state.pVertexAttributeDescriptions);
 
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating VkPipeline");
+                vr_error_message(window->config, "Error creating VkPipeline");
                 return NULL;
         }
 
@@ -600,7 +612,7 @@ create_compute_pipeline(struct vr_pipeline *pipeline)
                                              &vk_pipeline);
 
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating VkPipeline");
+                vr_error_message(window->config, "Error creating VkPipeline");
                 return NULL;
         }
 
@@ -675,7 +687,8 @@ create_vk_layout(struct vr_pipeline *pipeline,
                                            NULL, /* allocator */
                                            &layout);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating pipeline layout");
+                vr_error_message(pipeline->window->config,
+                                 "Error creating pipeline layout");
                 return NULL;
         }
 
@@ -727,7 +740,8 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
         vr_free(bindings);
 
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating descriptor set layout");
+                vr_error_message(pipeline->window->config,
+                                 "Error creating descriptor set layout");
                 return NULL;
         }
 
@@ -851,7 +865,7 @@ vr_pipeline_create(const struct vr_config *config,
                                           NULL, /* allocator */
                                           &pipeline->pipeline_cache);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating pipeline cache");
+                vr_error_message(config, "Error creating pipeline cache");
                 goto error;
         }
 

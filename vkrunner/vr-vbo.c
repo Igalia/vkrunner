@@ -72,7 +72,8 @@
  * Convert from Piglit style formats to a VkFormat
  */
 static const struct vr_format *
-decode_type(const char *gl_type,
+decode_type(const struct vr_config *config,
+            const char *gl_type,
             const char *glsl_type)
 {
         static const struct {
@@ -103,7 +104,7 @@ decode_type(const char *gl_type,
                 }
         }
 
-        vr_error_message("Unknown gl_type: %s", gl_type);
+        vr_error_message(config, "Unknown gl_type: %s", gl_type);
         return NULL;
 
 found_gl_type:
@@ -119,13 +120,15 @@ found_gl_type:
                            !strncmp(glsl_type + 1, "vec", 3)) {
                         n_components = glsl_type[4] - '0';
                 } else {
-                        vr_error_message("Unknown glsl_type: %s",
+                        vr_error_message(config,
+                                         "Unknown glsl_type: %s",
                                          glsl_type);
                         return NULL;
                 }
 
                 if (n_components < 2 || n_components > 4) {
-                        vr_error_message("Invalid components: %s",
+                        vr_error_message(config,
+                                         "Invalid components: %s",
                                          glsl_type);
                         return NULL;
                 }
@@ -137,7 +140,8 @@ found_gl_type:
                                             n_components);
 
         if (format == NULL) {
-                vr_error_message("Invalid type combo: %s/%s",
+                vr_error_message(config,
+                                 "Invalid type combo: %s/%s",
                                  gl_type,
                                  glsl_type);
                 return NULL;
@@ -172,7 +176,8 @@ get_attrib_location(const char *name,
  * then return false.
  */
 static bool
-parse_vertex_attrib(struct vr_vbo_attrib *attrib,
+parse_vertex_attrib(const struct vr_config *config,
+                    struct vr_vbo_attrib *attrib,
                     const char *text)
 {
         char *name = NULL;
@@ -183,7 +188,8 @@ parse_vertex_attrib(struct vr_vbo_attrib *attrib,
          */
         const char *first_slash = strchr(text, '/');
         if (first_slash == NULL) {
-                vr_error_message("Column headers must be in the form"
+                vr_error_message(config,
+                                 "Column headers must be in the form"
                                  " location/format.\n"
                                  "Got: %s",
                                  text);
@@ -200,14 +206,16 @@ parse_vertex_attrib(struct vr_vbo_attrib *attrib,
         if (second_slash == NULL) {
                 format = vr_format_lookup_by_name(first_slash + 1);
                 if (format == NULL) {
-                        vr_error_message("Unknown format: %s", first_slash + 1);
+                        vr_error_message(config,
+                                         "Unknown format: %s",
+                                         first_slash + 1);
                         ret = false;
                         goto out;
                 }
         } else {
                 char *gl_type = vr_strndup(first_slash + 1,
                                            second_slash - first_slash - 1);
-                format = decode_type(gl_type, second_slash + 1);
+                format = decode_type(config, gl_type, second_slash + 1);
                 vr_free(gl_type);
 
                 if (format == NULL) {
@@ -217,7 +225,8 @@ parse_vertex_attrib(struct vr_vbo_attrib *attrib,
         }
 
         if (!get_attrib_location(name, &attrib->location)) {
-                vr_error_message("Unexpected vbo column name.  Got: %s",
+                vr_error_message(config,
+                                 "Unexpected vbo column name.  Got: %s",
                                  name);
                 ret = false;
                 goto out;
@@ -240,7 +249,8 @@ out:
  * then return false.  Otherwise return true.
  */
 static bool
-parse_datum(enum vr_format_mode mode,
+parse_datum(const struct vr_config *config,
+            enum vr_format_mode mode,
             int bit_size,
             const char **text,
             void *data)
@@ -253,7 +263,8 @@ parse_datum(enum vr_format_mode mode,
                 case 16: {
                         unsigned short value = vr_hex_strtohf(*text, &endptr);
                         if (errno == ERANGE) {
-                                vr_error_message("Could not parse as "
+                                vr_error_message(config,
+                                                 "Could not parse as "
                                                  "half float");
                                 return false;
                         }
@@ -263,7 +274,8 @@ parse_datum(enum vr_format_mode mode,
                 case 32: {
                         float value = vr_hex_strtof(*text, &endptr);
                         if (errno == ERANGE) {
-                                vr_error_message("Could not parse as float");
+                                vr_error_message(config,
+                                                 "Could not parse as float");
                                 return false;
                         }
                         *((float *) data) = value;
@@ -272,7 +284,8 @@ parse_datum(enum vr_format_mode mode,
                 case 64: {
                         double value = vr_hex_strtod(*text, &endptr);
                         if (errno == ERANGE) {
-                                vr_error_message("Could not parse as double");
+                                vr_error_message(config,
+                                                 "Could not parse as double");
                                 return false;
                         }
                         *((double *) data) = value;
@@ -287,7 +300,8 @@ parse_datum(enum vr_format_mode mode,
                 case 8: {
                         unsigned long value = strtoul(*text, &endptr, 0);
                         if (errno == ERANGE || value > UINT8_MAX) {
-                                vr_error_message("Could not parse as unsigned "
+                                vr_error_message(config,
+                                                 "Could not parse as unsigned "
                                                  "byte");
                                 return false;
                         }
@@ -297,7 +311,8 @@ parse_datum(enum vr_format_mode mode,
                 case 16: {
                         unsigned long value = strtoul(*text, &endptr, 0);
                         if (errno == ERANGE || value > UINT16_MAX) {
-                                vr_error_message("Could not parse as unsigned "
+                                vr_error_message(config,
+                                                 "Could not parse as unsigned "
                                                  "short");
                                 return false;
                         }
@@ -307,7 +322,8 @@ parse_datum(enum vr_format_mode mode,
                 case 32: {
                         unsigned long value = strtoul(*text, &endptr, 0);
                         if (errno == ERANGE || value > UINT32_MAX) {
-                                vr_error_message("Could not parse as "
+                                vr_error_message(config,
+                                                 "Could not parse as "
                                                  "unsigned integer");
                                 return false;
                         }
@@ -317,7 +333,8 @@ parse_datum(enum vr_format_mode mode,
                 case 64: {
                         unsigned long value = strtoul(*text, &endptr, 0);
                         if (errno == ERANGE || value > UINT64_MAX) {
-                                vr_error_message("Could not parse as "
+                                vr_error_message(config,
+                                                 "Could not parse as "
                                                  "unsigned long");
                                 return false;
                         }
@@ -333,7 +350,8 @@ parse_datum(enum vr_format_mode mode,
                         long value = strtol(*text, &endptr, 0);
                         if (errno == ERANGE ||
                             value > INT8_MAX || value < INT8_MIN) {
-                                vr_error_message("Could not parse as signed "
+                                vr_error_message(config,
+                                                 "Could not parse as signed "
                                                  "byte");
                                 return false;
                         }
@@ -344,7 +362,8 @@ parse_datum(enum vr_format_mode mode,
                         long value = strtol(*text, &endptr, 0);
                         if (errno == ERANGE ||
                             value > INT16_MAX || value < INT16_MIN) {
-                                vr_error_message("Could not parse as signed "
+                                vr_error_message(config,
+                                                 "Could not parse as signed "
                                                  "short");
                                 return false;
                         }
@@ -355,7 +374,8 @@ parse_datum(enum vr_format_mode mode,
                         long value = strtol(*text, &endptr, 0);
                         if (errno == ERANGE ||
                             value > INT32_MAX || value < INT32_MIN) {
-                                vr_error_message("Could not parse as "
+                                vr_error_message(config,
+                                                 "Could not parse as "
                                                  "signed integer");
                                 return false;
                         }
@@ -366,7 +386,8 @@ parse_datum(enum vr_format_mode mode,
                         long value = strtol(*text, &endptr, 0);
                         if (errno == ERANGE ||
                             value > INT64_MAX || value < INT64_MIN) {
-                                vr_error_message("Could not parse as "
+                                vr_error_message(config,
+                                                 "Could not parse as "
                                                  "signed long");
                                 return false;
                         }
@@ -423,7 +444,8 @@ get_alignment(const struct vr_format *format)
  * then return false
  */
 static bool
-parse_header_line(struct vbo_data *data,
+parse_header_line(const struct vr_config *config,
+                  struct vbo_data *data,
                   const char *line)
 {
         struct vr_vbo *vbo = data->vbo;
@@ -458,7 +480,7 @@ parse_header_line(struct vbo_data *data,
                         vr_calloc(sizeof *attrib);
                 vr_list_insert(vbo->attribs.prev, &attrib->link);
 
-                bool res = parse_vertex_attrib(attrib, column_header);
+                bool res = parse_vertex_attrib(config, attrib, column_header);
 
                 vr_free(column_header);
 
@@ -489,7 +511,8 @@ parse_header_line(struct vbo_data *data,
  * then return false.
  */
 static bool
-parse_data_line(struct vbo_data *data,
+parse_data_line(const struct vr_config *config,
+                struct vbo_data *data,
                 const char *line)
 {
         struct vr_vbo *vbo = data->vbo;
@@ -507,7 +530,8 @@ parse_data_line(struct vbo_data *data,
                                      attrib->offset);
 
                 if (attrib->format->packed_size) {
-                        if (!parse_datum(VR_FORMAT_MODE_UINT,
+                        if (!parse_datum(config,
+                                         VR_FORMAT_MODE_UINT,
                                          attrib->format->packed_size,
                                          &line_ptr,
                                          data_ptr))
@@ -516,7 +540,8 @@ parse_data_line(struct vbo_data *data,
                 }
 
                 for (size_t j = 0; j < attrib->format->n_parts; ++j) {
-                        if (!parse_datum(attrib->format->parts[j].mode,
+                        if (!parse_datum(config,
+                                         attrib->format->parts[j].mode,
                                          attrib->format->parts[j].bits,
                                          &line_ptr,
                                          data_ptr))
@@ -531,7 +556,8 @@ parse_data_line(struct vbo_data *data,
         return true;
 
 error:
-        vr_error_message("At line %u of [vertex data] section. "
+        vr_error_message(config,
+                         "At line %u of [vertex data] section. "
                          "Offending text: %s",
                          data->line_num,
                          line_ptr);
@@ -546,7 +572,8 @@ error:
  * then return false
  */
 static bool
-parse_line(struct vbo_data *data,
+parse_line(const struct vr_config *config,
+           struct vbo_data *data,
            const char *line,
            const char *text_end)
 {
@@ -571,10 +598,10 @@ parse_line(struct vbo_data *data,
         bool ret;
 
         if (data->header_seen) {
-                ret = parse_data_line(data, line_copy);
+                ret = parse_data_line(config, data, line_copy);
         } else {
                 data->header_seen = true;
-                ret = parse_header_line(data, line_copy);
+                ret = parse_header_line(config, data, line_copy);
         }
 
         vr_free(line_copy);
@@ -590,7 +617,9 @@ parse_line(struct vbo_data *data,
  * then return NULL
  */
 struct vr_vbo *
-vr_vbo_parse(const char *text, size_t text_length)
+vr_vbo_parse(const struct vr_config *config,
+             const char *text,
+             size_t text_length)
 {
         const char *text_end = text + text_length;
         struct vbo_data data = {
@@ -603,7 +632,7 @@ vr_vbo_parse(const char *text, size_t text_length)
 
         const char *line = text;
         while (line < text_end) {
-                if (!parse_line(&data, line, text_end)) {
+                if (!parse_line(config, &data, line, text_end)) {
                         vr_vbo_free(data.vbo);
                         data.vbo = NULL;
                         break;

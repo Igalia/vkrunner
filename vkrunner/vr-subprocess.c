@@ -50,7 +50,8 @@ needs_quotes(const char *arg)
 }
 
 bool
-vr_subprocess_command(char * const *arguments)
+vr_subprocess_command(const struct vr_config *config,
+                      char * const *arguments)
 {
         BOOL res;
 
@@ -90,7 +91,9 @@ vr_subprocess_command(char * const *arguments)
         vr_buffer_destroy(&buffer);
 
         if (!res) {
-                vr_error_message("%s: CreateProcess failed", arguments[0]);
+                vr_error_message(config,
+                                 "%s: CreateProcess failed",
+                                 arguments[0]);
                 return false;
         }
 
@@ -113,14 +116,17 @@ vr_subprocess_command(char * const *arguments)
 #include <sys/wait.h>
 
 bool
-vr_subprocess_command(char * const *arguments)
+vr_subprocess_command(const struct vr_config *config,
+                      char * const *arguments)
 {
         pid_t pid;
 
         pid = fork();
 
         if (pid < 0) {
-                vr_error_message("fork failed: %s\n", strerror(errno));
+                vr_error_message(config,
+                                 "fork failed: %s\n",
+                                 strerror(errno));
                 return false;
         } else if (pid == 0) {
                 for (int i = 3; i < 256; i++)

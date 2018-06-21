@@ -28,6 +28,7 @@
 
 #include <vulkan/vulkan.h>
 #include <stdbool.h>
+#include "vr-config.h"
 
 struct vr_vk {
         void *lib_vulkan;
@@ -42,7 +43,8 @@ struct vr_vk {
 };
 
 bool
-vr_vk_load_libvulkan(struct vr_vk *vkfn);
+vr_vk_load_libvulkan(const struct vr_config *config,
+                     struct vr_vk *vkfn);
 
 void
 vr_vk_init_instance(struct vr_vk *vkfn,

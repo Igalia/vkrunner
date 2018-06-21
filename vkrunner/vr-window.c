@@ -163,7 +163,8 @@ init_depth_stencil_resources(struct vr_window *window)
                                   &window->depth_image);
         if (res != VK_SUCCESS) {
                 window->depth_image = NULL;
-                vr_error_message("Error creating depth/stencil image");
+                vr_error_message(window->config,
+                                 "Error creating depth/stencil image");
                 return false;
         }
 
@@ -174,7 +175,8 @@ init_depth_stencil_resources(struct vr_window *window)
                                       &window->depth_image_memory,
                                       NULL /* memory_type_index */);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error allocating depth/stencil memory");
+                vr_error_message(window->config,
+                                 "Error allocating depth/stencil memory");
                 return false;
         }
 
@@ -203,7 +205,8 @@ init_depth_stencil_resources(struct vr_window *window)
                                       &window->depth_image_view);
         if (res != VK_SUCCESS) {
                 window->depth_image_view = NULL;
-                vr_error_message("Error creating depth/stencil image view");
+                vr_error_message(window->config,
+                                 "Error creating depth/stencil image view");
                 return false;
         }
 
@@ -240,7 +243,7 @@ init_framebuffer_resources(struct vr_window *window)
                                   NULL, /* allocator */
                                   &window->color_image);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating VkImage");
+                vr_error_message(window->config, "Error creating VkImage");
                 return false;
         }
 
@@ -266,7 +269,8 @@ init_framebuffer_resources(struct vr_window *window)
                                    &window->linear_buffer);
         if (res != VK_SUCCESS) {
                 window->linear_buffer = NULL;
-                vr_error_message("Error creating linear buffer");
+                vr_error_message(window->config,
+                                 "Error creating linear buffer");
                 return false;
         }
 
@@ -278,7 +282,8 @@ init_framebuffer_resources(struct vr_window *window)
                                        &linear_memory_type,
                                        NULL /* offsets */);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error allocating linear buffer memory");
+                vr_error_message(window->config,
+                                 "Error allocating linear buffer memory");
                 return false;
         }
 
@@ -294,7 +299,8 @@ init_framebuffer_resources(struct vr_window *window)
                                 0, /* flags */
                                 &window->linear_memory_map);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error mapping linear memory");
+                vr_error_message(window->config,
+                                 "Error mapping linear memory");
                 return false;
         }
 
@@ -322,7 +328,8 @@ init_framebuffer_resources(struct vr_window *window)
                                       NULL, /* allocator */
                                       &window->color_image_view);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating image view");
+                vr_error_message(window->config,
+                                 "Error creating image view");
                 return false;
         }
 
@@ -351,7 +358,8 @@ init_framebuffer_resources(struct vr_window *window)
                                         &window->framebuffer);
         if (res != VK_SUCCESS) {
                 window->framebuffer = NULL;
-                vr_error_message("Error creating framebuffer");
+                vr_error_message(window->config,
+                                 "Error creating framebuffer");
                 return false;
         }
 
@@ -501,7 +509,8 @@ find_physical_device(struct vr_window *window,
                                                &count,
                                                NULL);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error enumerating VkPhysicalDevices");
+                vr_error_message(window->config,
+                                 "Error enumerating VkPhysicalDevices");
                 return VR_RESULT_FAIL;
         }
 
@@ -511,7 +520,8 @@ find_physical_device(struct vr_window *window,
                                                &count,
                                                devices);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error enumerating VkPhysicalDevices");
+                vr_error_message(window->config,
+                                 "Error enumerating VkPhysicalDevices");
                 return VR_RESULT_FAIL;
         }
 
@@ -534,7 +544,8 @@ find_physical_device(struct vr_window *window,
                 return VR_RESULT_PASS;
         }
 
-        vr_error_message("No suitable device and queue family found");
+        vr_error_message(window->config,
+                         "No suitable device and queue family found");
 
         return VR_RESULT_SKIP;
 }
@@ -628,7 +639,7 @@ create_render_pass(struct vr_window *window,
                                        render_pass_out);
         if (res != VK_SUCCESS) {
                 *render_pass_out = NULL;
-                vr_error_message("Error creating render pass");
+                vr_error_message(window->config, "Error creating render pass");
                 return false;
         }
 
@@ -674,7 +685,7 @@ init_vk(struct vr_window *window,
                                      &window->vk_instance);
 
         if (res != VK_SUCCESS) {
-                vr_error_message("Failed to create VkInstance");
+                vr_error_message(window->config, "Failed to create VkInstance");
                 vres = VR_RESULT_FAIL;
                 goto error;
         }
@@ -696,7 +707,8 @@ init_vk(struct vr_window *window,
                           window->framebuffer_format,
                           VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
                           VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
-                vr_error_message("Format %s is not supported as a color "
+                vr_error_message(window->config,
+                                 "Format %s is not supported as a color "
                                  "attachment and blit source",
                                  window->framebuffer_format->name);
                 vres = VR_RESULT_FAIL;
@@ -707,8 +719,9 @@ init_vk(struct vr_window *window,
             !check_format(window,
                           window->depth_stencil_format,
                           VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-                vr_error_message("Format %s is not supported as a depth/stencil "
-                                 "attachment",
+                vr_error_message(window->config,
+                                 "Format %s is not supported as a "
+                                 "depth/stencil attachment",
                                  window->depth_stencil_format->name);
                 return false;
         }
@@ -735,7 +748,7 @@ init_vk(struct vr_window *window,
                                    NULL, /* allocator */
                                    &window->device);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating VkDevice");
+                vr_error_message(window->config, "Error creating VkDevice");
                 vres = VR_RESULT_FAIL;
                 goto error;
         }
@@ -757,7 +770,8 @@ init_vk(struct vr_window *window,
                                         NULL, /* allocator */
                                         &window->command_pool);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating VkCommandPool");
+                vr_error_message(window->config,
+                                 "Error creating VkCommandPool");
                 vres = VR_RESULT_FAIL;
                 goto error;
         }
@@ -773,7 +787,8 @@ init_vk(struct vr_window *window,
                                              &window->command_buffer);
 
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating command buffer");
+                vr_error_message(window->config,
+                                 "Error creating command buffer");
                 vres = VR_RESULT_FAIL;
                 goto error;
         }
@@ -804,7 +819,8 @@ init_vk(struct vr_window *window,
                                            NULL, /* allocator */
                                            &window->descriptor_pool);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating VkDescriptorPool");
+                vr_error_message(window->config,
+                                 "Error creating VkDescriptorPool");
                 vres = VR_RESULT_FAIL;
                 goto error;
         }
@@ -830,7 +846,7 @@ init_vk(struct vr_window *window,
                                   NULL, /* allocator */
                                   &window->vk_fence);
         if (res != VK_SUCCESS) {
-                vr_error_message("Error creating fence");
+                vr_error_message(window->config, "Error creating fence");
                 vres = VR_RESULT_FAIL;
                 goto error;
         }
@@ -848,7 +864,8 @@ error:
 }
 
 enum vr_result
-vr_window_new(const VkPhysicalDeviceFeatures *requires,
+vr_window_new(const struct vr_config *config,
+              const VkPhysicalDeviceFeatures *requires,
               const char *const *extensions,
               const struct vr_format *framebuffer_format,
               const struct vr_format *depth_stencil_format,
@@ -858,11 +875,12 @@ vr_window_new(const VkPhysicalDeviceFeatures *requires,
         struct vr_vk *vkfn = &window->vkfn;
         enum vr_result vres;
 
-        if (!vr_vk_load_libvulkan(vkfn)) {
+        if (!vr_vk_load_libvulkan(config, vkfn)) {
                 vres = VR_RESULT_FAIL;
                 goto error;
         }
 
+        window->config = config;
         window->framebuffer_format = framebuffer_format;
         window->depth_stencil_format = depth_stencil_format;
 

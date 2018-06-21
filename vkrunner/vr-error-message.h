@@ -27,9 +27,11 @@
 #define VR_ERROR_MESSAGE_H
 
 #include "vr-util.h"
+#include "vr-config.h"
 
-VR_PRINTF_FORMAT(1, 2)
+VR_PRINTF_FORMAT(2, 3)
 void
-vr_error_message(const char *format, ...);
+vr_error_message(const struct vr_config *config,
+                 const char *format, ...);
 
 #endif /* VR_ERROR_MESSAGE_H */

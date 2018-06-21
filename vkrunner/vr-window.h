@@ -30,11 +30,14 @@
 #include "vr-vk.h"
 #include "vr-format.h"
 #include "vr-result.h"
+#include "vr-config.h"
 
 #define VR_WINDOW_WIDTH 250
 #define VR_WINDOW_HEIGHT 250
 
 struct vr_window {
+        const struct vr_config *config;
+
         VkDevice device;
         VkPhysicalDevice physical_device;
         VkPhysicalDeviceMemoryProperties memory_properties;
@@ -72,7 +75,8 @@ struct vr_window {
 };
 
 enum vr_result
-vr_window_new(const VkPhysicalDeviceFeatures *requires,
+vr_window_new(const struct vr_config *config,
+              const VkPhysicalDeviceFeatures *requires,
               const char *const *extensions,
               const struct vr_format *framebuffer_format,
               const struct vr_format *depth_stencil_format,

@@ -27,8 +27,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include "vr-config.h"
 
 bool
-vr_subprocess_command(char * const *arguments);
+vr_subprocess_command(const struct vr_config *config,
+                      char * const *arguments);
 
 #endif /* __VR_SUBPROCESS_H__ */

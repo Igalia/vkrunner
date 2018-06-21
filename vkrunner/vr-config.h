@@ -46,6 +46,25 @@ vr_config_add_token_replacement(struct vr_config *config,
                                 const char *token,
                                 const char *replacement);
 
+/* Sets a pointer to be passed back to the caller in all of the
+ * callback fuctions below.
+ */
+void
+vr_config_set_user_data(struct vr_config *config,
+                        void *user_data);
+
+typedef void
+(* vr_config_error_cb)(const char *message,
+                       void *user_data);
+
+/* Sets a callback that will be invoked whenever a test error is
+ * invoked such as a compilation error or a probed value was
+ * incorrect.
+ */
+void
+vr_config_set_error_cb(struct vr_config *config,
+                       vr_config_error_cb error_cb);
+
 void
 vr_config_free(struct vr_config *config);
 

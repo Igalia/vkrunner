@@ -45,6 +45,9 @@ struct vr_config {
         struct vr_list scripts;
         struct vr_list token_replacements;
         bool show_disassembly;
+
+        vr_config_error_cb error_cb;
+        void *user_data;
 };
 
 #endif /* VR_CONFIG_PRIVATE_H */
