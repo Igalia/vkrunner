@@ -253,3 +253,60 @@ below:
     mkdir compiled-examples
     ./precompile-script.py -o compiled-examples examples/*.shader_test
     ./src/vkrunner compiled-examples/*.shader_test
+
+## Library
+
+VkRunner can alternatively be used as a library to integrate it into
+another test suite. Running `make install` installs a static library,
+a header and a pkg-config file to configure it. An example to use it
+could be as follows:
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <time.h>
+    
+    #include <vkrunner/vkrunner.h>
+    
+    int
+    main(int argc, char **argv)
+    {
+            /* The contains a configuration of test scripts for VkRunner
+             * to execute.
+             */
+            struct vr_config *config = vr_config_new();
+    
+            /* Add all of the command line arguments as names of test
+             * scripts to run.
+             */
+            for (int i = 1; i < argc; i++)
+                    vr_config_add_script(config, argv[i]);
+    
+            /* The templating mechanism can be used to replace tokens in
+             * the test scripts
+             */
+            char current_time[64];
+            snprintf(current_time, sizeof current_time, "%i", time(NULL));
+            vr_config_add_token_replacement(config,
+                                            "@CURRENT_TIME@",
+                                            current_time);
+    
+            /* This executes all of the scripts added to the config and
+             * returns a result. If any of them failed it will be
+             * VR_RESULT_FAIL. Otherwise it can be VR_RESULT_SKIP if all
+             * of the tests required a feature not provided by the driver,
+             * or VR_PASS if they all passed.
+             */
+            enum vr_result result = vr_execute(config);
+    
+            vr_config_free(config);
+    
+            printf("Test status is: %s\n",
+                   vr_result_to_string(result));
+    
+            return result == VR_RESULT_FAIL ? EXIT_FAILURE : EXIT_SUCCESS;
+    }
+
+This can by compiled using a command like the following after running
+`make install` on VkRunner:
+
+    cc -o myrunner myrunner.c $(pkg-config --cflags --libs vkrunner)
