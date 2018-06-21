@@ -433,10 +433,12 @@ bind_pipeline_for_command(struct test_data *data,
 }
 
 static void
-print_command_fail(const struct vr_script_command *command)
+print_command_fail(const struct vr_config *config,
+                   const struct vr_script_command *command)
 {
-        printf("Command failed at line %i\n",
-               command->line_num);
+        vr_error_message(config,
+                         "Command failed at line %i",
+                         command->line_num);
 }
 
 static struct test_buffer *
@@ -651,28 +653,36 @@ compare_pixels(const double *color1,
 }
 
 static void
-print_components_double(const double *pixel,
+print_components_double(struct vr_buffer *buf,
+                        const double *pixel,
                         int n_components)
 {
-        int p;
-        for (p = 0; p < n_components; ++p)
-                printf(" %f", pixel[p]);
+        for (int p = 0; p < n_components; ++p)
+                vr_buffer_append_printf(buf, " %f", pixel[p]);
 }
 
 static void
-print_bad_pixel(int x, int y,
+print_bad_pixel(const struct vr_config *config,
+                int x, int y,
                 int n_components,
                 const double *expected,
                 const double *observed)
 {
-        printf("Probe color at (%i,%i)\n"
-               "  Expected:",
-               x, y);
-        print_components_double(expected, n_components);
-        printf("\n"
-               "  Observed:");
-        print_components_double(observed, n_components);
-        printf("\n");
+        struct vr_buffer buf = VR_BUFFER_STATIC_INIT;
+
+        vr_buffer_append_printf(&buf,
+                                "Probe color at (%i,%i)\n"
+                                "  Expected:",
+                                x, y);
+        print_components_double(&buf, expected, n_components);
+        vr_buffer_append_string(&buf,
+                                "\n"
+                                "  Observed:");
+        print_components_double(&buf, observed, n_components);
+
+        vr_error_message(config, "%s", (const char *) buf.data);
+
+        vr_buffer_destroy(&buf);
 }
 
 static bool
@@ -702,8 +712,10 @@ probe_rect(struct test_data *data,
                                             command->probe_rect.color,
                                             tolerance,
                                             n_components)) {
-                                print_command_fail(command);
-                                print_bad_pixel(x + command->probe_rect.x,
+                                print_command_fail(data->window->config,
+                                                   command);
+                                print_bad_pixel(data->window->config,
+                                                x + command->probe_rect.x,
                                                 y + command->probe_rect.y,
                                                 n_components,
                                                 command->probe_rect.color,
@@ -805,7 +817,7 @@ probe_ssbo(struct test_data *data,
                                            command->probe_ssbo.binding);
 
         if (buffer == NULL) {
-                print_command_fail(command);
+                print_command_fail(data->window->config, command);
                 vr_error_message(data->window->config,
                                  "Invalid binding in probe command");
                 return false;
@@ -815,7 +827,7 @@ probe_ssbo(struct test_data *data,
         size_t type_size = vr_box_type_size(expected->type);
 
         if (command->probe_ssbo.offset + type_size > buffer->size) {
-                print_command_fail(command);
+                print_command_fail(data->window->config, command);
                 vr_error_message(data->window->config,
                                  "Invalid offset in probe command");
                 return false;
@@ -831,7 +843,7 @@ probe_ssbo(struct test_data *data,
         if (!vr_box_compare(command->probe_ssbo.comparison,
                             &observed,
                             expected)) {
-                print_command_fail(command);
+                print_command_fail(data->window->config, command);
 
                 struct vr_buffer buf = VR_BUFFER_STATIC_INIT;
                 vr_buffer_append_string(&buf,
