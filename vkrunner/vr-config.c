@@ -53,13 +53,7 @@ static bool
 opt_image(struct vr_config *config,
           const char *arg)
 {
-        if (config->image_filename) {
-                fprintf(stderr, "duplicate -i option\n");
-                return false;
-        }
-
-        config->image_filename = vr_strdup(arg);
-
+        vr_config_set_image_filename(config, arg);
         return true;
 }
 
@@ -67,7 +61,7 @@ static bool
 opt_disassembly(struct vr_config *config,
                 const char *arg)
 {
-        config->show_disassembly = true;
+        vr_config_set_show_disassembly(config, true);
         return true;
 }
 
@@ -147,6 +141,21 @@ vr_config_add_token_replacement(struct vr_config *config,
         tr->replacement = vr_strdup(replacement);
 
         vr_list_insert(config->token_replacements.prev, &tr->link);
+}
+
+void
+vr_config_set_image_filename(struct vr_config *config,
+                             const char *image_filename)
+{
+        vr_free(config->image_filename);
+        config->image_filename = vr_strdup(image_filename);
+}
+
+void
+vr_config_set_show_disassembly(struct vr_config *config,
+                               bool show_disassembly)
+{
+        config->show_disassembly = show_disassembly;
 }
 
 static bool

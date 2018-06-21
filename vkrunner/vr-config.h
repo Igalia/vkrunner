@@ -47,6 +47,14 @@ vr_config_add_token_replacement(struct vr_config *config,
                                 const char *token,
                                 const char *replacement);
 
+void
+vr_config_set_image_filename(struct vr_config *config,
+                             const char *image_filename);
+
+void
+vr_config_set_show_disassembly(struct vr_config *config,
+                               bool show_disassembly);
+
 /* Sets a pointer to be passed back to the caller in all of the
  * callback fuctions below.
  */
