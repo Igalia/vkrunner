@@ -21,7 +21,7 @@ from [here](https://github.com/KhronosGroup/glslang/).
 
 ## [test] section:
 
-The `[test]` currently only supports the following commands:
+The `[test]` section supports the following commands:
 
 > draw rect [ortho] [patch] _x_ _y_ _width_ _height_
 
