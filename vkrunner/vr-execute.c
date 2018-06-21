@@ -152,9 +152,6 @@ vr_execute(const struct vr_config *config)
                                                config->user_data);
                 }
 
-                if (config->scripts.next->next != &config->scripts)
-                        printf("%s\n", script->filename);
-
                 enum vr_result res = process_script(config, script->filename);
 
                 if (config->after_test_cb) {

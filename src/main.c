@@ -219,6 +219,16 @@ process_argv(struct main_data *data,
         return true;
 }
 
+static void
+before_test_cb(const char *filename,
+               void *user_data)
+{
+        struct main_data *data = user_data;
+
+        if (data->n_scripts > 1)
+                printf("%s\n", filename);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -228,6 +238,9 @@ main(int argc, char **argv)
                 .config = vr_config_new(),
                 .n_scripts = 0
         };
+
+        vr_config_set_user_data(data.config, &data);
+        vr_config_set_before_test_cb(data.config, before_test_cb);
 
         if (!process_argv(&data, argc, argv)) {
                 vr_config_free(data.config);
