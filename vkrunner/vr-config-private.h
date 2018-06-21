@@ -47,6 +47,8 @@ struct vr_config {
         bool show_disassembly;
 
         vr_config_error_cb error_cb;
+        vr_config_before_test_cb before_test_cb;
+        vr_config_after_test_cb after_test_cb;
         void *user_data;
 };
 

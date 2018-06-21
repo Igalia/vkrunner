@@ -27,6 +27,7 @@
 #define VR_CONFIG_H
 
 #include <stdbool.h>
+#include <vkrunner/vr-result.h>
 
 struct vr_config;
 
@@ -64,6 +65,26 @@ typedef void
 void
 vr_config_set_error_cb(struct vr_config *config,
                        vr_config_error_cb error_cb);
+
+typedef void
+(* vr_config_before_test_cb)(const char *filename,
+                             void *user_data);
+
+
+/* Sets a callback to invoke before every test case is run. */
+void
+vr_config_set_before_test_cb(struct vr_config *config,
+                             vr_config_before_test_cb before_test_cb);
+
+typedef void
+(* vr_config_after_test_cb)(const char *filename,
+                            enum vr_result result,
+                            void *user_data);
+
+/* Sets a callback to invoke after every test case is run. */
+void
+vr_config_set_after_test_cb(struct vr_config *config,
+                            vr_config_after_test_cb after_test_cb);
 
 void
 vr_config_free(struct vr_config *config);

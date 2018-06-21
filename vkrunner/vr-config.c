@@ -252,6 +252,20 @@ vr_config_set_error_cb(struct vr_config *config,
         config->error_cb = error_cb;
 }
 
+void
+vr_config_set_before_test_cb(struct vr_config *config,
+                             vr_config_before_test_cb before_test_cb)
+{
+        config->before_test_cb = before_test_cb;
+}
+
+void
+vr_config_set_after_test_cb(struct vr_config *config,
+                            vr_config_after_test_cb after_test_cb)
+{
+        config->after_test_cb = after_test_cb;
+}
+
 struct vr_config *
 vr_config_new(void)
 {

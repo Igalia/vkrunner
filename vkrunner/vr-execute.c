@@ -147,10 +147,22 @@ vr_execute(const struct vr_config *config)
 
         const struct vr_config_script *script;
         vr_list_for_each(script, &config->scripts, link) {
+                if (config->before_test_cb) {
+                        config->before_test_cb(script->filename,
+                                               config->user_data);
+                }
+
                 if (config->scripts.next->next != &config->scripts)
                         printf("%s\n", script->filename);
 
                 enum vr_result res = process_script(config, script->filename);
+
+                if (config->after_test_cb) {
+                        config->after_test_cb(script->filename,
+                                              res,
+                                              config->user_data);
+                }
+
                 overall_result = vr_result_merge(res, overall_result);
         }
 
