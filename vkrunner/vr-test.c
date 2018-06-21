@@ -891,7 +891,7 @@ allocate_ubo_buffers(struct test_data *data)
         if (res != VK_SUCCESS) {
                 data->ubo_descriptor_set = NULL;
                 vr_error_message(data->window->config,
-                                 "Error allocationg descriptor set");
+                                 "Error allocating descriptor set");
                 return false;
         }
 
