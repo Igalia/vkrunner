@@ -77,8 +77,8 @@ if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
   vkrunner_add_lib(dl)
 endif()
 
-target_include_directories(vkrunner PUBLIC ${VULKAN_INCLUDE_DIRS})
-target_compile_options(vkrunner PUBLIC ${VULKAN_CFLAGS_OTHER})
+include_directories(${VULKAN_INCLUDE_DIRS})
+add_definitions(${VULKAN_CFLAGS_OTHER})
 
 install(TARGETS vkrunner DESTINATION lib)
 install(FILES ${VKRUNNER_PUBLIC_HEADERS} DESTINATION include/vkrunner)
