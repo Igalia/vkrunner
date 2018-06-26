@@ -157,8 +157,12 @@ struct vr_script {
 };
 
 struct vr_script *
-vr_script_load(const struct vr_config *config,
-               const char *filename);
+vr_script_load_from_file(const struct vr_config *config,
+                         const char *filename);
+
+struct vr_script *
+vr_script_load_from_string(const struct vr_config *config,
+                           const char *string);
 
 void
 vr_script_free(struct vr_script *script);

@@ -205,7 +205,7 @@ process_argv(struct main_data *data,
                 handled_arg:
                         (void) 0;
                 } else {
-                        vr_config_add_script(data->config, argv[i]);
+                        vr_config_add_script_file(data->config, argv[i]);
                         data->n_scripts++;
                 }
         }

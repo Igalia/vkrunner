@@ -31,7 +31,8 @@
 
 struct vr_config_script {
         struct vr_list link;
-        char filename[];
+        char *filename;
+        char *string;
 };
 
 struct vr_config_token_replacement {

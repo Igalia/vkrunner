@@ -35,8 +35,12 @@ struct vr_config *
 vr_config_new(void);
 
 void
-vr_config_add_script(struct vr_config *config,
-                     const char *filename);
+vr_config_add_script_file(struct vr_config *config,
+                          const char *filename);
+
+void
+vr_config_add_script_string(struct vr_config *config,
+                            const char *string);
 
 void
 vr_config_add_token_replacement(struct vr_config *config,

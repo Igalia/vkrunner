@@ -216,13 +216,18 @@ create_external_context(struct vr_executor *executor,
 static enum vr_result
 process_script(struct vr_executor *executor,
                const struct vr_config *config,
-               const char *filename)
+               const char *filename,
+               const char *string)
 {
         enum vr_result res = VR_RESULT_PASS;
         struct vr_script *script = NULL;
         struct vr_pipeline *pipeline = NULL;
 
-        script = vr_script_load(config, filename);
+        if (string)
+                script = vr_script_load_from_string(config, string);
+        else
+                script = vr_script_load_from_file(config, filename);
+
         if (script == NULL) {
                 res = VR_RESULT_FAIL;
                 goto out;
@@ -352,7 +357,10 @@ vr_executor_execute(struct vr_executor *executor,
                 }
 
                 enum vr_result res =
-                        process_script(executor, config, script->filename);
+                        process_script(executor,
+                                       config,
+                                       script->filename,
+                                       script->string);
 
                 if (config->after_test_cb) {
                         config->after_test_cb(script->filename,
