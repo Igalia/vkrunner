@@ -748,95 +748,6 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
         return descriptor_set_layout;
 }
 
-static int
-find_key(size_t haystack_size,
-         const struct vr_pipeline_key *haystack,
-         const struct vr_pipeline_key *needle)
-{
-        for (int i = 0; i < haystack_size; i++) {
-                if (vr_pipeline_key_equal(haystack + i, needle))
-                        return i;
-        }
-
-        return -1;
-}
-
-static const struct vr_pipeline_key *
-get_key_for_command(const struct vr_script_command *command)
-{
-        if (command->op == VR_SCRIPT_OP_DRAW_RECT) {
-                return &command->draw_rect.key;
-        } else if (command->op == VR_SCRIPT_OP_DRAW_ARRAYS) {
-                return &command->draw_arrays.key;
-        } else {
-                return NULL;
-        }
-}
-
-static void
-get_keys(const struct vr_script *script,
-         struct vr_pipeline_key **keys_out,
-         int *n_keys_out)
-{
-        int n_keys = 0;
-        struct vr_buffer buffer = VR_BUFFER_STATIC_INIT;
-
-        for (int i = 0; i < script->n_commands; i++) {
-                const struct vr_script_command *command = script->commands + i;
-                const struct vr_pipeline_key *command_key;
-
-                command_key = get_key_for_command(command);
-                if (command_key == NULL)
-                        continue;
-
-                int key_index = find_key(n_keys,
-                                         (struct vr_pipeline_key *) buffer.data,
-                                         command_key);
-                if (key_index != -1)
-                        continue;
-
-                vr_buffer_set_length(&buffer,
-                                     buffer.length +
-                                     sizeof (struct vr_pipeline_key));
-                struct vr_pipeline_key *key =
-                        (struct vr_pipeline_key *) (buffer.data +
-                                                    buffer.length) - 1;
-                *key = *command_key;
-                n_keys++;
-        }
-
-        if (n_keys == 0) {
-                /* Always create at least one pipeline */
-                struct vr_pipeline_key default_key;
-                vr_pipeline_key_init(&default_key);
-                *keys_out = vr_memdup(&default_key, sizeof default_key);
-                *n_keys_out = 1;
-        } else {
-                *keys_out = (struct vr_pipeline_key *) buffer.data;
-                *n_keys_out = n_keys;
-        }
-}
-
-VkPipeline
-vr_pipeline_for_command(struct vr_pipeline *pipeline,
-                        const struct vr_script_command *command)
-{
-        const struct vr_pipeline_key *key;
-
-        if (command->op == VR_SCRIPT_OP_DISPATCH_COMPUTE)
-                return pipeline->compute_pipeline;
-
-        key = get_key_for_command(command);
-        assert(key != NULL);
-
-        int key_index = find_key(pipeline->n_pipelines,
-                                 pipeline->keys,
-                                 key);
-        assert(key_index != -1);
-
-        return pipeline->pipelines[key_index];
-}
-
 struct vr_pipeline *
 vr_pipeline_create(const struct vr_config *config,
                    struct vr_window *window,
@@ -883,7 +794,18 @@ vr_pipeline_create(const struct vr_config *config,
                 goto error;
 
         if (pipeline->stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
-                get_keys(script, &pipeline->keys, &pipeline->n_pipelines);
+                const struct vr_pipeline_key *keys;
+                struct vr_pipeline_key base_key;
+
+                if (script->n_pipeline_keys > 0) {
+                        keys = script->pipeline_keys;
+                        pipeline->n_pipelines = script->n_pipeline_keys;
+                } else {
+                        /* Always create at least one pipeline */
+                        vr_pipeline_key_init(&base_key);
+                        keys = &base_key;
+                        pipeline->n_pipelines = 1;
+                }
 
                 pipeline->pipelines = vr_calloc(sizeof (VkPipeline) *
                                                 pipeline->n_pipelines);
@@ -894,7 +816,7 @@ vr_pipeline_create(const struct vr_config *config,
                         pipeline->pipelines[i] =
                                 create_vk_pipeline(pipeline,
                                                    script,
-                                                   pipeline->keys + i,
+                                                   keys + i,
                                                    i == 0 && use_derivatives,
                                                    pipeline->pipelines[0]);
                         if (pipeline->pipelines[i] == NULL)
@@ -936,7 +858,6 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
                 }
         }
         vr_free(pipeline->pipelines);
-        vr_free(pipeline->keys);
 
         if (pipeline->pipeline_cache) {
                 vkfn->vkDestroyPipelineCache(window->device,

@@ -35,7 +35,6 @@ struct vr_pipeline {
         struct vr_window *window;
         VkPipelineLayout layout;
         VkDescriptorSetLayout descriptor_set_layout;
-        struct vr_pipeline_key *keys;
         int n_pipelines;
         VkPipeline *pipelines;
         VkPipelineCache pipeline_cache;
@@ -52,10 +51,6 @@ struct vr_pipeline *
 vr_pipeline_create(const struct vr_config *config,
                    struct vr_window *window,
                    const struct vr_script *script);
-
-VkPipeline
-vr_pipeline_for_command(struct vr_pipeline *pipeline,
-                        const struct vr_script_command *command);
 
 void
 vr_pipeline_free(struct vr_pipeline *pipeline);

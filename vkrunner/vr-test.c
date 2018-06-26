@@ -410,11 +410,10 @@ bind_ubo_descriptor_set(struct test_data *data)
 }
 
 static void
-bind_pipeline_for_command(struct test_data *data,
-                          const struct vr_script_command *command)
+bind_pipeline(struct test_data *data,
+              VkPipeline pipeline)
 {
         struct vr_vk *vkfn = &data->window->vkfn;
-        VkPipeline pipeline = vr_pipeline_for_command(data->pipeline, command);
 
         if (pipeline == data->bound_pipeline)
                 return;
@@ -498,7 +497,9 @@ draw_rect(struct test_data *data,
                         VK_WHOLE_SIZE);
 
         bind_ubo_descriptor_set(data);
-        bind_pipeline_for_command(data, command);
+        VkPipeline pipeline =
+                data->pipeline->pipelines[command->draw_rect.pipeline_key];
+        bind_pipeline(data, pipeline);
 
         vkfn->vkCmdBindVertexBuffers(data->window->command_buffer,
                                      0, /* firstBinding */
@@ -594,7 +595,9 @@ draw_arrays(struct test_data *data,
         }
 
         bind_ubo_descriptor_set(data);
-        bind_pipeline_for_command(data, command);
+        VkPipeline pipeline =
+                data->pipeline->pipelines[command->draw_arrays.pipeline_key];
+        bind_pipeline(data, pipeline);
 
         if (command->draw_arrays.indexed) {
                 if (!ensure_index_buffer(data))
@@ -630,7 +633,7 @@ dispatch_compute(struct test_data *data,
                 return false;
 
         bind_ubo_descriptor_set(data);
-        bind_pipeline_for_command(data, command);
+        bind_pipeline(data, data->pipeline->compute_pipeline);
 
         vkfn->vkCmdDispatch(data->window->command_buffer,
                             command->dispatch_compute.x,

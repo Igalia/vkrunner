@@ -76,7 +76,7 @@ struct vr_script_command {
         union {
                 struct {
                         float x, y, w, h;
-                        struct vr_pipeline_key key;
+                        unsigned pipeline_key;
                 } draw_rect;
 
                 struct {
@@ -122,7 +122,7 @@ struct vr_script_command {
                         uint32_t instance_count;
                         uint32_t first_vertex;
                         uint32_t first_instance;
-                        struct vr_pipeline_key key;
+                        unsigned pipeline_key;
                 } draw_arrays;
         };
 };
@@ -143,6 +143,8 @@ struct vr_script {
         struct vr_list stages[VR_SCRIPT_N_STAGES];
         size_t n_commands;
         struct vr_script_command *commands;
+        size_t n_pipeline_keys;
+        struct vr_pipeline_key *pipeline_keys;
         VkPhysicalDeviceFeatures required_features;
         const char *const *extensions;
         const struct vr_format *framebuffer_format;

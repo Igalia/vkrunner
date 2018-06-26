@@ -65,6 +65,7 @@ struct load_state {
         enum vr_script_source_type current_source_type;
         enum section current_section;
         struct vr_buffer commands;
+        struct vr_buffer pipeline_keys;
         struct vr_buffer extensions;
         struct vr_buffer buffers;
         struct vr_pipeline_key current_key;
@@ -869,6 +870,25 @@ process_require_line(struct load_state *data)
         return false;
 }
 
+static unsigned
+add_pipeline_key(struct load_state *data,
+                 const struct vr_pipeline_key *key)
+{
+        unsigned n_keys = (data->pipeline_keys.length /
+                           sizeof (struct vr_pipeline_key));
+        const struct vr_pipeline_key *keys =
+                (const struct vr_pipeline_key *) data->pipeline_keys.data;
+
+        for (unsigned i = 0; i < n_keys; i++) {
+                if (vr_pipeline_key_equal(keys + i, key))
+                        return i;
+        }
+
+        vr_buffer_append(&data->pipeline_keys, key, sizeof *key);
+
+        return n_keys;
+}
+
 static bool
 process_draw_rect_command(struct load_state *data,
                           const char *p,
@@ -882,16 +902,16 @@ process_draw_rect_command(struct load_state *data,
         if (looking_at(&p, "ortho "))
                 ortho = true;
 
-        struct vr_pipeline_key *key = &command->draw_rect.key;
-
-        *key = data->current_key;
-        key->source = VR_PIPELINE_KEY_SOURCE_RECTANGLE;
+        struct vr_pipeline_key key = data->current_key;
+        key.source = VR_PIPELINE_KEY_SOURCE_RECTANGLE;
 
         if (looking_at(&p, "patch "))
-                key->topology.i = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+                key.topology.i = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
         else
-                key->topology.i = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-        key->patchControlPoints.i = 4;
+                key.topology.i = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+        key.patchControlPoints.i = 4;
+
+        command->draw_rect.pipeline_key = add_pipeline_key(data, &key);
 
         if (!parse_floats(&p, &command->draw_rect.x, 4, NULL) ||
             !is_end(p))
@@ -1084,8 +1104,9 @@ process_draw_arrays_command(struct load_state *data,
         int n_args = 2;
 
         command->draw_arrays.indexed = false;
-        command->draw_arrays.key = data->current_key;
-        command->draw_arrays.key.source = VR_PIPELINE_KEY_SOURCE_VERTEX_DATA;
+
+        struct vr_pipeline_key key = data->current_key;
+        key.source = VR_PIPELINE_KEY_SOURCE_VERTEX_DATA;
 
         while (true) {
                 if (looking_at(&p, "instanced ")) {
@@ -1137,8 +1158,7 @@ process_draw_arrays_command(struct load_state *data,
 
         for (int i = 0; i < VR_N_ELEMENTS(topologies); i++) {
                 if (looking_at(&p, topologies[i].name)) {
-                        command->draw_arrays.key.topology.i =
-                                topologies[i].topology;
+                        key.topology.i = topologies[i].topology;
                         goto found_topology;
                 }
         }
@@ -1164,6 +1184,7 @@ found_topology:
         command->draw_arrays.vertex_count = args[1];
         command->draw_arrays.first_instance = 0;
         command->draw_arrays.instance_count = args[2];
+        command->draw_arrays.pipeline_key = add_pipeline_key(data, &key);
 
         return true;
 }
@@ -1915,6 +1936,7 @@ load_script_from_stream(const struct vr_config *config,
                 .line = VR_BUFFER_STATIC_INIT,
                 .buffer = VR_BUFFER_STATIC_INIT,
                 .commands = VR_BUFFER_STATIC_INIT,
+                .pipeline_keys = VR_BUFFER_STATIC_INIT,
                 .extensions = VR_BUFFER_STATIC_INIT,
                 .buffers = VR_BUFFER_STATIC_INIT,
                 .current_stage = -1,
@@ -1957,6 +1979,10 @@ load_script_from_stream(const struct vr_config *config,
         data.script->commands = (struct vr_script_command *) data.commands.data;
         data.script->n_commands = (data.commands.length /
                                    sizeof (struct vr_script_command));
+        data.script->pipeline_keys =
+                (struct vr_pipeline_key *) data.pipeline_keys.data;
+        data.script->n_pipeline_keys = (data.pipeline_keys.length /
+                                        sizeof (struct vr_pipeline_key));
         data.script->extensions =
                 (const char *const *) data.extensions.data;
         data.script->indices = (uint16_t *) data.indices.data;
@@ -2032,6 +2058,8 @@ vr_script_free(struct vr_script *script)
         vr_free(script->filename);
 
         vr_free(script->commands);
+
+        vr_free(script->pipeline_keys);
 
         vr_free(script->buffers);
 
