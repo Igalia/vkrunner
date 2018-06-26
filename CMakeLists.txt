@@ -4,8 +4,6 @@ include(TestBigEndian)
 include(CheckLibraryExists)
 include(CheckFunctionExists)
 include(CheckCCompilerFlag)
-include(FindPkgConfig)
-include(CheckIncludeFile)
 
 project(VkRunner)
 set(VKRUNNER_VERSION 0.1)
@@ -36,15 +34,6 @@ endif()
 CHECK_FUNCTION_EXISTS(ffsl HAVE_FFSL)
 if(HAVE_FFSL)
   add_definitions(-DHAVE_FFSL)
-endif()
-
-pkg_check_modules(VULKAN vulkan)
-if(NOT VULKAN_FOUND)
-  CHECK_INCLUDE_FILE(vulkan/vulkan.h HAVE_VULKAN_HEADER)
-  if(NOT HAVE_VULKAN_HEADER)
-    message(FATAL_ERROR
-      "No vulkan pkg-config package nor vulkan header was found")
-  endif()
 endif()
 
 configure_file(
