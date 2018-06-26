@@ -41,7 +41,6 @@
 #include "vr-error-message.h"
 #include "vr-feature-offsets.h"
 #include "vr-window.h"
-#include "vr-base64.h"
 
 enum section {
         SECTION_NONE,
@@ -60,7 +59,6 @@ struct load_state {
         struct vr_script *script;
         struct vr_buffer buffer;
         struct vr_buffer line;
-        struct vr_base64_data base64_decoder;
         enum vr_script_shader_stage current_stage;
         enum vr_script_source_type current_source_type;
         enum section current_section;
@@ -127,16 +125,6 @@ add_shader(struct load_state *data,
 static bool
 end_shader(struct load_state *data)
 {
-        if (data->current_source_type == VR_SCRIPT_SOURCE_TYPE_BINARY &&
-            !vr_base64_decode_end(&data->base64_decoder,
-                                  &data->buffer)) {
-                vr_error_message(data->config,
-                                 "%s:%i: Invalid base64 data",
-                                 data->filename,
-                                 data->line_num);
-                return false;
-        }
-
         add_shader(data,
                    data->current_stage,
                    data->current_source_type,
@@ -1662,7 +1650,6 @@ is_stage_section(struct load_state *data,
                         if (is_string(stage_names[stage], start, end)) {
                                 data->current_source_type =
                                         VR_SCRIPT_SOURCE_TYPE_BINARY;
-                                vr_base64_decode_start(&data->base64_decoder);
                                 goto found;
                         }
                 }
@@ -1788,6 +1775,72 @@ process_section_header(struct load_state *data)
         return false;
 }
 
+static int
+hex_value(char ch)
+{
+        if (ch < '0')
+                return -1;
+        if (ch <= '9')
+                return ch - '0';
+        if (ch < 'A')
+                return -1;
+        if (ch <= 'F')
+                return ch - 'A' + 10;
+        if (ch < 'a')
+                return -1;
+        if (ch <= 'f')
+                return ch - 'a' + 10;
+        return -1;
+}
+
+static bool
+decode_binary(struct load_state *data,
+              const char *line,
+              size_t length)
+{
+        const char *end = line + length;
+
+        while (true) {
+                /* Skip spaces and finish if we encounter the end of
+                 * the line */
+                while (true) {
+                        if (line >= end)
+                                return true;
+                        if (!isspace(*line))
+                                break;
+                        line++;
+                }
+
+                /* Skip comments */
+                if (*line == '#')
+                        return true;
+
+                /* If it’s not a space then it must be a hex digit */
+                int digit = hex_value(*(line++));
+
+                if (digit == -1) {
+                        vr_error_message(data->config,
+                                         "%s:%i: Invalid character "
+                                         "in binary data",
+                                         data->filename,
+                                         data->line_num);
+                        return false;
+                }
+
+                uint32_t value = digit;
+
+                while (line < end) {
+                        digit = hex_value(*line);
+                        if (digit == -1)
+                                break;
+                        value = (value << 4) | digit;
+                        line++;
+                }
+
+                vr_buffer_append(&data->buffer, &value, sizeof value);
+        }
+}
+
 static bool
 process_line(struct load_state *data)
 {
@@ -1806,16 +1859,10 @@ process_line(struct load_state *data)
 
         case SECTION_SHADER:
                 if (data->current_source_type == VR_SCRIPT_SOURCE_TYPE_BINARY) {
-                        if (!vr_base64_decode(&data->base64_decoder,
-                                              data->line.data,
-                                              data->line.length,
-                                              &data->buffer)) {
-                                vr_error_message(data->config,
-                                                 "%s:%i: Invalid base64 data",
-                                                 data->filename,
-                                                 data->line_num);
+                        if (!decode_binary(data,
+                                           (const char *) data->line.data,
+                                           data->line.length))
                                 return false;
-                        }
                 } else {
                         vr_buffer_append(&data->buffer,
                                          data->line.data,

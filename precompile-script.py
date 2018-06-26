@@ -27,11 +27,11 @@ from __future__ import (
 
 import re
 import tempfile
-import base64
 import sys
 import subprocess
 import argparse
 import os
+import struct
 
 
 SECTION_RE = re.compile(r'^\[([^]]+)\]\s*$')
@@ -74,7 +74,37 @@ class Converter:
 
         self._tempfile.close()
 
-        print(base64.b64encode(data).decode('ascii'), file=self._fout)
+        if len(data) < 4 or len(data) % 4 != 0:
+            print("Resulting binary SPIR-V file has an invalid size",
+                  file=sys.stderr)
+            sys.exit(1)
+
+        magic_header = struct.unpack(">I", data[0:4])[0]
+
+        if magic_header == 0x07230203:
+            byte_order = ">I"
+        elif magic_header == 0x03022307:
+            byte_order = "<I"
+        else:
+            print("Resulting binary SPIR-V has an invalid magic number",
+                  file=sys.stderr)
+            sys.exit(1)
+
+        line_pos = 0
+        for offset in range(0, len(data), 4):
+            value = struct.unpack(byte_order, data[offset:offset+4])[0]
+            hex_str = "{:x}".format(value)
+            if len(hex_str) + line_pos + 1 > 80:
+                line_pos = 0
+                print(file=self._fout)
+            elif line_pos > 0:
+                print(' ', file=self._fout, end='')
+                line_pos += 1
+            print(hex_str, file=self._fout, end='')
+            line_pos += len(hex_str)
+
+        if line_pos > 0:
+            print(file=self._fout)
         print(file=self._fout)
 
 

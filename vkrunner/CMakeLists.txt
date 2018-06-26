@@ -12,8 +12,6 @@ set(VKRUNNER_PUBLIC_HEADERS
 set(VKRUNNER_SOURCE_FILES
         vr-allocate-store.c
         vr-allocate-store.h
-        vr-base64.c
-        vr-base64.h
         vr-box.c
         vr-box.h
         vr-buffer.c
