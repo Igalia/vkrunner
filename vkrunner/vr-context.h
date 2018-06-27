@@ -2,6 +2,7 @@
  * vkrunner
  *
  * Copyright (C) 2017 Neil Roberts
+ * Copyright (C) 2018 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,16 +24,40 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_FLUSH_MEMORY_H
-#define VR_FLUSH_MEMORY_H
+#ifndef VR_CONTEXT_H
+#define VR_CONTEXT_H
 
-#include "vr-context.h"
+#include <stdbool.h>
+#include "vr-vk.h"
+#include "vr-result.h"
+#include "vr-config.h"
 
-VkResult
-vr_flush_memory(struct vr_context *context,
-                int memory_type_index,
-                VkDeviceMemory memory,
-                VkDeviceSize offset,
-                VkDeviceSize size);
+struct vr_context {
+        const struct vr_config *config;
 
-#endif /* VR_FLUSH_MEMORY_H */
+        VkDevice device;
+        VkPhysicalDevice physical_device;
+        VkPhysicalDeviceMemoryProperties memory_properties;
+        VkPhysicalDeviceProperties device_properties;
+        VkPhysicalDeviceFeatures features;
+        VkDescriptorPool descriptor_pool;
+        VkCommandPool command_pool;
+        VkCommandBuffer command_buffer;
+        VkQueue queue;
+        int queue_family;
+        VkInstance vk_instance;
+        VkFence vk_fence;
+
+        struct vr_vk vkfn;
+};
+
+enum vr_result
+vr_context_new(const struct vr_config *config,
+               const VkPhysicalDeviceFeatures *requires,
+               const char *const *extensions,
+               struct vr_context **context_out);
+
+void
+vr_context_free(struct vr_context *context);
+
+#endif /* VR_CONTEXT_H */

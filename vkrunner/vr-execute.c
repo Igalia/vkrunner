@@ -96,6 +96,7 @@ process_script(const struct vr_config *config,
 {
         enum vr_result res = VR_RESULT_PASS;
         struct vr_script *script = NULL;
+        struct vr_context *context = NULL;
         struct vr_window *window = NULL;
         struct vr_pipeline *pipeline = NULL;
 
@@ -105,9 +106,14 @@ process_script(const struct vr_config *config,
                 goto out;
         }
 
-        res = vr_window_new(config,
-                            &script->required_features,
-                            script->extensions,
+        res = vr_context_new(config,
+                             &script->required_features,
+                             script->extensions,
+                             &context);
+        if (res != VR_RESULT_PASS)
+                goto out;
+
+        res = vr_window_new(context,
                             script->framebuffer_format,
                             script->depth_stencil_format,
                             &window);
@@ -134,6 +140,8 @@ out:
                 vr_pipeline_free(pipeline);
         if (window)
                 vr_window_free(window);
+        if (context)
+                vr_context_free(context);
         if (script)
                 vr_script_free(script);
 

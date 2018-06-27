@@ -28,15 +28,15 @@
 #include "vr-flush-memory.h"
 
 VkResult
-vr_flush_memory(struct vr_window *window,
+vr_flush_memory(struct vr_context *context,
                 int memory_type_index,
                 VkDeviceMemory memory,
                 VkDeviceSize offset,
                 VkDeviceSize size)
 {
-        struct vr_vk *vkfn = &window->vkfn;
+        struct vr_vk *vkfn = &context->vkfn;
         const VkMemoryType *memory_type =
-                &window->memory_properties.memoryTypes[memory_type_index];
+                &context->memory_properties.memoryTypes[memory_type_index];
 
         /* We don’t need to do anything if the memory is already
          * coherent */
@@ -49,7 +49,7 @@ vr_flush_memory(struct vr_window *window,
                 .offset = offset,
                 .size = size
         };
-        return vkfn->vkFlushMappedMemoryRanges(window->device,
+        return vkfn->vkFlushMappedMemoryRanges(context->device,
                                                1, /* memoryRangeCount */
                                                &mapped_memory_range);
 }

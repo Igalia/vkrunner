@@ -17,6 +17,8 @@ set(VKRUNNER_SOURCE_FILES
         vr-buffer.c
         vr-buffer.h
         vr-config.c
+        vr-context.c
+        vr-context.h
         vr-enum-table.h
         vr-error-message.c
         vr-error-message.h

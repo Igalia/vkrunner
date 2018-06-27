@@ -26,10 +26,10 @@
 #ifndef VR_ALLOCATE_STORE_H
 #define VR_ALLOCATE_STORE_H
 
-#include "vr-window.h"
+#include "vr-context.h"
 
 VkResult
-vr_allocate_store_image(struct vr_window *window,
+vr_allocate_store_image(struct vr_context *context,
                         uint32_t memory_type_flags,
                         int n_images,
                         const VkImage *images,
@@ -37,7 +37,7 @@ vr_allocate_store_image(struct vr_window *window,
                         int *memory_type_index_out);
 
 VkResult
-vr_allocate_store_buffer(struct vr_window *window,
+vr_allocate_store_buffer(struct vr_context *context,
                          uint32_t memory_type_flags,
                          int n_buffers,
                          const VkBuffer *buffers,
