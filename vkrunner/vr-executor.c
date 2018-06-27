@@ -55,7 +55,10 @@ write_ppm(struct vr_window *window,
         FILE *out = fopen(filename, "w");
 
         if (out == NULL) {
-                vr_error_message(window->config, "%s: %s", filename, strerror(errno));
+                vr_error_message(window->config,
+                                 "%s: %s",
+                                 filename,
+                                 strerror(errno));
                 return false;
         }
 
