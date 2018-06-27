@@ -256,6 +256,26 @@ process_script(struct vr_executor *executor,
                 }
         }
 
+        if (executor->use_external) {
+                if (!vr_context_check_features(executor->context,
+                                               &script->required_features)) {
+                        vr_error_message(config,
+                                         "%s: A required feature is missing",
+                                         script->filename);
+                        res = VR_RESULT_SKIP;
+                        goto out;
+                }
+
+                if (!vr_context_check_extensions(executor->context,
+                                                 script->extensions)) {
+                        vr_error_message(config,
+                                         "%s: A required extension is missing",
+                                         script->filename);
+                        res = VR_RESULT_SKIP;
+                        goto out;
+                }
+        }
+
         if (executor->window == NULL) {
                 res = vr_window_new(executor->context,
                                     script->framebuffer_format,

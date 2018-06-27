@@ -68,6 +68,14 @@ vr_context_new_with_device(const struct vr_config *config,
                            VkDevice device,
                            struct vr_context **context_out);
 
+bool
+vr_context_check_extensions(struct vr_context *context,
+                            const char *const *extensions);
+
+bool
+vr_context_check_features(struct vr_context *context,
+                          const VkPhysicalDeviceFeatures *requires);
+
 void
 vr_context_free(struct vr_context *context);
 

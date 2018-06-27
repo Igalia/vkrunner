@@ -415,6 +415,20 @@ error:
         return vres;
 }
 
+bool
+vr_context_check_extensions(struct vr_context *context,
+                            const char *const *extensions)
+{
+        return check_extensions(context, context->physical_device, extensions);
+}
+
+bool
+vr_context_check_features(struct vr_context *context,
+                          const VkPhysicalDeviceFeatures *requires)
+{
+        return check_features(&context->features, requires);
+}
+
 enum vr_result
 vr_context_new(const struct vr_config *config,
                const VkPhysicalDeviceFeatures *requires,
