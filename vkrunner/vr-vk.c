@@ -71,13 +71,18 @@ vr_vk_load_libvulkan(const struct vr_config *config,
 
         vkfn->vkGetInstanceProcAddr = (void *)
                 GetProcAddress(vkfn->lib_vulkan, "vkGetInstanceProcAddr");
-
 #else
 
-        vkfn->lib_vulkan = dlopen("libvulkan.so.1", RTLD_LAZY | RTLD_GLOBAL);
+#ifdef __ANDROID__
+#define VULKAN_LIB "libvulkan.so"
+#else
+#define VULKAN_LIB "libvulkan.so.1"
+#endif
+
+        vkfn->lib_vulkan = dlopen(VULKAN_LIB, RTLD_LAZY | RTLD_GLOBAL);
 
         if (vkfn->lib_vulkan == NULL) {
-                vr_error_message(config, "Error openining libvulkan.so.1: %s",
+                vr_error_message(config, "Error openining " VULKAN_LIB ": %s",
                                  dlerror());
                 return false;
         }
