@@ -35,6 +35,8 @@
 struct vr_context {
         const struct vr_config *config;
 
+        bool device_is_external;
+
         VkDevice device;
         VkPhysicalDevice physical_device;
         VkPhysicalDeviceMemoryProperties memory_properties;
@@ -56,6 +58,15 @@ vr_context_new(const struct vr_config *config,
                const VkPhysicalDeviceFeatures *requires,
                const char *const *extensions,
                struct vr_context **context_out);
+
+enum vr_result
+vr_context_new_with_device(const struct vr_config *config,
+                           void *lib_vulkan,
+                           VkInstance instance,
+                           VkPhysicalDevice physical_device,
+                           int queue_family,
+                           VkDevice device,
+                           struct vr_context **context_out);
 
 void
 vr_context_free(struct vr_context *context);

@@ -81,6 +81,8 @@ init_functions(struct vr_vk *vkfn,
         }
 }
 
+
+
 bool
 vr_vk_load_libvulkan(const struct vr_config *config,
                      struct vr_vk *vkfn)
@@ -94,9 +96,6 @@ vr_vk_load_libvulkan(const struct vr_config *config,
                 return false;
         }
 
-        vkfn->vkGetInstanceProcAddr = (void *)
-                GetProcAddress(vkfn->lib_vulkan, "vkGetInstanceProcAddr");
-
 #else
         vkfn->lib_vulkan = dlopen("libvulkan.so.1", RTLD_LAZY | RTLD_GLOBAL);
 
@@ -105,6 +104,21 @@ vr_vk_load_libvulkan(const struct vr_config *config,
                                  dlerror());
                 return false;
         }
+
+#endif /* WIN32 */
+
+        return true;
+}
+
+void
+vr_vk_init_core(struct vr_vk *vkfn)
+{
+#ifdef WIN32
+
+        vkfn->vkGetInstanceProcAddr = (void *)
+                GetProcAddress(vkfn->lib_vulkan, "vkGetInstanceProcAddr");
+
+#else
 
         vkfn->vkGetInstanceProcAddr =
                 dlsym(vkfn->lib_vulkan, "vkGetInstanceProcAddr");
@@ -116,8 +130,6 @@ vr_vk_load_libvulkan(const struct vr_config *config,
                        NULL, /* object */
                        core_functions,
                        VR_N_ELEMENTS(core_functions));
-
-        return true;
 }
 
 void

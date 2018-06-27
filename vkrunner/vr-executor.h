@@ -35,6 +35,25 @@ struct vr_executor;
 struct vr_executor *
 vr_executor_new(void);
 
+/* Sets an externally created device to use for the execution. Note
+ * that it is the callers responsibility to ensure that the device has
+ * all the necessary features and extensions enabled for the tests.
+ *
+ * This function is optional and if it is not used then VkRunner will
+ * search for an appropriate physical device and create the VkDevice
+ * itself.
+ */
+void
+vr_executor_set_device(struct vr_executor *executor,
+                       void *lib_vulkan,
+                       /* VkInstance */
+                       void *instance,
+                       /* VkPhysicalDevice */
+                       void *physical_device,
+                       int queue_family,
+                       /* VkDevice */
+                       void *device);
+
 enum vr_result
 vr_executor_execute(struct vr_executor *executor,
                     const struct vr_config *config);

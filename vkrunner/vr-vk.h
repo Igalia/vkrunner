@@ -47,6 +47,9 @@ vr_vk_load_libvulkan(const struct vr_config *config,
                      struct vr_vk *vkfn);
 
 void
+vr_vk_init_core(struct vr_vk *vkfn);
+
+void
 vr_vk_init_instance(struct vr_vk *vkfn,
                     VkInstance instance);
 

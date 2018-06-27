@@ -47,6 +47,16 @@ struct vr_executor {
         struct vr_context *context;
         char **extensions;
         VkPhysicalDeviceFeatures enabled_features;
+
+        bool use_external;
+
+        struct {
+                void *lib_vulkan;
+                VkInstance instance;
+                VkPhysicalDevice physical_device;
+                int queue_family;
+                VkDevice device;
+        } external;
 };
 
 static bool
@@ -120,16 +130,24 @@ free_context(struct vr_executor *executor)
         vr_context_free(executor->context);
         executor->context = NULL;
 
-        for (char **ext = executor->extensions; *ext; ext++)
-                vr_free(*ext);
+        if (!executor->use_external) {
+                for (char **ext = executor->extensions; *ext; ext++)
+                        vr_free(*ext);
 
-        vr_free(executor->extensions);
+                vr_free(executor->extensions);
+        }
 }
 
 static bool
 context_is_compatible(struct vr_executor *executor,
                       const struct vr_script *script)
 {
+        /* If device is created externally then it’s up to the caller
+         * to ensure the device has all the necessary features
+         * enabled. */
+        if (executor->context->device_is_external)
+                return true;
+
         if (memcmp(&executor->enabled_features,
                    &script->required_features,
                    sizeof script->required_features))
@@ -183,6 +201,19 @@ copy_extensions(struct vr_executor *executor,
 }
 
 static enum vr_result
+create_external_context(struct vr_executor *executor,
+                        const struct vr_config *config)
+{
+        return vr_context_new_with_device(config,
+                                          executor->external.lib_vulkan,
+                                          executor->external.instance,
+                                          executor->external.physical_device,
+                                          executor->external.queue_family,
+                                          executor->external.device,
+                                          &executor->context);
+}
+
+static enum vr_result
 process_script(struct vr_executor *executor,
                const struct vr_config *config,
                const char *filename)
@@ -207,15 +238,22 @@ process_script(struct vr_executor *executor,
                 free_window(executor);
 
         if (executor->context == NULL) {
-                res = vr_context_new(config,
-                                     &script->required_features,
-                                     script->extensions,
-                                     &executor->context);
-                if (res != VR_RESULT_PASS)
-                        goto out;
+                if (executor->use_external) {
+                        res = create_external_context(executor, config);
+                        if (res != VR_RESULT_PASS)
+                                goto out;
+                } else {
+                        res = vr_context_new(config,
+                                             &script->required_features,
+                                             script->extensions,
+                                             &executor->context);
 
-                copy_extensions(executor, script->extensions);
-                executor->enabled_features = script->required_features;
+                        if (res != VR_RESULT_PASS)
+                                goto out;
+
+                        copy_extensions(executor, script->extensions);
+                        executor->enabled_features = script->required_features;
+                }
         }
 
         if (executor->window == NULL) {
@@ -257,6 +295,27 @@ vr_executor_new(void)
         struct vr_executor *executor = vr_calloc(sizeof *executor);
 
         return executor;
+}
+
+void
+vr_executor_set_device(struct vr_executor *executor,
+                       void *lib_vulkan,
+                       /* VkInstance */
+                       void *instance,
+                       /* VkPhysicalDevice */
+                       void *physical_device,
+                       int queue_family,
+                       /* VkDevice */
+                       void *device)
+{
+        free_context(executor);
+
+        executor->external.lib_vulkan = lib_vulkan;
+        executor->external.instance = instance;
+        executor->external.physical_device = physical_device;
+        executor->external.queue_family = queue_family;
+        executor->external.device = device;
+        executor->use_external = true;
 }
 
 enum vr_result
