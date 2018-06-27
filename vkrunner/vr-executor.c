@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#include "vr-execute.h"
+#include "vr-executor.h"
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -41,6 +41,10 @@
 #include "vr-test.h"
 #include "vr-config-private.h"
 #include "vr-error-message.h"
+
+struct vr_executor {
+        int stub;
+};
 
 static bool
 write_ppm(struct vr_window *window,
@@ -148,8 +152,17 @@ out:
         return res;
 }
 
+struct vr_executor *
+vr_executor_new(void)
+{
+        struct vr_executor *executor = vr_calloc(sizeof *executor);
+
+        return executor;
+}
+
 enum vr_result
-vr_execute(const struct vr_config *config)
+vr_executor_execute(struct vr_executor *executor,
+                    const struct vr_config *config)
 {
         enum vr_result overall_result = VR_RESULT_SKIP;
 
@@ -172,4 +185,10 @@ vr_execute(const struct vr_config *config)
         }
 
         return overall_result;
+}
+
+void
+vr_executor_free(struct vr_executor *executor)
+{
+        vr_free(executor);
 }

@@ -247,7 +247,11 @@ main(int argc, char **argv)
                 return EXIT_FAILURE;
         }
 
-        result = vr_execute(data.config);
+        struct vr_executor *executor = vr_executor_new();
+
+        result = vr_executor_execute(executor, data.config);
+
+        vr_executor_free(executor);
 
         vr_config_free(data.config);
 

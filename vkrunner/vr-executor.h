@@ -23,14 +23,23 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_EXECUTE_H
-#define VR_EXECUTE_H
+#ifndef VR_EXECUTOR_H
+#define VR_EXECUTOR_H
 
 #include <stdbool.h>
 #include <vkrunner/vr-config.h>
 #include <vkrunner/vr-result.h>
 
-enum vr_result
-vr_execute(const struct vr_config *config);
+struct vr_executor;
 
-#endif /* VR_EXECUTE_H */
+struct vr_executor *
+vr_executor_new(void);
+
+enum vr_result
+vr_executor_execute(struct vr_executor *executor,
+                    const struct vr_config *config);
+
+void
+vr_executor_free(struct vr_executor *executor);
+
+#endif /* VR_EXECUTOR_H */
