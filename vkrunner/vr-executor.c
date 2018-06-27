@@ -43,7 +43,10 @@
 #include "vr-error-message.h"
 
 struct vr_executor {
-        int stub;
+        struct vr_window *window;
+        struct vr_context *context;
+        char **extensions;
+        VkPhysicalDeviceFeatures enabled_features;
 };
 
 static bool
@@ -97,14 +100,95 @@ write_ppm(struct vr_window *window,
         return true;
 }
 
+static void
+free_window(struct vr_executor *executor)
+{
+        if (executor->window) {
+                vr_window_free(executor->window);
+                executor->window = NULL;
+        }
+}
+
+static void
+free_context(struct vr_executor *executor)
+{
+        if (executor->context == NULL)
+                return;
+
+        free_window(executor);
+
+        vr_context_free(executor->context);
+        executor->context = NULL;
+
+        for (char **ext = executor->extensions; *ext; ext++)
+                vr_free(*ext);
+
+        vr_free(executor->extensions);
+}
+
+static bool
+context_is_compatible(struct vr_executor *executor,
+                      const struct vr_script *script)
+{
+        if (memcmp(&executor->enabled_features,
+                   &script->required_features,
+                   sizeof script->required_features))
+                return false;
+
+        const char *const *a;
+        char **b;
+
+        for (a = script->extensions, b = executor->extensions;
+             true;
+             a++, b++) {
+                if (*a == NULL)
+                        return *b == NULL;
+
+                if (*b == NULL)
+                        return false;
+
+                if (strcmp(*a, *b))
+                        return false;
+        }
+
+        return true;
+}
+
+static bool
+window_is_compatible(struct vr_executor *executor,
+                     const struct vr_script *script)
+{
+        struct vr_window *window = executor->window;
+
+        return (script->framebuffer_format == window->framebuffer_format &&
+                script->depth_stencil_format == window->depth_stencil_format);
+}
+
+static void
+copy_extensions(struct vr_executor *executor,
+                const char * const *extensions)
+{
+        int n_extensions = 0;
+
+        for (const char * const *ext = extensions; *ext; ext++)
+                n_extensions++;
+
+        executor->extensions = vr_alloc((sizeof executor->extensions[0]) *
+                                        (n_extensions + 1));
+
+        for (int i = 0; i < n_extensions; i++)
+                executor->extensions[i] = vr_strdup(extensions[i]);
+
+        executor->extensions[n_extensions] = NULL;
+}
+
 static enum vr_result
-process_script(const struct vr_config *config,
+process_script(struct vr_executor *executor,
+               const struct vr_config *config,
                const char *filename)
 {
         enum vr_result res = VR_RESULT_PASS;
         struct vr_script *script = NULL;
-        struct vr_context *context = NULL;
-        struct vr_window *window = NULL;
         struct vr_pipeline *pipeline = NULL;
 
         script = vr_script_load(config, filename);
@@ -113,42 +197,54 @@ process_script(const struct vr_config *config,
                 goto out;
         }
 
-        res = vr_context_new(config,
-                             &script->required_features,
-                             script->extensions,
-                             &context);
-        if (res != VR_RESULT_PASS)
-                goto out;
+        /* Recreate the context if the required features or extensions
+         * have changed */
+        if (executor->context && !context_is_compatible(executor, script))
+                free_context(executor);
 
-        res = vr_window_new(context,
-                            script->framebuffer_format,
-                            script->depth_stencil_format,
-                            &window);
-        if (res != VR_RESULT_PASS)
-                goto out;
+        /* Recreate the window if the framebuffer format is different */
+        if (executor->window && !window_is_compatible(executor, script))
+                free_window(executor);
 
-        pipeline = vr_pipeline_create(config, window, script);
+        if (executor->context == NULL) {
+                res = vr_context_new(config,
+                                     &script->required_features,
+                                     script->extensions,
+                                     &executor->context);
+                if (res != VR_RESULT_PASS)
+                        goto out;
+
+                copy_extensions(executor, script->extensions);
+                executor->enabled_features = script->required_features;
+        }
+
+        if (executor->window == NULL) {
+                res = vr_window_new(executor->context,
+                                    script->framebuffer_format,
+                                    script->depth_stencil_format,
+                                    &executor->window);
+                if (res != VR_RESULT_PASS)
+                        goto out;
+        }
+
+        pipeline = vr_pipeline_create(config, executor->window, script);
 
         if (pipeline == NULL) {
                 res = VR_RESULT_FAIL;
                 goto out;
         }
 
-        if (!vr_test_run(window, pipeline, script))
+        if (!vr_test_run(executor->window, pipeline, script))
                 res = VR_RESULT_FAIL;
 
         if (config->image_filename) {
-                if (!write_ppm(window, config->image_filename))
+                if (!write_ppm(executor->window, config->image_filename))
                         res = VR_RESULT_FAIL;
         }
 
 out:
         if (pipeline)
                 vr_pipeline_free(pipeline);
-        if (window)
-                vr_window_free(window);
-        if (context)
-                vr_context_free(context);
         if (script)
                 vr_script_free(script);
 
@@ -176,7 +272,8 @@ vr_executor_execute(struct vr_executor *executor,
                                                config->user_data);
                 }
 
-                enum vr_result res = process_script(config, script->filename);
+                enum vr_result res =
+                        process_script(executor, config, script->filename);
 
                 if (config->after_test_cb) {
                         config->after_test_cb(script->filename,
@@ -193,5 +290,7 @@ vr_executor_execute(struct vr_executor *executor,
 void
 vr_executor_free(struct vr_executor *executor)
 {
+        free_context(executor);
+
         vr_free(executor);
 }
