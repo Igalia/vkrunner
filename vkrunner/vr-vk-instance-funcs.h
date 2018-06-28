@@ -1,6 +1,5 @@
 VR_VK_FUNC(vkCreateDevice)
 VR_VK_FUNC(vkDestroyInstance)
-VR_VK_FUNC(vkDestroySurfaceKHR)
 VR_VK_FUNC(vkEnumerateDeviceExtensionProperties)
 VR_VK_FUNC(vkEnumeratePhysicalDevices)
 VR_VK_FUNC(vkGetDeviceProcAddr)
