@@ -45,7 +45,6 @@ set(VKRUNNER_SOURCE_FILES
         vr-util.h
         vr-vk.c
         vr-vk.h
-        vr-vk-core-funcs.h
         vr-vk-device-funcs.h
         vr-vk-instance-funcs.h
         vr-pipeline.c

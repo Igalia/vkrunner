@@ -245,6 +245,16 @@ find_physical_device(struct vr_context *context,
         return VR_RESULT_SKIP;
 }
 
+static void *
+get_instance_proc(const char *name,
+                  void *user_data)
+{
+        struct vr_context *context = user_data;
+        struct vr_vk *vkfn = &context->vkfn;
+
+        return vkfn->vkGetInstanceProcAddr(context->vk_instance, name);
+}
+
 static enum vr_result
 init_vk_device(struct vr_context *context,
                const VkPhysicalDeviceFeatures *requires,
@@ -271,7 +281,7 @@ init_vk_device(struct vr_context *context,
                 return VR_RESULT_FAIL;
         }
 
-        vr_vk_init_instance(vkfn, context->vk_instance);
+        vr_vk_init_instance(vkfn, get_instance_proc, context);
 
         enum vr_result vres =
                 find_physical_device(context, requires, extensions);
@@ -444,8 +454,6 @@ vr_context_new(const struct vr_config *config,
                 goto error;
         }
 
-        vr_vk_init_core(vkfn);
-
         context->config = config;
 
         vres = init_vk_device(context, requires, extensions);
@@ -466,8 +474,8 @@ error:
 
 enum vr_result
 vr_context_new_with_device(const struct vr_config *config,
-                           void *lib_vulkan,
-                           VkInstance instance,
+                           vr_vk_get_instance_proc_cb get_instance_proc_cb,
+                           void *user_data,
                            VkPhysicalDevice physical_device,
                            int queue_family,
                            VkDevice device,
@@ -477,18 +485,13 @@ vr_context_new_with_device(const struct vr_config *config,
         struct vr_vk *vkfn = &context->vkfn;
         enum vr_result vres;
 
-        vkfn->lib_vulkan = lib_vulkan;
-
-        vr_vk_init_core(vkfn);
-
         context->config = config;
-        context->vk_instance = instance;
         context->physical_device = physical_device;
         context->queue_family = queue_family;
         context->device = device;
         context->device_is_external = true;
 
-        vr_vk_init_instance(vkfn, instance);
+        vr_vk_init_instance(vkfn, get_instance_proc_cb, user_data);
 
         vres = init_vk(context);
         if (vres != VR_RESULT_PASS)

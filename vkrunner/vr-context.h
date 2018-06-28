@@ -61,8 +61,8 @@ vr_context_new(const struct vr_config *config,
 
 enum vr_result
 vr_context_new_with_device(const struct vr_config *config,
-                           void *lib_vulkan,
-                           VkInstance instance,
+                           vr_vk_get_instance_proc_cb get_instance_proc_cb,
+                           void *user_data,
                            VkPhysicalDevice physical_device,
                            int queue_family,
                            VkDevice device,

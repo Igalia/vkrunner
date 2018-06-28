@@ -51,8 +51,8 @@ struct vr_executor {
         bool use_external;
 
         struct {
-                void *lib_vulkan;
-                VkInstance instance;
+                vr_executor_get_instance_proc_cb get_instance_proc_cb;
+                void *user_data;
                 VkPhysicalDevice physical_device;
                 int queue_family;
                 VkDevice device;
@@ -204,9 +204,12 @@ static enum vr_result
 create_external_context(struct vr_executor *executor,
                         const struct vr_config *config)
 {
+        vr_executor_get_instance_proc_cb get_instance_proc_cb =
+                executor->external.get_instance_proc_cb;
+
         return vr_context_new_with_device(config,
-                                          executor->external.lib_vulkan,
-                                          executor->external.instance,
+                                          get_instance_proc_cb,
+                                          executor->external.user_data,
                                           executor->external.physical_device,
                                           executor->external.queue_family,
                                           executor->external.device,
@@ -324,9 +327,8 @@ vr_executor_new(void)
 
 void
 vr_executor_set_device(struct vr_executor *executor,
-                       void *lib_vulkan,
-                       /* VkInstance */
-                       void *instance,
+                       vr_executor_get_instance_proc_cb get_instance_proc_cb,
+                       void *user_data,
                        /* VkPhysicalDevice */
                        void *physical_device,
                        int queue_family,
@@ -335,8 +337,8 @@ vr_executor_set_device(struct vr_executor *executor,
 {
         free_context(executor);
 
-        executor->external.lib_vulkan = lib_vulkan;
-        executor->external.instance = instance;
+        executor->external.get_instance_proc_cb = get_instance_proc_cb;
+        executor->external.user_data = user_data;
         executor->external.physical_device = physical_device;
         executor->external.queue_family = queue_family;
         executor->external.device = device;
