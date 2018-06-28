@@ -101,7 +101,7 @@ allocate_test_buffer(struct test_data *data,
                                    NULL, /* allocator */
                                    &buffer->buffer);
         if (res != VK_SUCCESS) {
-                buffer->buffer = NULL;
+                buffer->buffer = VK_NULL_HANDLE;
                 vr_error_message(data->window->config, "Error creating buffer");
                 return NULL;
         }
@@ -114,7 +114,7 @@ allocate_test_buffer(struct test_data *data,
                                        &buffer->memory_type_index,
                                        NULL /* offsets */);
         if (res != VK_SUCCESS) {
-                buffer->memory = NULL;
+                buffer->memory = VK_NULL_HANDLE;
                 vr_error_message(data->window->config,
                                  "Error allocating memory");
                 return NULL;
@@ -299,7 +299,7 @@ begin_render_pass(struct test_data *data)
                                    &render_pass_begin_info,
                                    VK_SUBPASS_CONTENTS_INLINE);
 
-        data->bound_pipeline = NULL;
+        data->bound_pipeline = VK_NULL_HANDLE;
         data->ubo_descriptor_set_bound = false;
         data->first_render = false;
 
@@ -383,7 +383,7 @@ bind_ubo_descriptor_set(struct test_data *data)
         const struct vr_context *context = data->window->context;
 
         if (data->ubo_descriptor_set_bound ||
-            data->ubo_descriptor_set == NULL)
+            data->ubo_descriptor_set == VK_NULL_HANDLE)
                 return;
 
         if (data->pipeline->stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
@@ -908,7 +908,7 @@ allocate_ubo_buffers(struct test_data *data)
                                              &allocate_info,
                                              &data->ubo_descriptor_set);
         if (res != VK_SUCCESS) {
-                data->ubo_descriptor_set = NULL;
+                data->ubo_descriptor_set = VK_NULL_HANDLE;
                 vr_error_message(data->window->config,
                                  "Error allocating descriptor set");
                 return false;

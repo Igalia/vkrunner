@@ -78,37 +78,37 @@ deinit_vk(struct vr_context *context)
                 vkfn->vkDestroyFence(context->device,
                                      context->vk_fence,
                                      NULL /* allocator */);
-                context->vk_fence = NULL;
+                context->vk_fence = VK_NULL_HANDLE;
         }
         if (context->descriptor_pool) {
                 vkfn->vkDestroyDescriptorPool(context->device,
                                               context->descriptor_pool,
                                               NULL /* allocator */);
-                context->descriptor_pool = NULL;
+                context->descriptor_pool = VK_NULL_HANDLE;
         }
         if (context->command_buffer) {
                 vkfn->vkFreeCommandBuffers(context->device,
                                            context->command_pool,
                                            1, /* commandBufferCount */
                                            &context->command_buffer);
-                context->command_buffer = NULL;
+                context->command_buffer = VK_NULL_HANDLE;
         }
         if (context->command_pool) {
                 vkfn->vkDestroyCommandPool(context->device,
                                            context->command_pool,
                                            NULL /* allocator */);
-                context->command_pool = NULL;
+                context->command_pool = VK_NULL_HANDLE;
         }
         if (!context->device_is_external) {
                 if (context->device) {
                         vkfn->vkDestroyDevice(context->device,
                                               NULL /* allocator */);
-                        context->device = NULL;
+                        context->device = VK_NULL_HANDLE;
                 }
                 if (context->vk_instance) {
                         vkfn->vkDestroyInstance(context->vk_instance,
                                                 NULL /* allocator */);
-                        context->vk_instance = NULL;
+                        context->vk_instance = VK_NULL_HANDLE;
                 }
         }
 }

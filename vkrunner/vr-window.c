@@ -44,13 +44,13 @@ destroy_framebuffer_resources(struct vr_window *window)
                 vkfn->vkDestroyImageView(window->device,
                                          window->color_image_view,
                                          NULL /* allocator */);
-                window->color_image_view = NULL;
+                window->color_image_view = VK_NULL_HANDLE;
         }
         if (window->framebuffer) {
                 vkfn->vkDestroyFramebuffer(window->device,
                                            window->framebuffer,
                                            NULL /* allocator */);
-                window->framebuffer = NULL;
+                window->framebuffer = VK_NULL_HANDLE;
         }
         if (window->linear_memory_map) {
                 vkfn->vkUnmapMemory(window->device,
@@ -61,50 +61,50 @@ destroy_framebuffer_resources(struct vr_window *window)
                 vkfn->vkFreeMemory(window->device,
                                    window->linear_memory,
                                    NULL /* allocator */);
-                window->linear_memory = NULL;
+                window->linear_memory = VK_NULL_HANDLE;
         }
         if (window->memory) {
                 vkfn->vkFreeMemory(window->device,
                                    window->memory,
                                    NULL /* allocator */);
-                window->memory = NULL;
+                window->memory = VK_NULL_HANDLE;
         }
         if (window->linear_buffer) {
                 vkfn->vkDestroyBuffer(window->device,
                                       window->linear_buffer,
                                       NULL /* allocator */);
-                window->linear_buffer = NULL;
+                window->linear_buffer = VK_NULL_HANDLE;
         }
         if (window->color_image) {
                 vkfn->vkDestroyImage(window->device,
                                      window->color_image,
                                      NULL /* allocator */);
-                window->color_image = NULL;
+                window->color_image = VK_NULL_HANDLE;
         }
         if (window->depth_image_view) {
                 vkfn->vkDestroyImageView(window->device,
                                          window->depth_image_view,
                                          NULL /* allocator */);
-                window->depth_image_view = NULL;
+                window->depth_image_view = VK_NULL_HANDLE;
         }
         if (window->depth_image_memory) {
                 vkfn->vkFreeMemory(window->device,
                                    window->depth_image_memory,
                                    NULL /* allocator */);
-                window->depth_image_memory = NULL;
+                window->depth_image_memory = VK_NULL_HANDLE;
         }
         if (window->depth_image) {
                 vkfn->vkDestroyImage(window->device,
                                      window->depth_image,
                                      NULL /* allocator */);
-                window->depth_image = NULL;
+                window->depth_image = VK_NULL_HANDLE;
         }
         for (int i = 0; i < VR_N_ELEMENTS(window->render_pass); i++) {
                 if (window->render_pass[i]) {
                         vkfn->vkDestroyRenderPass(window->device,
                                                   window->render_pass[i],
                                                   NULL /* allocator */);
-                        window->render_pass[i] = NULL;
+                        window->render_pass[i] = VK_NULL_HANDLE;
                 }
         }
 }
@@ -137,7 +137,7 @@ init_depth_stencil_resources(struct vr_window *window)
                                   NULL, /* allocator */
                                   &window->depth_image);
         if (res != VK_SUCCESS) {
-                window->depth_image = NULL;
+                window->depth_image = VK_NULL_HANDLE;
                 vr_error_message(window->config,
                                  "Error creating depth/stencil image");
                 return false;
@@ -179,7 +179,7 @@ init_depth_stencil_resources(struct vr_window *window)
                                       NULL, /* allocator */
                                       &window->depth_image_view);
         if (res != VK_SUCCESS) {
-                window->depth_image_view = NULL;
+                window->depth_image_view = VK_NULL_HANDLE;
                 vr_error_message(window->config,
                                  "Error creating depth/stencil image view");
                 return false;
@@ -292,7 +292,7 @@ create_render_pass(struct vr_window *window,
                                        NULL, /* allocator */
                                        render_pass_out);
         if (res != VK_SUCCESS) {
-                *render_pass_out = NULL;
+                *render_pass_out = VK_NULL_HANDLE;
                 vr_error_message(window->config, "Error creating render pass");
                 return false;
         }
@@ -386,7 +386,7 @@ init_framebuffer_resources(struct vr_window *window)
                                    NULL, /* allocator */
                                    &window->linear_buffer);
         if (res != VK_SUCCESS) {
-                window->linear_buffer = NULL;
+                window->linear_buffer = VK_NULL_HANDLE;
                 vr_error_message(window->config,
                                  "Error creating linear buffer");
                 return false;
@@ -475,7 +475,7 @@ init_framebuffer_resources(struct vr_window *window)
                                         NULL, /* allocator */
                                         &window->framebuffer);
         if (res != VK_SUCCESS) {
-                window->framebuffer = NULL;
+                window->framebuffer = VK_NULL_HANDLE;
                 vr_error_message(window->config,
                                  "Error creating framebuffer");
                 return false;
