@@ -152,6 +152,12 @@ parser.add_argument('-o', dest='output', metavar='OUTPUT',
 args = parser.parse_args()
 output_is_directory = len(args.inputs) >= 2 or os.path.isdir(args.output)
 
+if output_is_directory:
+    try:
+        os.mkdir(args.output)
+    except OSError:
+        pass
+
 for input in args.inputs:
     if output_is_directory:
         output = os.path.join(args.output, os.path.basename(input))
