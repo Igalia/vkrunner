@@ -32,6 +32,10 @@
 
 struct vr_executor;
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 struct vr_executor *
 vr_executor_new(void);
 
@@ -60,5 +64,9 @@ vr_executor_execute(struct vr_executor *executor,
 
 void
 vr_executor_free(struct vr_executor *executor);
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif /* VR_EXECUTOR_H */
