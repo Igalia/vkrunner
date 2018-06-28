@@ -654,7 +654,7 @@ compare_pixels(const double *color1,
                int n_components)
 {
         for (int p = 0; p < n_components; ++p)
-                if (fabsf(color1[p] - color2[p]) > tolerance[p])
+                if (fabs(color1[p] - color2[p]) > tolerance[p])
                         return false;
         return true;
 }
