@@ -307,28 +307,6 @@ init_framebuffer_resources(struct vr_window *window)
         VkResult res;
         int linear_memory_type;
 
-        if (!check_format(window,
-                          window->framebuffer_format,
-                          VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-                          VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
-                vr_error_message(window->config,
-                                 "Format %s is not supported as a color "
-                                 "attachment and blit source",
-                                 window->framebuffer_format->name);
-                return false;
-        }
-
-        if (window->depth_stencil_format &&
-            !check_format(window,
-                          window->depth_stencil_format,
-                          VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-                vr_error_message(window->config,
-                                 "Format %s is not supported as a "
-                                 "depth/stencil attachment",
-                                 window->depth_stencil_format->name);
-                return false;
-        }
-
         if (!create_render_pass(window,
                                 true, /* first_render */
                                 window->render_pass + 0))
@@ -501,6 +479,30 @@ vr_window_new(struct vr_context *context,
 
         window->framebuffer_format = framebuffer_format;
         window->depth_stencil_format = depth_stencil_format;
+
+        if (!check_format(window,
+                          framebuffer_format,
+                          VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+                          VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
+                vr_error_message(window->config,
+                                 "Format %s is not supported as a color "
+                                 "attachment and blit source",
+                                 window->framebuffer_format->name);
+                vres = VR_RESULT_SKIP;
+                goto error;
+        }
+
+        if (window->depth_stencil_format &&
+            !check_format(window,
+                          depth_stencil_format,
+                          VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+                vr_error_message(window->config,
+                                 "Format %s is not supported as a "
+                                 "depth/stencil attachment",
+                                 window->depth_stencil_format->name);
+                vres = VR_RESULT_SKIP;
+                goto error;
+        }
 
         if (!init_framebuffer_resources(window)) {
                 vres = VR_RESULT_FAIL;
