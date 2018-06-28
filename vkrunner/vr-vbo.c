@@ -292,6 +292,7 @@ parse_datum(const struct vr_config *config,
                         goto handled;
                 }
                 }
+                break;
         case VR_FORMAT_MODE_UNORM:
         case VR_FORMAT_MODE_USCALED:
         case VR_FORMAT_MODE_UINT:
@@ -342,6 +343,7 @@ parse_datum(const struct vr_config *config,
                         goto handled;
                 }
                 }
+                break;
         case VR_FORMAT_MODE_SNORM:
         case VR_FORMAT_MODE_SSCALED:
         case VR_FORMAT_MODE_SINT:
@@ -395,6 +397,7 @@ parse_datum(const struct vr_config *config,
                         goto handled;
                 }
                 }
+                break;
         case VR_FORMAT_MODE_UFLOAT:
                 break;
         }
