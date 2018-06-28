@@ -1909,6 +1909,25 @@ read_line(FILE *f,
         return buffer->length > 0;
 }
 
+static const char *
+read_line_from_string(const char *string,
+                      struct vr_buffer *buffer)
+{
+        buffer->length = 0;
+
+        const char *end = strchr(string, '\n');
+
+        if (end == NULL) {
+                vr_buffer_append_string(buffer, string);
+        } else {
+                vr_buffer_append(buffer, string, end - string + 1);
+                vr_buffer_append_c(buffer, '\0');
+                buffer->length--;
+        }
+
+        return string + buffer->length;
+}
+
 static int
 compare_buffer_binding(const void *a,
                        const void *b)
@@ -1970,96 +1989,138 @@ process_token_replacements(struct load_state *data)
         return true;
 }
 
-static struct vr_script *
-load_script_from_stream(const struct vr_config *config,
-                        const char *filename,
-                        FILE *f)
+static void
+load_script_begin(struct load_state *data,
+                  const struct vr_config *config,
+                  const char *filename)
 {
-        struct load_state data = {
-                .config = config,
-                .filename = filename,
-                .line_num = 1,
-                .script = vr_calloc(sizeof (struct vr_script)),
-                .line = VR_BUFFER_STATIC_INIT,
-                .buffer = VR_BUFFER_STATIC_INIT,
-                .commands = VR_BUFFER_STATIC_INIT,
-                .pipeline_keys = VR_BUFFER_STATIC_INIT,
-                .extensions = VR_BUFFER_STATIC_INIT,
-                .buffers = VR_BUFFER_STATIC_INIT,
-                .current_stage = -1,
-                .current_section = SECTION_NONE,
-                .clear_depth = 1.0f
-        };
-        bool res = true;
         int stage;
 
-        vr_pipeline_key_init(&data.current_key);
+        data->config = config;
+        data->filename = filename;
+        data->line_num = 1;
+        data->script = vr_calloc(sizeof (struct vr_script));
+        vr_buffer_init(&data->line);
+        vr_buffer_init(&data->buffer);
+        vr_buffer_init(&data->commands);
+        vr_buffer_init(&data->pipeline_keys);
+        vr_buffer_init(&data->extensions);
+        vr_buffer_init(&data->buffers);
+        data->current_stage = -1;
+        data->current_section = SECTION_NONE;
+        data->clear_depth = 1.0f;
 
-        data.script->filename = vr_strdup(filename);
-        data.script->framebuffer_format =
+        vr_pipeline_key_init(&data->current_key);
+
+        data->script->filename = vr_strdup(filename);
+        data->script->framebuffer_format =
                 vr_format_lookup_by_vk_format(VK_FORMAT_B8G8R8A8_UNORM);
-        assert(data.script->framebuffer_format != NULL);
+        assert(data->script->framebuffer_format != NULL);
 
-        vr_buffer_set_length(&data.extensions, sizeof (const char *));
-        memset(data.extensions.data, 0, data.extensions.length);
+        vr_buffer_set_length(&data->extensions, sizeof (const char *));
+        memset(data->extensions.data, 0, data->extensions.length);
 
         for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++)
-                vr_list_init(&data.script->stages[stage]);
+                vr_list_init(&data->script->stages[stage]);
+}
+
+static bool
+load_script_from_stream(struct load_state *data,
+                        FILE *f)
+{
+        bool res = true;
 
         do {
-                if (!read_line(f, &data.line))
+                if (!read_line(f, &data->line))
                         break;
 
-                if (!process_token_replacements(&data)) {
+                if (!process_token_replacements(data)) {
                         res = false;
                         break;
                 }
 
-                res = process_line(&data);
+                res = process_line(data);
 
-                data.line_num++;
+                data->line_num++;
         } while (res);
 
         if (res)
-                res = end_section(&data);
+                res = end_section(data);
 
-        data.script->commands = (struct vr_script_command *) data.commands.data;
-        data.script->n_commands = (data.commands.length /
+        return res;
+}
+
+static bool
+load_script_from_string(struct load_state *data,
+                        const char *string)
+{
+        bool res = true;
+
+        do {
+                string = read_line_from_string(string, &data->line);
+                if (data->line.length == 0)
+                        break;
+
+                if (!process_token_replacements(data)) {
+                        res = false;
+                        break;
+                }
+
+                res = process_line(data);
+
+                data->line_num++;
+        } while (res);
+
+        if (res)
+                res = end_section(data);
+
+        return res;
+}
+
+static struct vr_script *
+load_script_end(struct load_state *data, bool res)
+{
+        struct vr_script *script = data->script;
+
+        script->commands = (struct vr_script_command *) data->commands.data;
+        script->n_commands = (data->commands.length /
                                    sizeof (struct vr_script_command));
-        data.script->pipeline_keys =
-                (struct vr_pipeline_key *) data.pipeline_keys.data;
-        data.script->n_pipeline_keys = (data.pipeline_keys.length /
+        script->pipeline_keys =
+                (struct vr_pipeline_key *) data->pipeline_keys.data;
+        script->n_pipeline_keys = (data->pipeline_keys.length /
                                         sizeof (struct vr_pipeline_key));
-        data.script->extensions =
-                (const char *const *) data.extensions.data;
-        data.script->indices = (uint16_t *) data.indices.data;
-        data.script->n_indices =
-                data.indices.length / sizeof (uint16_t);
+        script->extensions =
+                (const char *const *) data->extensions.data;
+        script->indices = (uint16_t *) data->indices.data;
+        script->n_indices =
+                data->indices.length / sizeof (uint16_t);
 
-        data.script->buffers = (struct vr_script_buffer *) data.buffers.data;
-        data.script->n_buffers = (data.buffers.length /
+        script->buffers = (struct vr_script_buffer *) data->buffers.data;
+        script->n_buffers = (data->buffers.length /
                                   sizeof (struct vr_script_buffer));
-        qsort(data.script->buffers,
-              data.script->n_buffers,
-              sizeof data.script->buffers[0],
+        qsort(script->buffers,
+              script->n_buffers,
+              sizeof script->buffers[0],
               compare_buffer_binding);
 
-        vr_buffer_destroy(&data.buffer);
-        vr_buffer_destroy(&data.line);
+        vr_buffer_destroy(&data->buffer);
+        vr_buffer_destroy(&data->line);
 
         if (res) {
-                return data.script;
+                return script;
         } else {
-                vr_script_free(data.script);
+                vr_script_free(script);
                 return NULL;
         }
 }
 
 struct vr_script *
-vr_script_load(const struct vr_config *config,
-               const char *filename)
+vr_script_load_from_file(const struct vr_config *config,
+                         const char *filename)
 {
         struct vr_script *script;
+        struct load_state data = {};
+        bool res;
         FILE *f = fopen(filename, "r");
 
         if (f == NULL) {
@@ -2067,9 +2128,26 @@ vr_script_load(const struct vr_config *config,
                 return NULL;
         }
 
-        script = load_script_from_stream(config, filename, f);
+        load_script_begin(&data, config, filename);
+        res = load_script_from_stream(&data, f);
+        script = load_script_end(&data, res);
 
         fclose(f);
+
+        return script;
+}
+
+struct vr_script *
+vr_script_load_from_string(const struct vr_config *config,
+                           const char *string)
+{
+        struct vr_script *script;
+        struct load_state data = {};
+        bool res;
+
+        load_script_begin(&data, config, "(string script)");
+        res = load_script_from_string(&data, string);
+        script = load_script_end(&data, res);
 
         return script;
 }

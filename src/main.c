@@ -205,7 +205,7 @@ process_argv(struct main_data *data,
                 handled_arg:
                         (void) 0;
                 } else {
-                        vr_config_add_script(data->config, argv[i]);
+                        vr_config_add_script_file(data->config, argv[i]);
                         data->n_scripts++;
                 }
         }
@@ -247,7 +247,11 @@ main(int argc, char **argv)
                 return EXIT_FAILURE;
         }
 
-        result = vr_execute(data.config);
+        struct vr_executor *executor = vr_executor_new();
+
+        result = vr_executor_execute(executor, data.config);
+
+        vr_executor_free(executor);
 
         vr_config_free(data.config);
 

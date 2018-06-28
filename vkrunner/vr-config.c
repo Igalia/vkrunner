@@ -30,12 +30,24 @@
 #include <string.h>
 
 void
-vr_config_add_script(struct vr_config *config,
-                     const char *filename)
+vr_config_add_script_file(struct vr_config *config,
+                          const char *filename)
 {
-        struct vr_config_script *script =
-                vr_alloc(sizeof *script + strlen(filename) + 1);
-        strcpy(script->filename, filename);
+        struct vr_config_script *script;
+        script = vr_alloc(sizeof *script);
+        script->filename = vr_strdup(filename);
+        script->string = NULL;
+        vr_list_insert(config->scripts.prev, &script->link);
+}
+
+void
+vr_config_add_script_string(struct vr_config *config,
+                            const char *string)
+{
+        struct vr_config_script *script;
+        script = vr_alloc(sizeof *script);
+        script->filename = NULL;
+        script->string = vr_strdup(string);
         vr_list_insert(config->scripts.prev, &script->link);
 }
 
@@ -111,8 +123,11 @@ free_scripts(struct vr_config *config)
 {
         struct vr_config_script *script, *tmp;
 
-        vr_list_for_each_safe(script, tmp, &config->scripts, link)
+        vr_list_for_each_safe(script, tmp, &config->scripts, link) {
+                vr_free(script->filename);
+                vr_free(script->string);
                 vr_free(script);
+        }
 }
 
 static void

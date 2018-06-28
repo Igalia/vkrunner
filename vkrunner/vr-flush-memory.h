@@ -26,10 +26,10 @@
 #ifndef VR_FLUSH_MEMORY_H
 #define VR_FLUSH_MEMORY_H
 
-#include "vr-window.h"
+#include "vr-context.h"
 
 VkResult
-vr_flush_memory(struct vr_window *window,
+vr_flush_memory(struct vr_context *context,
                 int memory_type_index,
                 VkDeviceMemory memory,
                 VkDeviceSize offset,

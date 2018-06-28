@@ -31,12 +31,33 @@
 
 struct vr_config;
 
+typedef void
+(* vr_config_error_cb)(const char *message,
+                       void *user_data);
+
+typedef void
+(* vr_config_before_test_cb)(const char *filename,
+                             void *user_data);
+
+typedef void
+(* vr_config_after_test_cb)(const char *filename,
+                            enum vr_result result,
+                            void *user_data);
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 struct vr_config *
 vr_config_new(void);
 
 void
-vr_config_add_script(struct vr_config *config,
-                     const char *filename);
+vr_config_add_script_file(struct vr_config *config,
+                          const char *filename);
+
+void
+vr_config_add_script_string(struct vr_config *config,
+                            const char *string);
 
 void
 vr_config_add_token_replacement(struct vr_config *config,
@@ -58,10 +79,6 @@ void
 vr_config_set_user_data(struct vr_config *config,
                         void *user_data);
 
-typedef void
-(* vr_config_error_cb)(const char *message,
-                       void *user_data);
-
 /* Sets a callback that will be invoked whenever a test error is
  * invoked such as a compilation error or a probed value was
  * incorrect.
@@ -70,20 +87,10 @@ void
 vr_config_set_error_cb(struct vr_config *config,
                        vr_config_error_cb error_cb);
 
-typedef void
-(* vr_config_before_test_cb)(const char *filename,
-                             void *user_data);
-
-
 /* Sets a callback to invoke before every test case is run. */
 void
 vr_config_set_before_test_cb(struct vr_config *config,
                              vr_config_before_test_cb before_test_cb);
-
-typedef void
-(* vr_config_after_test_cb)(const char *filename,
-                            enum vr_result result,
-                            void *user_data);
 
 /* Sets a callback to invoke after every test case is run. */
 void
@@ -92,5 +99,9 @@ vr_config_set_after_test_cb(struct vr_config *config,
 
 void
 vr_config_free(struct vr_config *config);
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif /* VR_CONFIG_H */

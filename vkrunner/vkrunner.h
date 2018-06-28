@@ -27,7 +27,7 @@
 #define VKRUNNER_H
 
 #include <vkrunner/vr-config.h>
-#include <vkrunner/vr-execute.h>
+#include <vkrunner/vr-executor.h>
 #include <vkrunner/vr-result.h>
 
 #endif /* VKRUNNER_H */

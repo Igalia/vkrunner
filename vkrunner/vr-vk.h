@@ -34,13 +34,17 @@ struct vr_vk {
         void *lib_vulkan;
 
         PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr;
+        PFN_vkCreateInstance vkCreateInstance;
 
 #define VR_VK_FUNC(name) PFN_ ## name name;
-#include "vr-vk-core-funcs.h"
 #include "vr-vk-instance-funcs.h"
 #include "vr-vk-device-funcs.h"
 #undef VR_VK_FUNC
 };
+
+typedef void *
+(* vr_vk_get_instance_proc_cb)(const char *name,
+                               void *user_data);
 
 bool
 vr_vk_load_libvulkan(const struct vr_config *config,
@@ -48,7 +52,8 @@ vr_vk_load_libvulkan(const struct vr_config *config,
 
 void
 vr_vk_init_instance(struct vr_vk *vkfn,
-                    VkInstance instance);
+                    vr_vk_get_instance_proc_cb get_instance_proc_cb,
+                    void *user_data);
 
 void
 vr_vk_init_device(struct vr_vk *vkfn,

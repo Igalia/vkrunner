@@ -181,7 +181,7 @@ compile_stage(const struct vr_config *config,
         int n_shaders = vr_list_length(&script->stages[stage]);
         char **args = alloca((n_base_args + n_shaders + 1) * sizeof args[0]);
         const struct vr_script_shader *shader;
-        VkShaderModule module = NULL;
+        VkShaderModule module = VK_NULL_HANDLE;
         FILE *module_stream = NULL;
         char *module_filename;
         uint8_t *module_binary = NULL;
@@ -237,7 +237,7 @@ compile_stage(const struct vr_config *config,
                                          &module);
         if (res != VK_SUCCESS) {
                 vr_error_message(config, "vkCreateShaderModule failed");
-                module = NULL;
+                module = VK_NULL_HANDLE;
                 goto out;
         }
 
@@ -271,7 +271,7 @@ assemble_stage(const struct vr_config *config,
         char *module_filename;
         char *source_filename = NULL;
         uint8_t *module_binary = NULL;
-        VkShaderModule module = NULL;
+        VkShaderModule module = VK_NULL_HANDLE;
         size_t module_size;
         bool res;
 
@@ -318,7 +318,7 @@ assemble_stage(const struct vr_config *config,
                                          &module);
         if (res != VK_SUCCESS) {
                 vr_error_message(config, "vkCreateShaderModule failed");
-                module = NULL;
+                module = VK_NULL_HANDLE;
                 goto out;
         }
 
@@ -346,7 +346,7 @@ load_binary_stage(const struct vr_config *config,
                   const struct vr_script_shader *shader)
 {
         struct vr_vk *vkfn = &window->vkfn;
-        VkShaderModule module = NULL;
+        VkShaderModule module = VK_NULL_HANDLE;
         bool res;
 
         if (config->show_disassembly) {
@@ -482,7 +482,7 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
 
         for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
                 if (i == VR_SCRIPT_SHADER_STAGE_COMPUTE ||
-                    pipeline->modules[i] == NULL)
+                    pipeline->modules[i] == VK_NULL_HANDLE)
                         continue;
                 stages[num_stages].sType =
                         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -573,7 +573,7 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
 
         if (res != VK_SUCCESS) {
                 vr_error_message(window->config, "Error creating VkPipeline");
-                return NULL;
+                return VK_NULL_HANDLE;
         }
 
         return vk_pipeline;
@@ -598,7 +598,7 @@ create_compute_pipeline(struct vr_pipeline *pipeline)
                         .pName = "main"
                 },
                 .layout = pipeline->layout,
-                .basePipelineHandle = NULL,
+                .basePipelineHandle = VK_NULL_HANDLE,
                 .basePipelineIndex = -1,
         };
 
@@ -613,7 +613,7 @@ create_compute_pipeline(struct vr_pipeline *pipeline)
 
         if (res != VK_SUCCESS) {
                 vr_error_message(window->config, "Error creating VkPipeline");
-                return NULL;
+                return VK_NULL_HANDLE;
         }
 
         return vk_pipeline;
@@ -689,7 +689,7 @@ create_vk_layout(struct vr_pipeline *pipeline,
         if (res != VK_SUCCESS) {
                 vr_error_message(pipeline->window->config,
                                  "Error creating pipeline layout");
-                return NULL;
+                return VK_NULL_HANDLE;
         }
 
         return layout;
@@ -742,7 +742,7 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
         if (res != VK_SUCCESS) {
                 vr_error_message(pipeline->window->config,
                                  "Error creating descriptor set layout");
-                return NULL;
+                return VK_NULL_HANDLE;
         }
 
         return descriptor_set_layout;
@@ -764,7 +764,7 @@ vr_pipeline_create(const struct vr_config *config,
                         continue;
 
                 pipeline->modules[i] = build_stage(config, window, script, i);
-                if (pipeline->modules[i] == NULL)
+                if (pipeline->modules[i] == VK_NULL_HANDLE)
                         goto error;
         }
 
@@ -785,12 +785,12 @@ vr_pipeline_create(const struct vr_config *config,
         if (script->n_buffers > 0) {
                 pipeline->descriptor_set_layout =
                         create_vk_descriptor_set_layout(pipeline, script);
-                if (pipeline->descriptor_set_layout == NULL)
+                if (pipeline->descriptor_set_layout == VK_NULL_HANDLE)
                         goto error;
         }
 
         pipeline->layout = create_vk_layout(pipeline, script);
-        if (pipeline->layout == NULL)
+        if (pipeline->layout == VK_NULL_HANDLE)
                 goto error;
 
         if (pipeline->stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
@@ -819,7 +819,7 @@ vr_pipeline_create(const struct vr_config *config,
                                                    keys + i,
                                                    i == 0 && use_derivatives,
                                                    pipeline->pipelines[0]);
-                        if (pipeline->pipelines[i] == NULL)
+                        if (pipeline->pipelines[i] == VK_NULL_HANDLE)
                                 goto error;
                 }
         }
@@ -827,7 +827,7 @@ vr_pipeline_create(const struct vr_config *config,
         if (pipeline->modules[VR_SCRIPT_SHADER_STAGE_COMPUTE]) {
                 pipeline->compute_pipeline =
                         create_compute_pipeline(pipeline);
-                if (pipeline->compute_pipeline == NULL)
+                if (pipeline->compute_pipeline == VK_NULL_HANDLE)
                         goto error;
         }
 
@@ -879,7 +879,7 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
         }
 
         for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
-                if (pipeline->modules[i] == NULL)
+                if (pipeline->modules[i] == VK_NULL_HANDLE)
                         continue;
                 vkfn->vkDestroyShaderModule(window->device,
                                             pipeline->modules[i],

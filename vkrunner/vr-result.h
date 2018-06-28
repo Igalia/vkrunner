@@ -32,11 +32,19 @@ enum vr_result {
         VR_RESULT_SKIP,
 };
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 enum vr_result
 vr_result_merge(enum vr_result a,
                 enum vr_result b);
 
 const char *
 vr_result_to_string(enum vr_result res);
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif /* VR_RESULT_H */

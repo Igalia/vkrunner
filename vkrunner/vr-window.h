@@ -31,30 +31,24 @@
 #include "vr-format.h"
 #include "vr-result.h"
 #include "vr-config.h"
+#include "vr-context.h"
 
 #define VR_WINDOW_WIDTH 250
 #define VR_WINDOW_HEIGHT 250
 
 struct vr_window {
-        const struct vr_config *config;
+        struct vr_context *context;
 
+        /* These are copies of the values from the context for convenience */
+        const struct vr_config *config;
         VkDevice device;
-        VkPhysicalDevice physical_device;
-        VkPhysicalDeviceMemoryProperties memory_properties;
-        VkPhysicalDeviceProperties device_properties;
-        VkPhysicalDeviceFeatures features;
-        VkDescriptorPool descriptor_pool;
-        VkCommandPool command_pool;
-        VkCommandBuffer command_buffer;
+        struct vr_vk vkfn;
+
         /* The first render pass is used for the first render and has
          * a loadOp of DONT_CARE. The second is used for subsequent
          * renders and loads the framebuffer contents.
          */
         VkRenderPass render_pass[2];
-        VkQueue queue;
-        int queue_family;
-        VkInstance vk_instance;
-        VkFence vk_fence;
 
         VkImage color_image;
         VkBuffer linear_buffer;
@@ -70,14 +64,10 @@ struct vr_window {
         VkFramebuffer framebuffer;
         const struct vr_format *framebuffer_format;
         const struct vr_format *depth_stencil_format;
-
-        struct vr_vk vkfn;
 };
 
 enum vr_result
-vr_window_new(const struct vr_config *config,
-              const VkPhysicalDeviceFeatures *requires,
-              const char *const *extensions,
+vr_window_new(struct vr_context *context,
               const struct vr_format *framebuffer_format,
               const struct vr_format *depth_stencil_format,
               struct vr_window **window_out);
