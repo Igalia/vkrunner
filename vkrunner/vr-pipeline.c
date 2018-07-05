@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <assert.h>
+#include <string.h>
 
 static const char *
 stage_names[VR_SCRIPT_N_STAGES] = {
