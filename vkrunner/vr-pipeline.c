@@ -164,6 +164,8 @@ compile_stage(const struct vr_config *config,
         bool res;
         int i;
 
+        memset(args + n_base_args, 0, (n_shaders + 1) * sizeof args[0]);
+
         if (!vr_temp_file_create_named(config,
                                        &module_stream,
                                        &module_filename))
@@ -178,7 +180,6 @@ compile_stage(const struct vr_config *config,
         args[3] = (char *) stage_names[stage];
         args[4] = "-o";
         args[5] = module_filename;
-        memset(args + n_base_args, 0, (n_shaders + 1) * sizeof args[0]);
 
         i = n_base_args;
         vr_list_for_each(shader, &script->stages[stage], link) {
