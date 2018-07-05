@@ -65,7 +65,7 @@ write_ppm(struct vr_window *window,
 {
         const struct vr_format *format = window->framebuffer_format;
         int format_size = vr_format_get_size(format);
-        FILE *out = fopen(filename, "w");
+        FILE *out = fopen(filename, "wb");
 
         if (out == NULL) {
                 vr_error_message(window->config,
