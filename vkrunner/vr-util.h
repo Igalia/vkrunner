@@ -168,4 +168,10 @@ vr_align(int value, int alignment)
    return (value + alignment - 1) & ~(alignment - 1);
 }
 
+#ifdef WIN32
+#define vr_strcasecmp _stricmp
+#else
+#define vr_strcasecmp strcasecmp
+#endif
+
 #endif /* VR_UTIL_H */

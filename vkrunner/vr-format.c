@@ -37,7 +37,7 @@ const struct vr_format *
 vr_format_lookup_by_name(const char *name)
 {
         for (int i = 0; i < VR_N_ELEMENTS(formats); i++) {
-                if (!strcasecmp(formats[i].name, name))
+                if (!vr_strcasecmp(formats[i].name, name))
                         return formats + i;
         }
 
