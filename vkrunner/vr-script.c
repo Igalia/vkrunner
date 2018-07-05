@@ -2119,7 +2119,7 @@ vr_script_load_from_file(const struct vr_config *config,
                          const char *filename)
 {
         struct vr_script *script;
-        struct load_state data = {};
+        struct load_state data = { NULL };
         bool res;
         FILE *f = fopen(filename, "r");
 
@@ -2142,7 +2142,7 @@ vr_script_load_from_string(const struct vr_config *config,
                            const char *string)
 {
         struct vr_script *script;
-        struct load_state data = {};
+        struct load_state data = { NULL };
         bool res;
 
         load_script_begin(&data, config, "(string script)");
