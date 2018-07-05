@@ -463,7 +463,8 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
         VkResult res;
         int num_stages = 0;
 
-        VkPipelineShaderStageCreateInfo stages[VR_SCRIPT_N_STAGES] = { };
+        VkPipelineShaderStageCreateInfo stages[VR_SCRIPT_N_STAGES];
+        memset(&stages, 0, sizeof stages);
 
         for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
                 if (i == VR_SCRIPT_SHADER_STAGE_COMPUTE ||
