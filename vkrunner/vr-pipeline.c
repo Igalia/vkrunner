@@ -103,8 +103,8 @@ create_file_for_shader(const struct vr_config *config,
 static bool
 load_stream_contents(const struct vr_config *config,
                      FILE *stream,
-                     uint8_t **contents,
-                     size_t *size)
+                     uint8_t **contents_out,
+                     size_t *size_out)
 {
         size_t got;
         long pos;
@@ -117,16 +117,19 @@ load_stream_contents(const struct vr_config *config,
                 return false;
         }
 
-        *size = pos;
+        size_t size = pos;
         rewind(stream);
-        *contents = vr_alloc(*size);
+        uint8_t *contents = vr_alloc(size);
 
-        got = fread(*contents, 1, *size, stream);
-        if (got != *size) {
+        got = fread(contents, 1, size, stream);
+        if (got != size) {
                 vr_error_message(config, "Error reading file contents");
                 vr_free(contents);
                 return false;
         }
+
+        *contents_out = contents;
+        *size_out = size;
 
         return true;
 }
