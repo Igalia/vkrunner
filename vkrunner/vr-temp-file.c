@@ -46,26 +46,46 @@ vr_temp_file_create_named(const struct vr_config *config,
                           FILE **stream_out,
                           char **filename_out)
 {
-        struct vr_buffer filename = VR_BUFFER_STATIC_INIT;
-
 #ifdef WIN32
-        vr_buffer_ensure_size(&filename, MAX_PATH + 1);
-        DWORD len = GetTempPathA(MAX_PATH, (char *) filename.data);
+
+        char temp_path[MAX_PATH + 1];
+
+        DWORD len = GetTempPathA(MAX_PATH, temp_path);
 
         if (len == 0) {
-                vr_buffer_destroy(&filename);
                 vr_error_message(config, "GetTempPath failed");
                 return false;
         }
 
-        filename.length = len;
+        char filename[MAX_PATH + 1];
+
+        DWORD res = GetTempFileNameA(temp_path,
+                                     "vkrunner",
+                                     0, /* unique */
+                                     filename);
+        if (res == 0) {
+                vr_error_message(config, "GetTempFileName failed");
+                return false;
+        }
+
+        FILE *stream = fopen(filename, "r+b");
+        if (stream == NULL) {
+                vr_error_message(config, "%s: %s", filename, strerror(errno));
+                return FALSE;
+        }
+
+        *filename_out = vr_strdup(filename);
+        *stream_out = stream;
+
 #else
+
+        struct vr_buffer filename = VR_BUFFER_STATIC_INIT;
+
         const char *dir = getenv("TMPDIR");
         if (dir)
                 vr_buffer_append_string(&filename, dir);
         else
                 vr_buffer_append_string(&filename, "/tmp");
-#endif
 
         vr_buffer_append_string(&filename, VR_PATH_SEPARATOR "vkrunner-XXXXXX");
 
@@ -91,6 +111,8 @@ vr_temp_file_create_named(const struct vr_config *config,
 
         *filename_out = (char *) filename.data;
         *stream_out = stream;
+
+#endif
 
         return true;
 }
