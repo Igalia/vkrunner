@@ -35,9 +35,11 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <unistd.h>
 #include <assert.h>
 #include <string.h>
+#ifndef WIN32
+#include <unistd.h>
+#endif
 
 static const char *
 stage_names[VR_SCRIPT_N_STAGES] = {
