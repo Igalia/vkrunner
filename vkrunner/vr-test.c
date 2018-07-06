@@ -238,7 +238,7 @@ end_command_buffer(struct test_data *data)
                 .commandBufferCount = 1,
                 .pCommandBuffers = &context->command_buffer,
                 .pWaitDstStageMask =
-                (VkPipelineStageFlagBits[])
+                (VkPipelineStageFlags[])
                 { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT }
         };
         res = vkfn->vkQueueSubmit(context->queue,
