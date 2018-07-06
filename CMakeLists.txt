@@ -17,14 +17,16 @@ else()
   set(PLATFORM_ENDIANNESS 0)
 endif()
 
-foreach(FLAG -Wall -Wuninitialized -Wempty-body -Wformat
-        -Wformat-security -Winit-self -Wundef
-        -Wvla -Wpointer-arith -Wmissing-declarations)
-      CHECK_C_COMPILER_FLAG("${FLAG}" HAVE_FLAG-${FLAG})
-      if(${HAVE_FLAG-${FLAG}})
-        add_definitions("${FLAG}")
-      endif()
-endforeach()
+if(NOT "x${CMAKE_C_COMPILER_ID}" STREQUAL "xMSVC")
+  foreach(FLAG -Wall -Wuninitialized -Wempty-body -Wformat
+      -Wformat-security -Winit-self -Wundef
+      -Wvla -Wpointer-arith -Wmissing-declarations)
+    CHECK_C_COMPILER_FLAG("${FLAG}" HAVE_FLAG-${FLAG})
+    if(${HAVE_FLAG-${FLAG}})
+      add_definitions("${FLAG}")
+    endif()
+  endforeach()
+endif()
 
 CHECK_LIBRARY_EXISTS(m sinf "" NEED_LIBM)
 
