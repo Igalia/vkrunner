@@ -97,9 +97,13 @@
   __attribute__((format(printf, string_index, first_to_check)))
 #define VR_NULL_TERMINATED __attribute__((sentinel))
 #else
-#define VR_NO_RETURN
 #define VR_PRINTF_FORMAT(string_index, first_to_check)
 #define VR_NULL_TERMINATED
+#ifdef _MSC_VER
+#define VR_NO_RETURN __declspec(noreturn)
+#else
+#define VR_NO_RETURN
+#endif
 #endif
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
