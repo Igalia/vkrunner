@@ -17,7 +17,9 @@ else()
   set(PLATFORM_ENDIANNESS 0)
 endif()
 
-if(NOT "x${CMAKE_C_COMPILER_ID}" STREQUAL "xMSVC")
+if("x${CMAKE_C_COMPILER_ID}" STREQUAL "xMSVC")
+  add_definitions("/W2 /wd4244")
+else()
   foreach(FLAG -Wall -Wuninitialized -Wempty-body -Wformat
       -Wformat-security -Winit-self -Wundef
       -Wvla -Wpointer-arith -Wmissing-declarations)
