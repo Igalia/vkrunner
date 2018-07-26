@@ -249,7 +249,6 @@ tests or to run them on hardware where installing the compiler is not
 practical. VkRunner also includes a Python script to precompile the
 test scripts to binary. It can be run for example as below:
 
-    mkdir compiled-examples
     ./precompile-script.py -o compiled-examples examples/*.shader_test
     ./src/vkrunner compiled-examples/*.shader_test
 
