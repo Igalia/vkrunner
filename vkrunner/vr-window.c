@@ -230,7 +230,7 @@ create_render_pass(struct vr_window *window,
                                    VK_ATTACHMENT_LOAD_OP_DONT_CARE :
                                    VK_ATTACHMENT_LOAD_OP_LOAD),
                         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                        .stencilLoadOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
                         .initialLayout = (first_render ?
                                           VK_IMAGE_LAYOUT_UNDEFINED :

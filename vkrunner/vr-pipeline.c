@@ -31,11 +31,15 @@
 #include "vr-script.h"
 #include "vr-error-message.h"
 #include "vr-buffer.h"
+#include "vr-temp-file.h"
 
 #include <stdio.h>
 #include <errno.h>
-#include <unistd.h>
 #include <assert.h>
+#include <string.h>
+#ifndef WIN32
+#include <unistd.h>
+#endif
 
 static const char *
 stage_names[VR_SCRIPT_N_STAGES] = {
@@ -79,33 +83,6 @@ base_multisample_state = {
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
 };
 
-static bool
-create_named_temp_file(const struct vr_config *config,
-                       FILE **stream_out,
-                       char **filename_out)
-{
-        char filename[] = "/tmp/vkrunner-XXXXXX";
-        int fd = mkstemp(filename);
-        FILE *stream;
-
-        if (fd == -1) {
-                vr_error_message(config, "mkstemp: %s", strerror(errno));
-                return false;
-        }
-
-        stream = fdopen(fd, "r+");
-        if (stream == NULL) {
-                vr_error_message(config, "%s: %s", filename, strerror(errno));
-                close(fd);
-                return false;
-        }
-
-        *filename_out = vr_strdup(filename);
-        *stream_out = stream;
-
-        return true;
-}
-
 static char *
 create_file_for_shader(const struct vr_config *config,
                        const struct vr_script_shader *shader)
@@ -113,7 +90,7 @@ create_file_for_shader(const struct vr_config *config,
         char *filename;
         FILE *out;
 
-        if (!create_named_temp_file(config, &out, &filename))
+        if (!vr_temp_file_create_named(config, &out, &filename))
                 return NULL;
 
         fwrite(shader->source, 1, shader->length, out);
@@ -126,8 +103,8 @@ create_file_for_shader(const struct vr_config *config,
 static bool
 load_stream_contents(const struct vr_config *config,
                      FILE *stream,
-                     uint8_t **contents,
-                     size_t *size)
+                     uint8_t **contents_out,
+                     size_t *size_out)
 {
         size_t got;
         long pos;
@@ -140,16 +117,19 @@ load_stream_contents(const struct vr_config *config,
                 return false;
         }
 
-        *size = pos;
+        size_t size = pos;
         rewind(stream);
-        *contents = vr_alloc(*size);
+        uint8_t *contents = vr_alloc(size);
 
-        got = fread(*contents, 1, *size, stream);
-        if (got != *size) {
+        got = fread(contents, 1, size, stream);
+        if (got != size) {
                 vr_error_message(config, "Error reading file contents");
                 vr_free(contents);
                 return false;
         }
+
+        *contents_out = contents;
+        *size_out = size;
 
         return true;
 }
@@ -189,7 +169,11 @@ compile_stage(const struct vr_config *config,
         bool res;
         int i;
 
-        if (!create_named_temp_file(config, &module_stream, &module_filename))
+        memset(args + n_base_args, 0, (n_shaders + 1) * sizeof args[0]);
+
+        if (!vr_temp_file_create_named(config,
+                                       &module_stream,
+                                       &module_filename))
                 goto out;
 
         args[0] = getenv("PIGLIT_GLSLANG_VALIDATOR_BINARY");
@@ -201,7 +185,6 @@ compile_stage(const struct vr_config *config,
         args[3] = (char *) stage_names[stage];
         args[4] = "-o";
         args[5] = module_filename;
-        memset(args + n_base_args, 0, (n_shaders + 1) * sizeof args[0]);
 
         i = n_base_args;
         vr_list_for_each(shader, &script->stages[stage], link) {
@@ -275,7 +258,9 @@ assemble_stage(const struct vr_config *config,
         size_t module_size;
         bool res;
 
-        if (!create_named_temp_file(config, &module_stream, &module_filename))
+        if (!vr_temp_file_create_named(config,
+                                       &module_stream,
+                                       &module_filename))
                 goto out;
 
         source_filename = create_file_for_shader(config, shader);
@@ -353,9 +338,9 @@ load_binary_stage(const struct vr_config *config,
                 FILE *module_stream;
                 char *module_filename;
 
-                if (create_named_temp_file(config,
-                                           &module_stream,
-                                           &module_filename)) {
+                if (vr_temp_file_create_named(config,
+                                              &module_stream,
+                                              &module_filename)) {
                         fwrite(shader->source,
                                1, shader->length,
                                module_stream);
@@ -478,7 +463,8 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
         VkResult res;
         int num_stages = 0;
 
-        VkPipelineShaderStageCreateInfo stages[VR_SCRIPT_N_STAGES] = { };
+        VkPipelineShaderStageCreateInfo stages[VR_SCRIPT_N_STAGES];
+        memset(&stages, 0, sizeof stages);
 
         for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
                 if (i == VR_SCRIPT_SHADER_STAGE_COMPUTE ||
