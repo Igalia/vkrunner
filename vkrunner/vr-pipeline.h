@@ -34,7 +34,9 @@
 struct vr_pipeline {
         struct vr_window *window;
         VkPipelineLayout layout;
-        VkDescriptorSetLayout descriptor_set_layout;
+        VkDescriptorSetLayout *descriptor_set_layout;
+        unsigned *desc_sets;
+        unsigned n_desc_sets;
         int n_pipelines;
         VkPipeline *pipelines;
         VkPipelineCache pipeline_cache;

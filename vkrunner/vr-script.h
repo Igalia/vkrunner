@@ -91,6 +91,7 @@ struct vr_script_command {
                 } probe_rect;
 
                 struct {
+                        unsigned desc_set;
                         unsigned binding;
                         enum vr_box_comparison comparison;
                         size_t offset;
@@ -98,6 +99,7 @@ struct vr_script_command {
                 } probe_ssbo;
 
                 struct {
+                        unsigned desc_set;
                         unsigned binding;
                         size_t offset;
                         size_t size;
@@ -134,6 +136,7 @@ enum vr_script_buffer_type {
 };
 
 struct vr_script_buffer {
+        unsigned desc_set;
         unsigned binding;
         enum vr_script_buffer_type type;
         size_t size;

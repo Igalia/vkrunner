@@ -38,9 +38,16 @@
 #include <errno.h>
 #include <assert.h>
 #include <string.h>
+#include <limits.h>
 #ifndef WIN32
 #include <unistd.h>
 #endif
+
+struct desc_set_bindings_info {
+        VkDescriptorSetLayoutBinding *bindings;
+        unsigned n_bindings;
+        unsigned desc_set;
+};
 
 static const char *
 stage_names[VR_SCRIPT_N_STAGES] = {
@@ -663,9 +670,10 @@ create_vk_layout(struct vr_pipeline *pipeline,
         }
 
         if (pipeline->descriptor_set_layout) {
-                pipeline_layout_create_info.setLayoutCount = 1;
+                pipeline_layout_create_info.setLayoutCount =
+                        pipeline->n_desc_sets;
                 pipeline_layout_create_info.pSetLayouts =
-                        &pipeline->descriptor_set_layout;
+                        pipeline->descriptor_set_layout;
         }
 
         VkPipelineLayout layout;
@@ -682,15 +690,26 @@ create_vk_layout(struct vr_pipeline *pipeline,
         return layout;
 }
 
-static VkDescriptorSetLayout
+static bool
 create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
                                 const struct vr_script *script)
 {
         struct vr_vk *vkfn = &pipeline->window->vkfn;
         VkResult res;
+        bool ret = false;
         size_t n_buffers = script->n_buffers;
+
+        assert(n_buffers);
+
         VkDescriptorSetLayoutBinding *bindings =
                 vr_calloc(sizeof (*bindings) * n_buffers);
+        struct desc_set_bindings_info *info =
+                vr_alloc(sizeof *info * n_buffers);
+        size_t n_desc_sets = 0;
+        unsigned prev_desc_set = UINT_MAX;
+
+        unsigned n_ubo = 0;
+        unsigned n_ssbo = 0;
 
         for (unsigned i = 0; i < n_buffers; i++) {
                 const struct vr_script_buffer *buffer = script->buffers + i;
@@ -698,9 +717,11 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
                 switch (buffer->type) {
                 case VR_SCRIPT_BUFFER_TYPE_UBO:
                         descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                        ++n_ubo;
                         goto found_type;
                 case VR_SCRIPT_BUFFER_TYPE_SSBO:
                         descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                        ++n_ssbo;
                         goto found_type;
                 }
                 vr_fatal("Unexpected buffer type");
@@ -709,30 +730,91 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
                 bindings[i].descriptorType = descriptor_type;
                 bindings[i].descriptorCount = 1;
                 bindings[i].stageFlags = pipeline->stages;
+
+                if (prev_desc_set != buffer->desc_set) {
+                        if (prev_desc_set != UINT_MAX) {
+                                info[n_desc_sets].n_bindings =
+                                        &bindings[i] -
+                                        info[n_desc_sets].bindings;
+                                ++n_desc_sets;
+                        }
+                        info[n_desc_sets].desc_set = buffer->desc_set;
+                        info[n_desc_sets].bindings = &bindings[i];
+                        prev_desc_set = buffer->desc_set;
+                }
+        }
+        info[n_desc_sets].n_bindings =
+                &bindings[n_buffers] - info[n_desc_sets].bindings;
+        ++n_desc_sets;
+
+        VkDescriptorPoolSize pool_sizes[2] = {0};
+        uint32_t n_pool_sizes = 0;
+        if (n_ubo) {
+                pool_sizes[n_pool_sizes].type =
+                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                pool_sizes[n_pool_sizes].descriptorCount = n_ubo;
+                n_pool_sizes++;
+        }
+        if (n_ssbo) {
+                pool_sizes[n_pool_sizes].type =
+                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                pool_sizes[n_pool_sizes].descriptorCount = n_ssbo;
+                n_pool_sizes++;
         }
 
-        VkDescriptorSetLayoutCreateInfo create_info = {
-                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                .bindingCount = n_buffers,
-                .pBindings = bindings
+        VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+                .maxSets = n_desc_sets,
+                .poolSizeCount = n_pool_sizes,
+                .pPoolSizes = pool_sizes
         };
 
-        VkDescriptorSetLayout descriptor_set_layout;
-
-        res = vkfn->vkCreateDescriptorSetLayout(pipeline->window->device,
-                                                &create_info,
-                                                NULL, /* allocator */
-                                                &descriptor_set_layout);
-
-        vr_free(bindings);
-
+        res = vkfn->vkCreateDescriptorPool(pipeline->window->device,
+                                           &descriptor_pool_create_info,
+                                           NULL, /* allocator */
+                                           &pipeline->window->context->
+                                           descriptor_pool);
         if (res != VK_SUCCESS) {
                 vr_error_message(pipeline->window->config,
-                                 "Error creating descriptor set layout");
-                return VK_NULL_HANDLE;
+                                 "Error creating VkDescriptorPool");
+                goto error;
         }
 
-        return descriptor_set_layout;
+        pipeline->descriptor_set_layout =
+                vr_calloc(sizeof(VkDescriptorSetLayout) * n_desc_sets);
+        unsigned *first_sets = vr_alloc(sizeof(unsigned) * n_desc_sets);
+
+        for (unsigned i = 0; i < n_desc_sets; i++) {
+                VkDescriptorSetLayoutCreateInfo create_info = {
+                        .sType =
+                         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                        .bindingCount = info[i].n_bindings,
+                        .pBindings = info[i].bindings
+                };
+
+                res = vkfn->vkCreateDescriptorSetLayout(
+                                pipeline->window->device,
+                                &create_info,
+                                NULL, /* allocator */
+                                &pipeline->descriptor_set_layout[i]);
+
+                if (res != VK_SUCCESS) {
+                        vr_error_message(pipeline->window->config,
+                                         "Error creating descriptor set layout");
+                        goto error;
+                }
+                first_sets[i] = info[i].desc_set;
+        }
+
+        pipeline->desc_sets = first_sets;
+        pipeline->n_desc_sets = n_desc_sets;
+        ret = true;
+
+error:
+        vr_free(bindings);
+        vr_free(info);
+        return ret;
 }
 
 struct vr_pipeline *
@@ -770,9 +852,7 @@ vr_pipeline_create(const struct vr_config *config,
         pipeline->stages = get_script_stages(script);
 
         if (script->n_buffers > 0) {
-                pipeline->descriptor_set_layout =
-                        create_vk_descriptor_set_layout(pipeline, script);
-                if (pipeline->descriptor_set_layout == VK_NULL_HANDLE)
+                if (!create_vk_descriptor_set_layout(pipeline, script))
                         goto error;
         }
 
@@ -859,10 +939,18 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
         }
 
         if (pipeline->descriptor_set_layout) {
-                VkDescriptorSetLayout dsl = pipeline->descriptor_set_layout;
-                vkfn->vkDestroyDescriptorSetLayout(window->device,
-                                                   dsl,
-                                                   NULL /* allocator */);
+                for (unsigned i = 0; i < pipeline->n_desc_sets; i++) {
+                        VkDescriptorSetLayout dsl =
+                                pipeline->descriptor_set_layout[i];
+                        if (dsl != VK_NULL_HANDLE) {
+                                vkfn->vkDestroyDescriptorSetLayout(
+                                                window->device,
+                                                dsl,
+                                                NULL /* allocator */);
+                        }
+                }
+                vr_free(pipeline->descriptor_set_layout);
+                vr_free(pipeline->desc_sets);
         }
 
         for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {

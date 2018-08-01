@@ -538,6 +538,20 @@ parse_size_t(const char **p,
 }
 
 static bool
+parse_desc_set_and_binding(const char **p,
+                           unsigned *out)
+{
+        const char *p_backup = *p;
+        if (!parse_uints(p, out, 2, ":")) {
+                *p = p_backup;
+                out[0] = 0;
+                if (!parse_uints(p, &out[1], 1, NULL))
+                        return false;
+        }
+        return true;
+}
+
+static bool
 parse_value_type(const char **p,
                  enum vr_box_type *type)
 {
@@ -1042,12 +1056,15 @@ process_probe_ssbo_command(const char *p,
         while (isspace(*p))
                 p++;
 
-        unsigned values[2];
-        if (!parse_uints(&p, values, VR_N_ELEMENTS(values), NULL))
+        unsigned values[3];
+        if (!parse_desc_set_and_binding(&p, values) ||
+            !parse_uints(&p, &values[2], 1, NULL)) {
                 return false;
+        }
 
-        command->probe_ssbo.binding = values[0];
-        command->probe_ssbo.offset = values[1];
+        command->probe_ssbo.desc_set = values[0];
+        command->probe_ssbo.binding = values[1];
+        command->probe_ssbo.offset = values[2];
 
         while (isspace(*p))
                 p++;
@@ -1336,6 +1353,7 @@ process_pipeline_property(struct load_state *data,
 
 static struct vr_script_buffer *
 get_buffer(struct load_state *data,
+           unsigned desc_set,
            unsigned binding,
            enum vr_script_buffer_type type)
 {
@@ -1345,13 +1363,16 @@ get_buffer(struct load_state *data,
                               sizeof (struct vr_script_buffer));
 
         for (unsigned i = 0; i < n_buffers; i++) {
-                if (buffer[i].binding == binding) {
+                if (buffer[i].desc_set == desc_set &&
+                    buffer[i].binding == binding) {
                         if (buffer[i].type != type) {
                                 vr_error_message(data->config,
                                                  "%s:%i: Buffer binding point "
-                                                 "%u used with different types",
+                                                 "%u:%u used with different "
+                                                 "types",
                                                  data->filename,
                                                  data->line_num,
+                                                 desc_set,
                                                  binding);
                                 return NULL;
                         }
@@ -1366,6 +1387,7 @@ get_buffer(struct load_state *data,
                   (data->buffers.data + data->buffers.length) - 1);
         buffer->type = type;
         buffer->size = 0;
+        buffer->desc_set = desc_set;
         buffer->binding = binding;
 
         return buffer;
@@ -1373,15 +1395,17 @@ get_buffer(struct load_state *data,
 
 static bool
 process_set_buffer_subdata(struct load_state *data,
+                           unsigned desc_set,
                            unsigned binding,
                            enum vr_script_buffer_type type,
                            const char *p,
                            struct vr_script_command *command)
 {
+        command->set_buffer_subdata.desc_set = desc_set;
         command->set_buffer_subdata.binding = binding;
 
         struct vr_script_buffer *buffer =
-                get_buffer(data, binding, type);
+                get_buffer(data, desc_set, binding, type);
         if (buffer == NULL)
                 return false;
 
@@ -1419,11 +1443,12 @@ error:
 
 static bool
 process_set_ssbo_size(struct load_state *data,
+                      unsigned desc_set,
                       unsigned binding,
                       unsigned size)
 {
         struct vr_script_buffer *buffer =
-                get_buffer(data, binding, VR_SCRIPT_BUFFER_TYPE_SSBO);
+                get_buffer(data, desc_set, binding, VR_SCRIPT_BUFFER_TYPE_SSBO);
         if (buffer == NULL)
                 return false;
 
@@ -1480,13 +1505,15 @@ process_test_line(struct load_state *data)
         }
 
         if (looking_at(&p, "ssbo ")) {
-                unsigned values[2];
-                if (parse_uints(&p, values, VR_N_ELEMENTS(values), NULL)) {
+                unsigned values[3];
+                if (parse_desc_set_and_binding(&p, values) &&
+                    parse_uints(&p, &values[2], 1, NULL)) {
                         if (!is_end(p))
                                 return false;
                         return process_set_ssbo_size(data,
                                                      values[0],
-                                                     values[1]);
+                                                     values[1],
+                                                     values[2]);
                 }
                 p = command_start;
         }
@@ -1548,22 +1575,21 @@ process_test_line(struct load_state *data)
         }
 
         if (looking_at(&p, "uniform ubo ")) {
-                unsigned binding;
-
-                if (!parse_uints(&p, &binding, 1, NULL))
+                unsigned values[2];
+                if (!parse_desc_set_and_binding(&p, values))
                         goto error;
-
                 return process_set_buffer_subdata(data,
-                                                  binding,
+                                                  values[0],
+                                                  values[1],
                                                   VR_SCRIPT_BUFFER_TYPE_UBO,
                                                   p,
                                                   command);
         }
 
         if (looking_at(&p, "ssbo ")) {
-                unsigned binding;
+                unsigned values[2];
 
-                if (!parse_uints(&p, &binding, 1, NULL))
+                if (!parse_desc_set_and_binding(&p, values))
                         goto error;
 
                 while (isspace(*p))
@@ -1572,7 +1598,8 @@ process_test_line(struct load_state *data)
                         goto error;
 
                 return process_set_buffer_subdata(data,
-                                                  binding,
+                                                  values[0],
+                                                  values[1],
                                                   VR_SCRIPT_BUFFER_TYPE_SSBO,
                                                   p,
                                                   command);
@@ -1932,11 +1959,16 @@ read_line_from_string(const char *string,
 }
 
 static int
-compare_buffer_binding(const void *a,
-                       const void *b)
+compare_buffer_set_and_binding(const void *a,
+                               const void *b)
 {
-        return ((int) ((const struct vr_script_buffer *) a)->binding -
-                (int) ((const struct vr_script_buffer *) b)->binding);
+        const struct vr_script_buffer *buffer_a =
+                (const struct vr_script_buffer *) a;
+        const struct vr_script_buffer *buffer_b =
+                (const struct vr_script_buffer *) b;
+        if ((int) buffer_a->desc_set == (int) buffer_b->desc_set)
+                return ((int) buffer_a->binding - (int) buffer_b->binding);
+        return ((int) buffer_a->desc_set - (int) buffer_b->desc_set);
 }
 
 static bool
@@ -2135,7 +2167,7 @@ vr_script_load(const struct vr_config *config,
         qsort(script->buffers,
               script->n_buffers,
               sizeof script->buffers[0],
-              compare_buffer_binding);
+              compare_buffer_set_and_binding);
 
         vr_buffer_destroy(&data.buffer);
         vr_buffer_destroy(&data.line);
