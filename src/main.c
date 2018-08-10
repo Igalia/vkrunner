@@ -41,6 +41,7 @@ struct main_data {
         int binding;
         int n_scripts;
         bool inspect_failed;
+        bool quiet;
 };
 
 typedef bool (* option_cb_t) (struct main_data *data,
@@ -117,6 +118,15 @@ opt_token_replacement(struct main_data *data,
         return true;
 }
 
+static bool
+opt_quiet(struct main_data *data,
+          const char *arg)
+{
+        data->quiet = true;
+
+        return true;
+}
+
 static const struct option
 options[] = {
         { 'h', "Show this help message", NULL, opt_help },
@@ -130,6 +140,8 @@ options[] = {
         { 'd', "Show the SPIR-V disassembly", NULL, opt_disassembly },
         { 'D', "Replace occurences of TOK with REPL in the scripts",
           "TOK=REPL", opt_token_replacement },
+        { 'q', "Don’t print any non-error information to stdout", NULL,
+          opt_quiet }
 };
 
 #define N_OPTIONS (sizeof options / sizeof options[0])
@@ -372,7 +384,7 @@ before_test_cb(const char *filename,
 {
         struct main_data *data = user_data;
 
-        if (data->n_scripts > 1)
+        if (data->n_scripts > 1 && !data->quiet)
                 printf("%s\n", filename);
 }
 
@@ -384,7 +396,8 @@ main(int argc, char **argv)
         struct main_data data = {
                 .config = vr_config_new(),
                 .n_scripts = 0,
-                .binding = -1
+                .binding = -1,
+                .quiet = false
         };
 
         vr_config_set_user_data(data.config, &data);
@@ -407,8 +420,10 @@ main(int argc, char **argv)
         if (data.inspect_failed)
                 result = vr_result_merge(result, VR_RESULT_FAIL);
 
-        printf("PIGLIT: {\"result\": \"%s\" }\n",
-               vr_result_to_string(result));
+        if (!data.quiet || result != VR_RESULT_PASS) {
+                printf("PIGLIT: {\"result\": \"%s\" }\n",
+                       vr_result_to_string(result));
+        }
 
         return result == VR_RESULT_FAIL ? EXIT_FAILURE : EXIT_SUCCESS;
 }
