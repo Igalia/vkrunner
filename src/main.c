@@ -36,7 +36,7 @@ struct main_data {
         int n_scripts;
 };
 
-typedef bool (* option_cb_t) (struct vr_config *config,
+typedef bool (* option_cb_t) (struct main_data *data,
                               const char *arg);
 
 struct option {
@@ -51,27 +51,27 @@ struct option {
 };
 
 static bool
-opt_help(struct vr_config *config,
+opt_help(struct main_data *data,
          const char *arg);
 
 static bool
-opt_image(struct vr_config *config,
+opt_image(struct main_data *data,
           const char *arg)
 {
-        vr_config_set_image_filename(config, arg);
+        vr_config_set_image_filename(data->config, arg);
         return true;
 }
 
 static bool
-opt_disassembly(struct vr_config *config,
+opt_disassembly(struct main_data *data,
                 const char *arg)
 {
-        vr_config_set_show_disassembly(config, true);
+        vr_config_set_show_disassembly(data->config, true);
         return true;
 }
 
 static bool
-opt_token_replacement(struct vr_config *config,
+opt_token_replacement(struct main_data *data,
                       const char *arg)
 {
         const char *equals = strchr(arg, '=');
@@ -87,7 +87,7 @@ opt_token_replacement(struct vr_config *config,
         memcpy(token, arg, equals - arg);
         token[equals - arg] = '\0';
 
-        vr_config_add_token_replacement(config, token, equals + 1);
+        vr_config_add_token_replacement(data->config, token, equals + 1);
 
         free(token);
 
@@ -107,7 +107,7 @@ options[] = {
 #define N_OPTIONS (sizeof options / sizeof options[0])
 
 static bool
-opt_help(struct vr_config *config,
+opt_help(struct main_data *data,
          const char *arg)
 {
         printf("usage: vkrunner [OPTION]... SCRIPT...\n"
@@ -129,7 +129,7 @@ opt_help(struct vr_config *config,
 }
 
 static bool
-handle_option(struct vr_config *config,
+handle_option(struct main_data *data,
               const struct option *option,
               const char *p,
               int argc, char **argv,
@@ -146,7 +146,7 @@ handle_option(struct vr_config *config,
                                 fprintf(stderr,
                                         "option ‘%c’ expects an argument\n",
                                         *p);
-                                opt_help(config, NULL);
+                                opt_help(data, NULL);
                                 return false;
                         }
                         arg = argv[*arg_num];
@@ -155,7 +155,7 @@ handle_option(struct vr_config *config,
                 arg = NULL;
         }
 
-        return option->cb(config, arg);
+        return option->cb(data, arg);
 }
 
 static bool
@@ -178,7 +178,7 @@ process_argv(struct main_data *data,
                                         if (options[option_num].letter != *p)
                                                 continue;
 
-                                        if (!handle_option(data->config,
+                                        if (!handle_option(data,
                                                            options + option_num,
                                                            p,
                                                            argc, argv,
@@ -194,7 +194,7 @@ process_argv(struct main_data *data,
                                 fprintf(stderr,
                                         "unknown option ‘%c’\n",
                                         *p);
-                                opt_help(data->config, NULL);
+                                opt_help(data, NULL);
                                 return false;
 
                         found_option:
@@ -211,7 +211,7 @@ process_argv(struct main_data *data,
 
         if (data->n_scripts <= 0) {
                 fprintf(stderr, "no script specified\n");
-                opt_help(data->config, NULL);
+                opt_help(data, NULL);
                 return false;
         }
 
