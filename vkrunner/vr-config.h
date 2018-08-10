@@ -64,6 +64,12 @@ vr_config_add_token_replacement(struct vr_config *config,
                                 const char *token,
                                 const char *replacement);
 
+/* Sets Vulkan validation layers. */
+void
+vr_config_set_instance_layers_and_extensions(struct vr_config *config,
+                                             const char *const *layers,
+                                             const char *const *extensions);
+
 void
 vr_config_set_image_filename(struct vr_config *config,
                              const char *image_filename);
