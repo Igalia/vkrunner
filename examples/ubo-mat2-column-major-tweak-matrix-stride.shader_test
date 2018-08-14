@@ -1,0 +1,80 @@
+[vertex shader passthrough]
+
+[fragment shader spirv]
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 7
+; Bound: 28
+; Schema: 0
+               OpCapability Shader
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint Fragment %main "main" %color_out
+               OpExecutionMode %main OriginUpperLeft
+               OpSource GLSL 430
+               OpName %main "main"
+               OpName %color_out "color_out"
+               OpName %block "block"
+               OpMemberName %block 0 "m"
+               OpName %_ ""
+               OpDecorate %color_out Location 0
+               OpMemberDecorate %block 0 ColMajor
+               OpMemberDecorate %block 0 Offset 0
+               OpMemberDecorate %block 0 MatrixStride 8
+               OpDecorate %block Block
+               OpDecorate %_ DescriptorSet 0
+               OpDecorate %_ Binding 5
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+  %color_out = OpVariable %_ptr_Output_v4float Output
+    %v2float = OpTypeVector %float 2
+%mat2v2float = OpTypeMatrix %v2float 2
+      %block = OpTypeStruct %mat2v2float
+%_ptr_Uniform_block = OpTypePointer Uniform %block
+          %_ = OpVariable %_ptr_Uniform_block Uniform
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+%_ptr_Uniform_v2float = OpTypePointer Uniform %v2float
+      %int_1 = OpConstant %int 1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+         %18 = OpAccessChain %_ptr_Uniform_v2float %_ %int_0 %int_0
+         %19 = OpLoad %v2float %18
+         %21 = OpAccessChain %_ptr_Uniform_v2float %_ %int_0 %int_1
+         %22 = OpLoad %v2float %21
+         %23 = OpCompositeExtract %float %19 0
+         %24 = OpCompositeExtract %float %19 1
+         %25 = OpCompositeExtract %float %22 0
+         %26 = OpCompositeExtract %float %22 1
+         %27 = OpCompositeConstruct %v4float %23 %24 %25 %26
+               OpStore %color_out %27
+               OpReturn
+               OpFunctionEnd
+
+[fragment shader]
+#version 430
+
+layout (location = 0) out vec4 color_out;
+layout (binding = 5) uniform block {
+  layout(column_major) mat2x2 m;
+};
+
+void main()
+{
+   color_out = vec4(m[0], m[1]);
+}
+
+[test]
+clear
+
+# VkRunner computes the matrix stride based on std140 rules, instead
+# of using the explicit matrix stride. We workaround this issue
+# uploading the matrix as a vec4.
+uniform ubo 5 vec4 0 0.11 0.12 0.21 0.22
+
+draw rect -1 -1 2 2
+
+probe all rgba 0.11 0.12 0.21 0.22
