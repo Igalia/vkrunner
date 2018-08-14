@@ -1,0 +1,24 @@
+[vertex shader passthrough]
+
+[fragment shader]
+#version 430
+
+layout (location = 0) out vec4 color_out;
+layout (binding = 5) uniform block {
+  layout(column_major) mat2x2 m;
+};
+
+void main()
+{
+   color_out = vec4(m[0], m[1]);
+}
+
+
+[test]
+clear
+
+uniform ubo 5 mat2 0 0.11 0.12 0.21 0.22
+
+draw rect -1 -1 2 2
+
+probe all rgba 0.11 0.12 0.21 0.22
