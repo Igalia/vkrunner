@@ -37,6 +37,8 @@
 struct main_data {
         struct vr_config *config;
         const char *image_filename;
+        const char *buffer_filename;
+        int binding;
         int n_scripts;
         bool inspect_failed;
 };
@@ -64,6 +66,22 @@ opt_image(struct main_data *data,
           const char *arg)
 {
         data->image_filename = arg;
+        return true;
+}
+
+static bool
+opt_buffer(struct main_data *data,
+           const char *arg)
+{
+        data->buffer_filename = arg;
+        return true;
+}
+
+static bool
+opt_binding(struct main_data *data,
+            const char *arg)
+{
+        data->binding = strtoul(arg, NULL, 0);
         return true;
 }
 
@@ -104,6 +122,11 @@ options[] = {
         { 'h', "Show this help message", NULL, opt_help },
         { 'i', "Write the final rendering to IMG as a PPM image", "IMG",
           opt_image },
+        { 'b', "Dump contents of a UBO or SSBO to BUF", "BUF",
+          opt_buffer },
+        { 'B', "Select which buffer to dump using the -b option. "
+          "Defaults to first buffer", "BINDING",
+          opt_binding },
         { 'd', "Show the SPIR-V disassembly", NULL, opt_disassembly },
         { 'D', "Replace occurences of TOK with REPL in the scripts",
           "TOK=REPL", opt_token_replacement },
@@ -273,6 +296,56 @@ write_ppm(const struct vr_inspect_image *image,
         return true;
 }
 
+static bool
+write_buffer(const struct vr_inspect_data *data,
+             int binding,
+             const char *filename)
+{
+        const struct vr_inspect_buffer *buffer;
+
+        if (data->n_buffers < 1) {
+                fprintf(stderr,
+                        "%s: no buffers are used in the test script\n",
+                        filename);
+                return false;
+        }
+
+        if (binding == -1) {
+                buffer = data->buffers;
+        } else {
+                for (int i = 0; i < data->n_buffers; i++) {
+                        if (data->buffers[i].binding == binding) {
+                                buffer = data->buffers + i;
+                                goto found_buffer;
+                        }
+                }
+
+                fprintf(stderr,
+                        "%s: no buffer with binding %i was found\n",
+                        filename,
+                        binding);
+                return false;
+
+        found_buffer:
+                (void) 0;
+        }
+
+        FILE *out = fopen(filename, "wb");
+
+        if (out == NULL) {
+                fprintf(stderr,
+                        "%s: %s",
+                        filename,
+                        strerror(errno));
+                return false;
+        }
+
+        fwrite(buffer->data, 1, buffer->size, out);
+        fclose(out);
+
+        return true;
+}
+
 static void
 inspect_cb(const struct vr_inspect_data *inspect_data,
            void *user_data)
@@ -282,6 +355,13 @@ inspect_cb(const struct vr_inspect_data *inspect_data,
         if (data->image_filename) {
                 if (!write_ppm(&inspect_data->color_buffer,
                                data->image_filename))
+                        data->inspect_failed = true;
+        }
+
+        if (data->buffer_filename) {
+                if (!write_buffer(inspect_data,
+                                  data->binding,
+                                  data->buffer_filename))
                         data->inspect_failed = true;
         }
 }
@@ -303,7 +383,8 @@ main(int argc, char **argv)
 
         struct main_data data = {
                 .config = vr_config_new(),
-                .n_scripts = 0
+                .n_scripts = 0,
+                .binding = -1
         };
 
         vr_config_set_user_data(data.config, &data);
