@@ -51,6 +51,10 @@ struct vr_config {
         vr_config_before_test_cb before_test_cb;
         vr_config_after_test_cb after_test_cb;
         void *user_data;
+
+        /* Names of instance layers and extensions */
+        const char *const *layers;
+        const char *const *extensions;
 };
 
 #endif /* VR_CONFIG_PRIVATE_H */

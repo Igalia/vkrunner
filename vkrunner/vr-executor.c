@@ -252,6 +252,8 @@ process_script(struct vr_executor *executor,
                                 goto out;
                 } else {
                         res = vr_context_new(config,
+                                             config->layers,
+                                             config->extensions,
                                              &script->required_features,
                                              script->extensions,
                                              &executor->context);

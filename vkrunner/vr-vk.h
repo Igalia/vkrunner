@@ -33,10 +33,11 @@
 struct vr_vk {
         void *lib_vulkan;
 
-        PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr;
-        PFN_vkCreateInstance vkCreateInstance;
-
 #define VR_VK_FUNC(name) PFN_ ## name name;
+        VR_VK_FUNC(vkGetInstanceProcAddr);
+        VR_VK_FUNC(vkCreateInstance);
+        VR_VK_FUNC(vkEnumerateInstanceLayerProperties);
+        VR_VK_FUNC(vkEnumerateInstanceExtensionProperties);
 #include "vr-vk-instance-funcs.h"
 #include "vr-vk-device-funcs.h"
 #undef VR_VK_FUNC

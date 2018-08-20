@@ -48,6 +48,7 @@ struct vr_context {
         VkQueue queue;
         int queue_family;
         VkInstance vk_instance;
+        VkDebugReportCallbackEXT vk_debug_callback;
         VkFence vk_fence;
 
         struct vr_vk vkfn;
@@ -55,6 +56,8 @@ struct vr_context {
 
 enum vr_result
 vr_context_new(const struct vr_config *config,
+               const char *const *layers,
+               const char *const *instance_extensions,
                const VkPhysicalDeviceFeatures *requires,
                const char *const *extensions,
                struct vr_context **context_out);

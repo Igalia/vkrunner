@@ -65,6 +65,15 @@ vr_config_add_token_replacement(struct vr_config *config,
 }
 
 void
+vr_config_set_instance_layers_and_extensions(struct vr_config *config,
+                                             const char *const *layers,
+                                             const char *const *extensions)
+{
+        config->layers = layers;
+        config->extensions = extensions;
+}
+
+void
 vr_config_set_image_filename(struct vr_config *config,
                              const char *image_filename)
 {

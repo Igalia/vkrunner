@@ -105,12 +105,176 @@ deinit_vk(struct vr_context *context)
                                               NULL /* allocator */);
                         context->device = VK_NULL_HANDLE;
                 }
+                if (context->vk_instance && context->vk_debug_callback) {
+                        vkfn->vkDestroyDebugReportCallbackEXT(
+                                        context->vk_instance,
+                                        context->vk_debug_callback,
+                                        NULL);
+                }
                 if (context->vk_instance) {
                         vkfn->vkDestroyInstance(context->vk_instance,
                                                 NULL /* allocator */);
                         context->vk_instance = VK_NULL_HANDLE;
                 }
         }
+}
+
+#define FIND(what, property)                                      \
+        static bool                                               \
+        find_##what(uint32_t property_count,                      \
+                    const property *props,                        \
+                    const char *name)                             \
+        {                                                         \
+                for (uint32_t i = 0; i < property_count; i++) {   \
+                        if (!strcmp(name, props[i].what##Name))   \
+                                return true;                      \
+                }                                                 \
+                                                                  \
+                return false;                                     \
+        }
+FIND(extension, VkExtensionProperties);  // find_extension
+FIND(layer, VkLayerProperties);          // find_layer
+
+static VkResult
+get_extensions_with_alloc(struct vr_vk *vkfn,
+                          const char *layer,
+                          VkExtensionProperties **pprops,
+                          uint32_t *pproperty_count)
+{
+        VkResult res = vkfn->vkEnumerateInstanceExtensionProperties(
+                        layer,
+                        pproperty_count,
+                        NULL);
+        if (pprops == NULL || res != VK_SUCCESS)
+                return res;
+
+        *pprops = vr_alloc(*pproperty_count * sizeof(VkExtensionProperties));
+
+        res = vkfn->vkEnumerateInstanceExtensionProperties(layer,
+                                                           pproperty_count,
+                                                           *pprops);
+        return res;
+}
+
+static bool
+check_layers_and_extensions(struct vr_context *context,
+                            const char *const *layers,
+                            const char *const *extensions,
+                            uint32_t *p_n_layers,
+                            uint32_t *p_n_instance_extensions)
+{
+        struct vr_vk *vkfn = &context->vkfn;
+        VkResult res;
+        uint32_t property_count;
+        bool ret = true;
+
+        *p_n_layers = 0;
+        *p_n_instance_extensions = 0;
+
+        if (!layers || !*layers || !extensions || !*extensions)
+                return false;
+
+        res = vkfn->vkEnumerateInstanceLayerProperties(&property_count,
+                                                       NULL);
+        if (res != VK_SUCCESS) {
+                vr_error_message(context->config,
+                                 "Error enumerate instance layers");
+                return false;
+        }
+
+        VkLayerProperties *props = vr_alloc(property_count * sizeof *props);
+
+        res = vkfn->vkEnumerateInstanceLayerProperties(&property_count,
+                                                       props);
+        if (res == VK_SUCCESS) {
+                // Check layers
+                *p_n_layers = 0;
+                for (const char * const *layer = layers; *layer; layer++) {
+                        if (!find_layer(property_count, props, *layer)) {
+                                vr_error_message(context->config,
+                                                 "Error layer '%s' not found",
+                                                 *layer);
+                                ret = false;
+                        }
+                        ++*p_n_layers;
+                }
+        } else {
+                vr_error_message(context->config,
+                                 "Error enumerate instance layers");
+                ret = false;
+        }
+
+        if (ret) {
+                // Check extensions
+                VkExtensionProperties **extension_array =
+                        vr_alloc(*p_n_layers * sizeof *extension_array);
+                uint32_t *n_extensions =
+                        vr_alloc(*p_n_layers * sizeof *n_extensions);
+                for (uint32_t i = 0; i < *p_n_layers; i++) {
+                        res = get_extensions_with_alloc(vkfn,
+                                                        layers[i],
+                                                        &extension_array[i],
+                                                        &n_extensions[i]);
+                        if (res != VK_SUCCESS) {
+                                vr_error_message(context->config,
+                                                 "Failed to get instance "
+                                                 "extensions");
+                                ret = false;
+                                break;
+                        }
+                }
+                for (const char * const *ext = extensions; *ext; ext++) {
+                        bool found = false;
+                        for (uint32_t i = 0; i < *p_n_layers; i++) {
+                                if (!extension_array[i])
+                                        continue;
+                                if (find_extension(n_extensions[i],
+                                                   extension_array[i],
+                                                   *ext))
+                                        found = true;
+                        }
+                        if (!found) {
+                                vr_error_message(context->config,
+                                                 "Error extension '%s' "
+                                                 "not found",
+                                                 *ext);
+                                ret = false;
+                        }
+                        ++*p_n_instance_extensions;
+                }
+                for (uint32_t i = 0; i < *p_n_layers; i++)
+                        vr_free(extension_array[i]);
+                vr_free(extension_array);
+                vr_free(n_extensions);
+        } else {
+                // Show available layers and extensions for debugging
+                vr_error_message(context->config,
+                                 "Available instance layers and "
+                                 "their instance extensions:\n");
+                for (uint32_t i = 0; i < property_count; i++) {
+                        vr_error_message(context->config,
+                                         "Layer '%s'",
+                                         props[i].layerName);
+                        uint32_t ext_count;
+                        VkExtensionProperties *ext = NULL;
+                        res = get_extensions_with_alloc(vkfn,
+                                                        props[i].layerName,
+                                                        &ext,
+                                                        &ext_count);
+                        if (res == VK_SUCCESS) {
+                                for (uint32_t j = 0; j < ext_count; j++) {
+                                        vr_error_message(context->config,
+                                                         "\tExtension '%s'",
+                                                         ext[j].extensionName);
+                                }
+                        }
+                        if (ext)
+                                vr_free(ext);
+                }
+        }
+        vr_free(props);
+
+        return ret;
 }
 
 static bool
@@ -134,19 +298,6 @@ check_features(const VkPhysicalDeviceFeatures *features,
         }
 
         return true;
-}
-
-static bool
-find_extension(uint32_t property_count,
-               const VkExtensionProperties *props,
-               const char *extension)
-{
-        for (uint32_t i = 0; i < property_count; i++) {
-                if (!strcmp(extension, props[i].extensionName))
-                        return true;
-        }
-
-        return false;
 }
 
 static bool
@@ -255,13 +406,83 @@ get_instance_proc(const char *name,
         return vkfn->vkGetInstanceProcAddr(context->vk_instance, name);
 }
 
+static VKAPI_ATTR VkBool32 VKAPI_CALL
+debug_callback(VkDebugReportFlagsEXT flags,
+               VkDebugReportObjectTypeEXT obj_type,
+               uint64_t obj,
+               size_t location,
+               int32_t code,
+               const char* layer_prefix,
+               const char* message,
+               void* user_data)
+{
+        const char *level = NULL;
+        const struct vr_config *config = user_data;
+
+        if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT)
+                level = "ERROR";
+        else if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT)
+                level = "WARNING";
+        else if (flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT)
+                level = "INFO";
+        else if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT)
+                level = "DEBUG";
+
+        vr_error_message(config,
+                         "[%s] validation layer '%s': %s",
+                         level,
+                         layer_prefix,
+                         message);
+        return VK_FALSE;
+}
+
+static bool
+set_debug_callback(struct vr_context *context)
+{
+        struct vr_vk *vkfn = &context->vkfn;
+        VkResult res;
+
+        VkDebugReportCallbackCreateInfoEXT info = {
+                .sType =
+                VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
+                .flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |
+                         VK_DEBUG_REPORT_WARNING_BIT_EXT |
+                         VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
+                         VK_DEBUG_REPORT_DEBUG_BIT_EXT,
+                .pfnCallback = debug_callback,
+                .pUserData = (void *) context->config
+        };
+
+        res = vkfn->vkCreateDebugReportCallbackEXT(context->vk_instance,
+                                                   &info,
+                                                   NULL,
+                                                   &context->vk_debug_callback);
+        if (res != VK_SUCCESS) {
+                vr_error_message(context->config,
+                                 "Failed to set debug callback");
+                return false;
+        }
+        return true;
+}
+
 static enum vr_result
 init_vk_device(struct vr_context *context,
+               const char *const *layers,
+               const char *const *instance_extensions,
                const VkPhysicalDeviceFeatures *requires,
                const char *const *extensions)
 {
         struct vr_vk *vkfn = &context->vkfn;
         VkResult res;
+
+        uint32_t n_layers;
+        uint32_t n_instance_extensions;
+
+        bool layer_on = check_layers_and_extensions(context,
+                                                    layers,
+                                                    instance_extensions,
+                                                    &n_layers,
+                                                    &n_instance_extensions);
 
         struct VkInstanceCreateInfo instance_create_info = {
                 .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -270,6 +491,10 @@ init_vk_device(struct vr_context *context,
                         .pApplicationName = "vkrunner",
                         .apiVersion = VK_MAKE_VERSION(1, 0, 2)
                 },
+                .enabledLayerCount = n_layers,
+                .ppEnabledLayerNames = layers,
+                .enabledExtensionCount = n_instance_extensions,
+                .ppEnabledExtensionNames = instance_extensions
         };
         res = vkfn->vkCreateInstance(&instance_create_info,
                                      NULL, /* allocator */
@@ -282,6 +507,8 @@ init_vk_device(struct vr_context *context,
         }
 
         vr_vk_init_instance(vkfn, get_instance_proc, context);
+        if (layer_on)
+                set_debug_callback(context);
 
         enum vr_result vres =
                 find_physical_device(context, requires, extensions);
@@ -441,6 +668,8 @@ vr_context_check_features(struct vr_context *context,
 
 enum vr_result
 vr_context_new(const struct vr_config *config,
+               const char *const *layers,
+               const char *const *instance_extensions,
                const VkPhysicalDeviceFeatures *requires,
                const char *const *extensions,
                struct vr_context **context_out)
@@ -456,7 +685,11 @@ vr_context_new(const struct vr_config *config,
 
         context->config = config;
 
-        vres = init_vk_device(context, requires, extensions);
+        vres = init_vk_device(context,
+                              layers,
+                              instance_extensions,
+                              requires,
+                              extensions);
         if (vres != VR_RESULT_PASS)
                 goto error;
 

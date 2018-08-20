@@ -95,7 +95,14 @@ vr_vk_load_libvulkan(const struct vr_config *config,
         vkfn->vkCreateInstance =
                 (void *) vkfn->vkGetInstanceProcAddr(VK_NULL_HANDLE,
                                                      "vkCreateInstance");
-
+        vkfn->vkEnumerateInstanceLayerProperties =
+                (void *) vkfn->vkGetInstanceProcAddr(
+                    VK_NULL_HANDLE,
+                    "vkEnumerateInstanceLayerProperties");
+        vkfn->vkEnumerateInstanceExtensionProperties =
+                (void *) vkfn->vkGetInstanceProcAddr(
+                    VK_NULL_HANDLE,
+                    "vkEnumerateInstanceExtensionProperties");
         return true;
 }
 
