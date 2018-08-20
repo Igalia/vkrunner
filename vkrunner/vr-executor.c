@@ -30,8 +30,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <errno.h>
-#include <math.h>
 #include <string.h>
 
 #include "vr-vk.h"
@@ -58,57 +56,6 @@ struct vr_executor {
                 VkDevice device;
         } external;
 };
-
-static bool
-write_ppm(struct vr_window *window,
-          const char *filename)
-{
-        const struct vr_format *format = window->framebuffer_format;
-        int format_size = vr_format_get_size(format);
-        FILE *out = fopen(filename, "wb");
-
-        if (out == NULL) {
-                vr_error_message(window->config,
-                                 "%s: %s",
-                                 filename,
-                                 strerror(errno));
-                return false;
-        }
-
-        fprintf(out,
-                "P6\n"
-                "%i %i\n"
-                "255\n",
-                VR_WINDOW_WIDTH,
-                VR_WINDOW_HEIGHT);
-
-        for (int y = 0; y < VR_WINDOW_HEIGHT; y++) {
-                const uint8_t *p = ((uint8_t *) window->linear_memory_map +
-                                    y * window->linear_memory_stride);
-
-                for (int x = 0; x < VR_WINDOW_WIDTH; x++) {
-                        double pixel[4];
-
-                        vr_format_load_pixel(format, p, pixel);
-
-                        for (int i = 0; i < 3; i++) {
-                                double v = pixel[i];
-
-                                if (v < 0.0)
-                                        v = 0.0;
-                                else if (v > 1.0)
-                                        v = 1.0;
-
-                                fputc(round(v * 255.0), out);
-                        }
-                        p += format_size;
-                }
-        }
-
-        fclose(out);
-
-        return true;
-}
 
 static void
 free_window(struct vr_executor *executor)
@@ -302,11 +249,6 @@ process_script(struct vr_executor *executor,
 
         if (!vr_test_run(executor->window, pipeline, script))
                 res = VR_RESULT_FAIL;
-
-        if (config->image_filename) {
-                if (!write_ppm(executor->window, config->image_filename))
-                        res = VR_RESULT_FAIL;
-        }
 
 out:
         if (pipeline)

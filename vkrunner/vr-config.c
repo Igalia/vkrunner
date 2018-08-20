@@ -65,14 +65,6 @@ vr_config_add_token_replacement(struct vr_config *config,
 }
 
 void
-vr_config_set_image_filename(struct vr_config *config,
-                             const char *image_filename)
-{
-        vr_free(config->image_filename);
-        config->image_filename = vr_strdup(image_filename);
-}
-
-void
 vr_config_set_show_disassembly(struct vr_config *config,
                                bool show_disassembly)
 {
@@ -154,8 +146,6 @@ vr_config_free(struct vr_config *config)
 {
         free_scripts(config);
         free_token_replacements(config);
-
-        vr_free(config->image_filename);
 
         vr_free(config);
 }

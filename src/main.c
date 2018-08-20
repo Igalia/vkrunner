@@ -28,12 +28,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <stdint.h>
+#include <math.h>
 
 #include <vkrunner/vkrunner.h>
 
 struct main_data {
         struct vr_config *config;
+        const char *image_filename;
         int n_scripts;
+        bool inspect_failed;
 };
 
 typedef bool (* option_cb_t) (struct main_data *data,
@@ -58,7 +63,7 @@ static bool
 opt_image(struct main_data *data,
           const char *arg)
 {
-        vr_config_set_image_filename(data->config, arg);
+        data->image_filename = arg;
         return true;
 }
 
@@ -218,6 +223,69 @@ process_argv(struct main_data *data,
         return true;
 }
 
+static bool
+write_ppm(const struct vr_inspect_image *image,
+          const char *filename)
+{
+        const struct vr_format *format = image->format;
+        int format_size = vr_format_get_size(image->format);
+        FILE *out = fopen(filename, "wb");
+
+        if (out == NULL) {
+                fprintf(stderr,
+                        "%s: %s",
+                        filename,
+                        strerror(errno));
+                return false;
+        }
+
+        fprintf(out,
+                "P6\n"
+                "%i %i\n"
+                "255\n",
+                image->width,
+                image->height);
+
+        for (int y = 0; y < image->height; y++) {
+                const uint8_t *p = (uint8_t *) image->data + y * image->stride;
+
+                for (int x = 0; x < image->width; x++) {
+                        double pixel[4];
+
+                        vr_format_load_pixel(format, p, pixel);
+
+                        for (int i = 0; i < 3; i++) {
+                                double v = pixel[i];
+
+                                if (v < 0.0)
+                                        v = 0.0;
+                                else if (v > 1.0)
+                                        v = 1.0;
+
+                                fputc(round(v * 255.0), out);
+                        }
+                        p += format_size;
+                }
+        }
+
+        fclose(out);
+
+        return true;
+}
+
+static void
+inspect_cb(const struct vr_inspect_data *inspect_data,
+           void *user_data)
+{
+        struct main_data *data = user_data;
+
+        if (data->image_filename) {
+                if (!write_ppm(&inspect_data->color_buffer,
+                               data->image_filename))
+                        data->inspect_failed = true;
+        }
+}
+
 static void
 before_test_cb(const char *filename,
                void *user_data)
@@ -240,6 +308,7 @@ main(int argc, char **argv)
 
         vr_config_set_user_data(data.config, &data);
         vr_config_set_before_test_cb(data.config, before_test_cb);
+        vr_config_set_inspect_cb(data.config, inspect_cb);
 
         if (!process_argv(&data, argc, argv)) {
                 vr_config_free(data.config);
@@ -253,6 +322,9 @@ main(int argc, char **argv)
         vr_executor_free(executor);
 
         vr_config_free(data.config);
+
+        if (data.inspect_failed)
+                result = vr_result_merge(result, VR_RESULT_FAIL);
 
         printf("PIGLIT: {\"result\": \"%s\" }\n",
                vr_result_to_string(result));

@@ -42,7 +42,6 @@ struct vr_config_token_replacement {
 };
 
 struct vr_config {
-        char *image_filename;
         struct vr_list scripts;
         struct vr_list token_replacements;
         bool show_disassembly;
