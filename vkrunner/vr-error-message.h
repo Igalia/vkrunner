@@ -34,4 +34,8 @@ void
 vr_error_message(const struct vr_config *config,
                  const char *format, ...);
 
+void
+vr_error_message_string(const struct vr_config *config,
+                        const char *str);
+
 #endif /* VR_ERROR_MESSAGE_H */

@@ -33,6 +33,18 @@
 #include "vr-buffer.h"
 
 void
+vr_error_message_string(const struct vr_config *config,
+                        const char *str)
+{
+        if (config->error_cb) {
+                config->error_cb(str, config->user_data);
+        } else {
+                fputs(str, stderr);
+                fputc('\n', stderr);
+        }
+}
+
+void
 vr_error_message(const struct vr_config *config,
                  const char *format, ...)
 {
