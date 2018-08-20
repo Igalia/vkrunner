@@ -6,6 +6,7 @@ set(VKRUNNER_PUBLIC_HEADERS
         vr-config.h
         vr-executor.h
         vr-format.h
+        vr-inspect.h
         vr-result.h
         vkrunner.h
         )

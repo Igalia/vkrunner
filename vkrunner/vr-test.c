@@ -1109,6 +1109,41 @@ run_commands(struct test_data *data)
         return ret;
 }
 
+static void
+call_inspect(struct test_data *data)
+{
+        struct vr_inspect_data inspect_data;
+
+        memset(&inspect_data, 0, sizeof inspect_data);
+
+        inspect_data.n_buffers = data->script->n_buffers;
+
+        if (inspect_data.n_buffers > 0) {
+                struct vr_inspect_buffer *buffers =
+                        alloca(sizeof (struct vr_inspect_buffer) *
+                               inspect_data.n_buffers);
+
+                for (size_t i = 0; i < inspect_data.n_buffers; i++) {
+                        buffers[i].binding = data->script->buffers[i].binding;
+                        buffers[i].size = data->ubo_buffers[i]->size;
+                        buffers[i].data = data->ubo_buffers[i]->memory_map;
+                }
+
+                inspect_data.buffers = buffers;
+        }
+
+        struct vr_inspect_image *color_buffer = &inspect_data.color_buffer;
+
+        color_buffer->width = VR_WINDOW_WIDTH;
+        color_buffer->height = VR_WINDOW_HEIGHT;
+        color_buffer->stride = data->window->linear_memory_stride;
+        color_buffer->format = data->window->framebuffer_format;
+        color_buffer->data = data->window->linear_memory_map;
+
+        data->window->config->inspect_cb(&inspect_data,
+                                         data->window->config->user_data);
+}
+
 bool
 vr_test_run(struct vr_window *window,
             struct vr_pipeline *pipeline,
@@ -1135,6 +1170,9 @@ vr_test_run(struct vr_window *window,
 
                 if (!set_state(&data, TEST_STATE_IDLE))
                         ret = false;
+
+                if (window->config->inspect_cb)
+                        call_inspect(&data);
         }
 
         struct test_buffer *buffer, *tmp;

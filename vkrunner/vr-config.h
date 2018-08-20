@@ -28,12 +28,18 @@
 
 #include <stdbool.h>
 #include <vkrunner/vr-result.h>
+#include <vkrunner/vr-inspect.h>
 
 struct vr_config;
 
 typedef void
 (* vr_config_error_cb)(const char *message,
                        void *user_data);
+
+
+typedef void
+(* vr_config_inspect_cb)(const struct vr_inspect_data *inspect_data,
+                         void *user_data);
 
 typedef void
 (* vr_config_before_test_cb)(const char *filename,
@@ -86,6 +92,15 @@ vr_config_set_user_data(struct vr_config *config,
 void
 vr_config_set_error_cb(struct vr_config *config,
                        vr_config_error_cb error_cb);
+
+/* Sets a callback to invoke after the commands in the test section
+ * have run. It is not invoked if the test fails before the test
+ * section is reached. The application can use the inspect struct to
+ * query the buffers used by the test.
+ */
+void
+vr_config_set_inspect_cb(struct vr_config *config,
+                         vr_config_inspect_cb inspect_cb);
 
 /* Sets a callback to invoke before every test case is run. */
 void

@@ -94,6 +94,13 @@ vr_config_set_error_cb(struct vr_config *config,
 }
 
 void
+vr_config_set_inspect_cb(struct vr_config *config,
+                         vr_config_inspect_cb inspect_cb)
+{
+        config->inspect_cb = inspect_cb;
+}
+
+void
 vr_config_set_before_test_cb(struct vr_config *config,
                              vr_config_before_test_cb before_test_cb)
 {
