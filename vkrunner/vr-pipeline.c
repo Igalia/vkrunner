@@ -32,6 +32,7 @@
 #include "vr-error-message.h"
 #include "vr-buffer.h"
 #include "vr-temp-file.h"
+#include "vr-format-private.h"
 
 #include <stdio.h>
 #include <errno.h>

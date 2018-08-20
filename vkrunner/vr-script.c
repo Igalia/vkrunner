@@ -41,6 +41,7 @@
 #include "vr-error-message.h"
 #include "vr-feature-offsets.h"
 #include "vr-window.h"
+#include "vr-format-private.h"
 
 enum section {
         SECTION_NONE,

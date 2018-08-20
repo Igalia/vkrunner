@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#include "vr-format.h"
+#include "vr-format-private.h"
 #include "vr-util.h"
 
 #include <string.h>
@@ -246,9 +246,11 @@ load_part(int bits,
 
 void
 vr_format_load_pixel(const struct vr_format *format,
-                     const uint8_t *p,
+                     const void *source,
                      double *pixel)
 {
+        const uint8_t *p = source;
+
         for (int i = 0; i < 3; i++)
                 pixel[i] = 0.0;
         /* Alpha component defaults to 1.0 if not contained in the format */

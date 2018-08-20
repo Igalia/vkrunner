@@ -33,6 +33,7 @@
 #include "vr-flush-memory.h"
 #include "vr-box.h"
 #include "vr-buffer.h"
+#include "vr-format-private.h"
 
 #include <math.h>
 #include <stdio.h>

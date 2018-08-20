@@ -58,6 +58,7 @@
 #include "vr-error-message.h"
 #include "vr-hex.h"
 #include "vr-buffer.h"
+#include "vr-format-private.h"
 
 #include <assert.h>
 #include <errno.h>

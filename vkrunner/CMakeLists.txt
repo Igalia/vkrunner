@@ -5,6 +5,7 @@ include_directories(${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR})
 set(VKRUNNER_PUBLIC_HEADERS
         vr-config.h
         vr-executor.h
+        vr-format.h
         vr-result.h
         vkrunner.h
         )
@@ -28,7 +29,7 @@ set(VKRUNNER_SOURCE_FILES
         vr-flush-memory.c
         vr-flush-memory.h
         vr-format-table.h
-        vr-format.h
+        vr-format-private.h
         vr-format.c
         vr-half-float.c
         vr-half-float.h
