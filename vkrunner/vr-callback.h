@@ -38,13 +38,4 @@ typedef void
 (* vr_callback_inspect)(const struct vr_inspect_data *inspect_data,
                         void *user_data);
 
-typedef void
-(* vr_callback_before_test)(const char *filename,
-                            void *user_data);
-
-typedef void
-(* vr_callback_after_test)(const char *filename,
-                           enum vr_result result,
-                           void *user_data);
-
 #endif /* VR_CALLBACK_H */

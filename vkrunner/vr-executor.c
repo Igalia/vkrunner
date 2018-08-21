@@ -164,9 +164,65 @@ create_external_context(struct vr_executor *executor)
                                           &executor->context);
 }
 
-static enum vr_result
-process_script(struct vr_executor *executor,
-               const struct vr_source *source)
+struct vr_executor *
+vr_executor_new(void)
+{
+        struct vr_executor *executor = vr_calloc(sizeof *executor);
+
+        return executor;
+}
+
+void
+vr_executor_set_device(struct vr_executor *executor,
+                       vr_executor_get_instance_proc_cb get_instance_proc_cb,
+                       void *user_data,
+                       /* VkPhysicalDevice */
+                       void *physical_device,
+                       int queue_family,
+                       /* VkDevice */
+                       void *device)
+{
+        free_context(executor);
+
+        executor->external.get_instance_proc_cb = get_instance_proc_cb;
+        executor->external.user_data = user_data;
+        executor->external.physical_device = physical_device;
+        executor->external.queue_family = queue_family;
+        executor->external.device = device;
+        executor->use_external = true;
+}
+
+void
+vr_executor_set_show_disassembly(struct vr_executor *executor,
+                                 bool show_disassembly)
+{
+        executor->config.show_disassembly = show_disassembly;
+}
+
+void
+vr_executor_set_user_data(struct vr_executor *executor,
+                          void *user_data)
+{
+        executor->config.user_data = user_data;
+}
+
+void
+vr_executor_set_error_cb(struct vr_executor *executor,
+                         vr_callback_error error_cb)
+{
+        executor->config.error_cb = error_cb;
+}
+
+void
+vr_executor_set_inspect_cb(struct vr_executor *executor,
+                           vr_callback_inspect inspect_cb)
+{
+        executor->config.inspect_cb = inspect_cb;
+}
+
+enum vr_result
+vr_executor_execute(struct vr_executor *executor,
+                    const struct vr_source *source)
 {
         enum vr_result res = VR_RESULT_PASS;
         struct vr_script *script = NULL;
@@ -253,103 +309,6 @@ out:
                 vr_pipeline_free(pipeline);
         if (script)
                 vr_script_free(script);
-
-        return res;
-}
-
-struct vr_executor *
-vr_executor_new(void)
-{
-        struct vr_executor *executor = vr_calloc(sizeof *executor);
-
-        return executor;
-}
-
-void
-vr_executor_set_device(struct vr_executor *executor,
-                       vr_executor_get_instance_proc_cb get_instance_proc_cb,
-                       void *user_data,
-                       /* VkPhysicalDevice */
-                       void *physical_device,
-                       int queue_family,
-                       /* VkDevice */
-                       void *device)
-{
-        free_context(executor);
-
-        executor->external.get_instance_proc_cb = get_instance_proc_cb;
-        executor->external.user_data = user_data;
-        executor->external.physical_device = physical_device;
-        executor->external.queue_family = queue_family;
-        executor->external.device = device;
-        executor->use_external = true;
-}
-
-void
-vr_executor_set_show_disassembly(struct vr_executor *executor,
-                                 bool show_disassembly)
-{
-        executor->config.show_disassembly = show_disassembly;
-}
-
-void
-vr_executor_set_user_data(struct vr_executor *executor,
-                          void *user_data)
-{
-        executor->config.user_data = user_data;
-}
-
-void
-vr_executor_set_error_cb(struct vr_executor *executor,
-                         vr_callback_error error_cb)
-{
-        executor->config.error_cb = error_cb;
-}
-
-void
-vr_executor_set_inspect_cb(struct vr_executor *executor,
-                           vr_callback_inspect inspect_cb)
-{
-        executor->config.inspect_cb = inspect_cb;
-}
-
-void
-vr_executor_set_before_test_cb(struct vr_executor *executor,
-                               vr_callback_before_test before_test_cb)
-{
-        executor->config.before_test_cb = before_test_cb;
-}
-
-void
-vr_executor_set_after_test_cb(struct vr_executor *executor,
-                              vr_callback_after_test after_test_cb)
-{
-        executor->config.after_test_cb = after_test_cb;
-}
-
-enum vr_result
-vr_executor_execute(struct vr_executor *executor,
-                    const struct vr_source *source)
-{
-        const char *filename;
-
-        if (source->type == VR_SOURCE_TYPE_FILE)
-                filename = source->string;
-        else
-                filename = NULL;
-
-        if (executor->config.before_test_cb) {
-                executor->config.before_test_cb(filename,
-                                                executor->config.user_data);
-        }
-
-        enum vr_result res = process_script(executor, source);
-
-        if (executor->config.after_test_cb) {
-                executor->config.after_test_cb(filename,
-                                               res,
-                                               executor->config.user_data);
-        }
 
         return res;
 }

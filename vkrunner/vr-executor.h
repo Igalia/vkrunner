@@ -98,16 +98,6 @@ void
 vr_executor_set_inspect_cb(struct vr_executor *executor,
                            vr_callback_inspect inspect_cb);
 
-/* Sets a callback to invoke before every test case is run. */
-void
-vr_executor_set_before_test_cb(struct vr_executor *executor,
-                               vr_callback_before_test before_test_cb);
-
-/* Sets a callback to invoke after every test case is run. */
-void
-vr_executor_set_after_test_cb(struct vr_executor *executor,
-                              vr_callback_after_test after_test_cb);
-
 enum vr_result
 vr_executor_execute(struct vr_executor *executor,
                     const struct vr_source *source);

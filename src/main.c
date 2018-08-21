@@ -416,16 +416,6 @@ inspect_cb(const struct vr_inspect_data *inspect_data,
 }
 
 static void
-before_test_cb(const char *filename,
-               void *user_data)
-{
-        struct main_data *data = user_data;
-
-        if (data->filenames.length > 1 && !data->quiet)
-                printf("%s\n", filename);
-}
-
-static void
 add_token_replacements(struct main_data *data,
                        struct vr_source *source)
 {
@@ -443,6 +433,10 @@ run_scripts(struct main_data *data)
 
         for (size_t i = 0; i < data->filenames.length; i++) {
                 const char *filename = data->filenames.data[i];
+
+                if (data->filenames.length > 1 && !data->quiet)
+                        printf("%s\n", filename);
+
                 struct vr_source *source = vr_source_from_file(filename);
 
                 add_token_replacements(data, source);
@@ -471,7 +465,6 @@ main(int argc, char **argv)
         };
 
         vr_executor_set_user_data(data.executor, &data);
-        vr_executor_set_before_test_cb(data.executor, before_test_cb);
         vr_executor_set_inspect_cb(data.executor, inspect_cb);
 
         if (process_argv(&data, argc, argv)) {

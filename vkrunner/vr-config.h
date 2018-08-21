@@ -35,8 +35,6 @@ struct vr_config {
 
         vr_callback_error error_cb;
         vr_callback_inspect inspect_cb;
-        vr_callback_before_test before_test_cb;
-        vr_callback_after_test after_test_cb;
         void *user_data;
 };
 
