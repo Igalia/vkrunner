@@ -3,7 +3,7 @@
 include_directories(${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR})
 
 set(VKRUNNER_PUBLIC_HEADERS
-        vr-config.h
+        vr-callback.h
         vr-executor.h
         vr-format.h
         vr-inspect.h
@@ -19,7 +19,7 @@ set(VKRUNNER_SOURCE_FILES
         vr-box.h
         vr-buffer.c
         vr-buffer.h
-        vr-config.c
+        vr-config.h
         vr-context.c
         vr-context.h
         vr-enum-table.h

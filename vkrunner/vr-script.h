@@ -31,7 +31,7 @@
 #include "vr-vbo.h"
 #include "vr-format.h"
 #include "vr-pipeline-key.h"
-#include "vr-config-private.h"
+#include "vr-config.h"
 #include "vr-box.h"
 #include "vr-source.h"
 

@@ -23,20 +23,28 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_CONFIG_PRIVATE_H
-#define VR_CONFIG_PRIVATE_H
+#ifndef VR_CALLBACK_H
+#define VR_CALLBACK_H
 
-#include "vr-config.h"
-#include "vr-list.h"
+#include <vkrunner/vr-result.h>
+#include <vkrunner/vr-inspect.h>
 
-struct vr_config {
-        bool show_disassembly;
+typedef void
+(* vr_callback_error)(const char *message,
+                      void *user_data);
 
-        vr_config_error_cb error_cb;
-        vr_config_inspect_cb inspect_cb;
-        vr_config_before_test_cb before_test_cb;
-        vr_config_after_test_cb after_test_cb;
-        void *user_data;
-};
 
-#endif /* VR_CONFIG_PRIVATE_H */
+typedef void
+(* vr_callback_inspect)(const struct vr_inspect_data *inspect_data,
+                        void *user_data);
+
+typedef void
+(* vr_callback_before_test)(const char *filename,
+                            void *user_data);
+
+typedef void
+(* vr_callback_after_test)(const char *filename,
+                           enum vr_result result,
+                           void *user_data);
+
+#endif /* VR_CALLBACK_H */

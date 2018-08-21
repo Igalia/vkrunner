@@ -27,79 +27,17 @@
 #define VR_CONFIG_H
 
 #include <stdbool.h>
-#include <vkrunner/vr-result.h>
-#include <vkrunner/vr-inspect.h>
+#include "vr-result.h"
+#include "vr-callback.h"
 
-struct vr_config;
+struct vr_config {
+        bool show_disassembly;
 
-typedef void
-(* vr_config_error_cb)(const char *message,
-                       void *user_data);
-
-
-typedef void
-(* vr_config_inspect_cb)(const struct vr_inspect_data *inspect_data,
-                         void *user_data);
-
-typedef void
-(* vr_config_before_test_cb)(const char *filename,
-                             void *user_data);
-
-typedef void
-(* vr_config_after_test_cb)(const char *filename,
-                            enum vr_result result,
-                            void *user_data);
-
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
-struct vr_config *
-vr_config_new(void);
-
-void
-vr_config_set_show_disassembly(struct vr_config *config,
-                               bool show_disassembly);
-
-/* Sets a pointer to be passed back to the caller in all of the
- * callback fuctions below.
- */
-void
-vr_config_set_user_data(struct vr_config *config,
-                        void *user_data);
-
-/* Sets a callback that will be invoked whenever a test error is
- * invoked such as a compilation error or a probed value was
- * incorrect.
- */
-void
-vr_config_set_error_cb(struct vr_config *config,
-                       vr_config_error_cb error_cb);
-
-/* Sets a callback to invoke after the commands in the test section
- * have run. It is not invoked if the test fails before the test
- * section is reached. The application can use the inspect struct to
- * query the buffers used by the test.
- */
-void
-vr_config_set_inspect_cb(struct vr_config *config,
-                         vr_config_inspect_cb inspect_cb);
-
-/* Sets a callback to invoke before every test case is run. */
-void
-vr_config_set_before_test_cb(struct vr_config *config,
-                             vr_config_before_test_cb before_test_cb);
-
-/* Sets a callback to invoke after every test case is run. */
-void
-vr_config_set_after_test_cb(struct vr_config *config,
-                            vr_config_after_test_cb after_test_cb);
-
-void
-vr_config_free(struct vr_config *config);
-
-#ifdef  __cplusplus
-}
-#endif
+        vr_callback_error error_cb;
+        vr_callback_inspect inspect_cb;
+        vr_callback_before_test before_test_cb;
+        vr_callback_after_test after_test_cb;
+        void *user_data;
+};
 
 #endif /* VR_CONFIG_H */

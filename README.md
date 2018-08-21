@@ -274,11 +274,6 @@ main(int argc, char **argv)
                 return EXIT_FAILURE;
         }
 
-        /* The contains a configuration of test scripts for VkRunner
-         * to execute.
-         */
-        struct vr_config *config = vr_config_new();
-
         /* Create a source representing the file */
         struct vr_source *source = vr_source_from_file(argv[1]);
 
@@ -296,11 +291,10 @@ main(int argc, char **argv)
          * VR_RESULT_PASS.
          */
         struct vr_executor *executor = vr_executor_new();
-        enum vr_result result = vr_executor_execute(executor, config, source);
+        enum vr_result result = vr_executor_execute(executor, source);
         vr_executor_free(executor);
 
         vr_source_free(source);
-        vr_config_free(config);
 
         printf("Test status is: %s\n",
                vr_result_to_string(result));

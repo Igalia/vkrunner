@@ -28,7 +28,7 @@
 
 #include "vr-script.h"
 #include "vr-window.h"
-#include "vr-config-private.h"
+#include "vr-config.h"
 #include "vr-pipeline-key.h"
 
 struct vr_pipeline {

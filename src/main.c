@@ -41,7 +41,7 @@ struct string_array {
 };
 
 struct main_data {
-        struct vr_config *config;
+        struct vr_executor *executor;
         const char *image_filename;
         const char *buffer_filename;
         struct string_array filenames;
@@ -127,7 +127,7 @@ static bool
 opt_disassembly(struct main_data *data,
                 const char *arg)
 {
-        vr_config_set_show_disassembly(data->config, true);
+        vr_executor_set_show_disassembly(data->executor, true);
         return true;
 }
 
@@ -441,23 +441,18 @@ run_scripts(struct main_data *data)
 {
         enum vr_result overall_result = VR_RESULT_SKIP;
 
-        struct vr_executor *executor = vr_executor_new();
-
         for (size_t i = 0; i < data->filenames.length; i++) {
                 const char *filename = data->filenames.data[i];
                 struct vr_source *source = vr_source_from_file(filename);
 
                 add_token_replacements(data, source);
 
-                enum vr_result result = vr_executor_execute(executor,
-                                                            data->config,
+                enum vr_result result = vr_executor_execute(data->executor,
                                                             source);
                 vr_source_free(source);
 
                 overall_result = vr_result_merge(result, overall_result);
         }
-
-        vr_executor_free(executor);
 
         return overall_result;
 }
@@ -468,16 +463,16 @@ main(int argc, char **argv)
         int return_value = EXIT_SUCCESS;
 
         struct main_data data = {
-                .config = vr_config_new(),
+                .executor = vr_executor_new(),
                 .filenames = { .data = NULL },
                 .token_replacements = { .data = NULL },
                 .binding = -1,
                 .quiet = false
         };
 
-        vr_config_set_user_data(data.config, &data);
-        vr_config_set_before_test_cb(data.config, before_test_cb);
-        vr_config_set_inspect_cb(data.config, inspect_cb);
+        vr_executor_set_user_data(data.executor, &data);
+        vr_executor_set_before_test_cb(data.executor, before_test_cb);
+        vr_executor_set_inspect_cb(data.executor, inspect_cb);
 
         if (process_argv(&data, argc, argv)) {
                 enum vr_result result = run_scripts(&data);
@@ -496,7 +491,7 @@ main(int argc, char **argv)
                 return_value = EXIT_FAILURE;
         }
 
-        vr_config_free(data.config);
+        vr_executor_free(data.executor);
         string_array_destroy(&data.filenames);
         string_array_destroy(&data.token_replacements);
 

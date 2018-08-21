@@ -29,7 +29,7 @@
 #include <stdarg.h>
 
 #include "vr-error-message.h"
-#include "vr-config-private.h"
+#include "vr-config.h"
 #include "vr-buffer.h"
 
 void
