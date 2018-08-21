@@ -1,7 +1,7 @@
 /*
  * vkrunner
  *
- * Copyright (C) 2018 Google LLC
+ * Copyright (C) 2018 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,46 +23,27 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include <android/log.h>
+#ifndef VR_SOURCE_PRIVATE_H
+#define VR_SOURCE_PRIVATE_H
 
-#include "vkrunner/vkrunner.h"
+#include "vr-source.h"
+#include "vr-list.h"
 
-// Android log function wrappers
-static const char* kTAG = "VkRunner";
-#define LOGI(...) \
-  ((void)__android_log_print(ANDROID_LOG_INFO, kTAG, __VA_ARGS__))
-#define LOGW(...) \
-  ((void)__android_log_print(ANDROID_LOG_WARN, kTAG, __VA_ARGS__))
-#define LOGE(...) \
-  ((void)__android_log_print(ANDROID_LOG_ERROR, kTAG, __VA_ARGS__))
+enum vr_source_type {
+        VR_SOURCE_TYPE_FILE,
+        VR_SOURCE_TYPE_STRING
+};
 
-static void error_cb(const char *message, void *user_data) {
-  LOGE("%s", message);
-}
+struct vr_source_token_replacement {
+        struct vr_list link;
+        char *token;
+        char *replacement;
+};
 
-static const char *string_script =
-#include "string_script.inc"
-;
+struct vr_source {
+        enum vr_source_type type;
+        struct vr_list token_replacements;
+        char string[];
+};
 
-void test() {
-  enum vr_result result;
-  struct vr_config *config;
-  struct vr_executor *executor;
-  struct vr_source *source;
-
-  config = vr_config_new();
-  vr_config_set_error_cb(config, error_cb);
-
-  executor = vr_executor_new();
-
-  source = vr_source_from_string(string_script);
-  result = vr_executor_execute(executor, config, source);
-  vr_source_free(source);
-
-  vr_executor_free(executor);
-
-  vr_config_free(config);
-
-  LOGI("PIGLIT: {\"result\": \"%s\" }\n",
-       vr_result_to_string(result));
-}
+#endif /* VR_SOURCE_PRIVATE_H */

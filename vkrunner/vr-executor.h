@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <vkrunner/vr-config.h>
 #include <vkrunner/vr-result.h>
+#include <vkrunner/vr-source.h>
 
 struct vr_executor;
 
@@ -70,7 +71,8 @@ vr_executor_set_device(struct vr_executor *executor,
 
 enum vr_result
 vr_executor_execute(struct vr_executor *executor,
-                    const struct vr_config *config);
+                    const struct vr_config *config,
+                    const struct vr_source *source);
 
 void
 vr_executor_free(struct vr_executor *executor);

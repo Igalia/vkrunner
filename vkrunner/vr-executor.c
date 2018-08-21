@@ -39,6 +39,7 @@
 #include "vr-test.h"
 #include "vr-config-private.h"
 #include "vr-error-message.h"
+#include "vr-source-private.h"
 
 struct vr_executor {
         struct vr_window *window;
@@ -166,17 +167,13 @@ create_external_context(struct vr_executor *executor,
 static enum vr_result
 process_script(struct vr_executor *executor,
                const struct vr_config *config,
-               const char *filename,
-               const char *string)
+               const struct vr_source *source)
 {
         enum vr_result res = VR_RESULT_PASS;
         struct vr_script *script = NULL;
         struct vr_pipeline *pipeline = NULL;
 
-        if (string)
-                script = vr_script_load_from_string(config, string);
-        else
-                script = vr_script_load_from_file(config, filename);
+        script = vr_script_load(config, source);
 
         if (script == NULL) {
                 res = VR_RESULT_FAIL;
@@ -289,33 +286,30 @@ vr_executor_set_device(struct vr_executor *executor,
 
 enum vr_result
 vr_executor_execute(struct vr_executor *executor,
-                    const struct vr_config *config)
+                    const struct vr_config *config,
+                    const struct vr_source *source)
 {
-        enum vr_result overall_result = VR_RESULT_SKIP;
+        const char *filename;
 
-        const struct vr_config_script *script;
-        vr_list_for_each(script, &config->scripts, link) {
-                if (config->before_test_cb) {
-                        config->before_test_cb(script->filename,
-                                               config->user_data);
-                }
+        if (source->type == VR_SOURCE_TYPE_FILE)
+                filename = source->string;
+        else
+                filename = NULL;
 
-                enum vr_result res =
-                        process_script(executor,
-                                       config,
-                                       script->filename,
-                                       script->string);
-
-                if (config->after_test_cb) {
-                        config->after_test_cb(script->filename,
-                                              res,
-                                              config->user_data);
-                }
-
-                overall_result = vr_result_merge(res, overall_result);
+        if (config->before_test_cb) {
+                config->before_test_cb(filename,
+                                       config->user_data);
         }
 
-        return overall_result;
+        enum vr_result res = process_script(executor, config, source);
+
+        if (config->after_test_cb) {
+                config->after_test_cb(filename,
+                                      res,
+                                      config->user_data);
+        }
+
+        return res;
 }
 
 void

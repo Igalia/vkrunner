@@ -269,36 +269,37 @@ could be as follows:
 int
 main(int argc, char **argv)
 {
+        if (argc != 2) {
+                fprintf(stderr, "usage: %s <script>\n", argv[0]);
+                return EXIT_FAILURE;
+        }
+
         /* The contains a configuration of test scripts for VkRunner
          * to execute.
          */
         struct vr_config *config = vr_config_new();
 
-        /* Add all of the command line arguments as names of test
-         * scripts to run.
-         */
-        for (int i = 1; i < argc; i++)
-                vr_config_add_script_file(config, argv[i]);
+        /* Create a source representing the file */
+        struct vr_source *source = vr_source_from_file(argv[1]);
 
         /* The templating mechanism can be used to replace tokens in
          * the test scripts
          */
         char current_time[64];
         snprintf(current_time, sizeof current_time, "%i", (int) time(NULL));
-        vr_config_add_token_replacement(config,
+        vr_source_add_token_replacement(source,
                                         "@CURRENT_TIME@",
                                         current_time);
 
-        /* This executes all of the scripts added to the config and
-         * returns a result. If any of them failed it will be
-         * VR_RESULT_FAIL. Otherwise it can be VR_RESULT_SKIP if all
-         * of the tests required a feature not provided by the driver,
-         * or VR_PASS if they all passed.
+        /* This executes all of the script and returns a result. The
+         * result will be either VR_RESULT_FAIL, VR_RESULT_SKIP or
+         * VR_RESULT_PASS.
          */
         struct vr_executor *executor = vr_executor_new();
-        enum vr_result result = vr_executor_execute(executor, config);
+        enum vr_result result = vr_executor_execute(executor, config, source);
         vr_executor_free(executor);
 
+        vr_source_free(source);
         vr_config_free(config);
 
         printf("Test status is: %s\n",

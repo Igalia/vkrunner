@@ -58,19 +58,6 @@ struct vr_config *
 vr_config_new(void);
 
 void
-vr_config_add_script_file(struct vr_config *config,
-                          const char *filename);
-
-void
-vr_config_add_script_string(struct vr_config *config,
-                            const char *string);
-
-void
-vr_config_add_token_replacement(struct vr_config *config,
-                                const char *token,
-                                const char *replacement);
-
-void
 vr_config_set_show_disassembly(struct vr_config *config,
                                bool show_disassembly);
 

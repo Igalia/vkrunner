@@ -29,21 +29,7 @@
 #include "vr-config.h"
 #include "vr-list.h"
 
-struct vr_config_script {
-        struct vr_list link;
-        char *filename;
-        char *string;
-};
-
-struct vr_config_token_replacement {
-        struct vr_list link;
-        char *token;
-        char *replacement;
-};
-
 struct vr_config {
-        struct vr_list scripts;
-        struct vr_list token_replacements;
         bool show_disassembly;
 
         vr_config_error_cb error_cb;

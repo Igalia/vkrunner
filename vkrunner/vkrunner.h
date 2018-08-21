@@ -31,5 +31,6 @@
 #include <vkrunner/vr-format.h>
 #include <vkrunner/vr-inspect.h>
 #include <vkrunner/vr-result.h>
+#include <vkrunner/vr-source.h>
 
 #endif /* VKRUNNER_H */
