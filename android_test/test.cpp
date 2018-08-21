@@ -46,19 +46,17 @@ static const char *string_script =
 
 void test() {
   enum vr_result result;
-  struct vr_config *config;
   struct vr_executor *executor;
-
-  config = vr_config_new();
-  vr_config_set_error_cb(config, error_cb);
-  vr_config_add_script_string(config, string_script);
+  struct vr_source *source;
 
   executor = vr_executor_new();
-  result = vr_executor_execute(executor, config);
+  vr_executor_set_error_cb(executor, error_cb);
+
+  source = vr_source_from_string(string_script);
+  result = vr_executor_execute(executor, source);
+  vr_source_free(source);
 
   vr_executor_free(executor);
-
-  vr_config_free(config);
 
   LOGI("PIGLIT: {\"result\": \"%s\" }\n",
        vr_result_to_string(result));

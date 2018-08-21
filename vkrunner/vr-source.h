@@ -23,36 +23,31 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_PIPELINE_H
-#define VR_PIPELINE_H
+#ifndef VR_SOURCE_H
+#define VR_SOURCE_H
 
-#include "vr-script.h"
-#include "vr-window.h"
-#include "vr-config.h"
-#include "vr-pipeline-key.h"
+struct vr_source;
 
-struct vr_pipeline {
-        struct vr_window *window;
-        VkPipelineLayout layout;
-        VkDescriptorSetLayout descriptor_set_layout;
-        int n_pipelines;
-        VkPipeline *pipelines;
-        VkPipelineCache pipeline_cache;
-        VkPipeline compute_pipeline;
-        VkShaderModule modules[VR_SCRIPT_N_STAGES];
-        VkShaderStageFlagBits stages;
-};
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
-struct vr_pipeline_vertex {
-        float x, y, z;
-};
+struct vr_source *
+vr_source_from_string(const char *string);
 
-struct vr_pipeline *
-vr_pipeline_create(const struct vr_config *config,
-                   struct vr_window *window,
-                   const struct vr_script *script);
+struct vr_source *
+vr_source_from_file(const char *filename);
 
 void
-vr_pipeline_free(struct vr_pipeline *pipeline);
+vr_source_add_token_replacement(struct vr_source *source,
+                                const char *token,
+                                const char *replacement);
 
-#endif /* VR_PIPELINE_H */
+void
+vr_source_free(struct vr_source *source);
+
+#ifdef  __cplusplus
+}
+#endif
+
+#endif /* VR_SOURCE_H */

@@ -34,6 +34,7 @@
 #include "vr-error-message.h"
 #include "vr-allocate-store.h"
 #include "vr-feature-offsets.h"
+#include "vr-format-private.h"
 
 static void
 destroy_framebuffer_resources(struct vr_window *window)

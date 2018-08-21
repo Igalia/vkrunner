@@ -3,9 +3,12 @@
 include_directories(${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR})
 
 set(VKRUNNER_PUBLIC_HEADERS
-        vr-config.h
+        vr-callback.h
         vr-executor.h
+        vr-format.h
+        vr-inspect.h
         vr-result.h
+        vr-source.h
         vkrunner.h
         )
 
@@ -16,7 +19,7 @@ set(VKRUNNER_SOURCE_FILES
         vr-box.h
         vr-buffer.c
         vr-buffer.h
-        vr-config.c
+        vr-config.h
         vr-context.c
         vr-context.h
         vr-enum-table.h
@@ -28,7 +31,7 @@ set(VKRUNNER_SOURCE_FILES
         vr-flush-memory.c
         vr-flush-memory.h
         vr-format-table.h
-        vr-format.h
+        vr-format-private.h
         vr-format.c
         vr-half-float.c
         vr-half-float.h
@@ -41,6 +44,8 @@ set(VKRUNNER_SOURCE_FILES
         vr-result.c
         vr-script.c
         vr-script.h
+        vr-source-private.h
+        vr-source.c
         vr-temp-file.c
         vr-temp-file.h
         vr-util.c

@@ -41,6 +41,8 @@
 #include "vr-error-message.h"
 #include "vr-feature-offsets.h"
 #include "vr-window.h"
+#include "vr-format-private.h"
+#include "vr-source-private.h"
 
 enum section {
         SECTION_NONE,
@@ -54,6 +56,7 @@ enum section {
 
 struct load_state {
         const struct vr_config *config;
+        const struct vr_source *source;
         const char *filename;
         int line_num;
         struct vr_script *script;
@@ -1937,13 +1940,13 @@ compare_buffer_binding(const void *a,
 }
 
 static bool
-find_replacement(const struct vr_config *config,
+find_replacement(const struct vr_list *replacements,
                  struct vr_buffer *line,
                  int pos)
 {
-        const struct vr_config_token_replacement *tr;
+        const struct vr_source_token_replacement *tr;
 
-        vr_list_for_each(tr, &config->token_replacements, link) {
+        vr_list_for_each(tr, replacements, link) {
                 int len = strlen(tr->token);
 
                 if (pos + len <= line->length &&
@@ -1972,7 +1975,9 @@ process_token_replacements(struct load_state *data)
         int count = 0;
 
         for (int i = 0; i < data->line.length; i++) {
-                while (find_replacement(data->config, &data->line, i)) {
+                while (find_replacement(&data->source->token_replacements,
+                                        &data->line,
+                                        i)) {
                         count++;
 
                         if (count > 1000) {
@@ -1987,41 +1992,6 @@ process_token_replacements(struct load_state *data)
         }
 
         return true;
-}
-
-static void
-load_script_begin(struct load_state *data,
-                  const struct vr_config *config,
-                  const char *filename)
-{
-        int stage;
-
-        data->config = config;
-        data->filename = filename;
-        data->line_num = 1;
-        data->script = vr_calloc(sizeof (struct vr_script));
-        vr_buffer_init(&data->line);
-        vr_buffer_init(&data->buffer);
-        vr_buffer_init(&data->commands);
-        vr_buffer_init(&data->pipeline_keys);
-        vr_buffer_init(&data->extensions);
-        vr_buffer_init(&data->buffers);
-        data->current_stage = -1;
-        data->current_section = SECTION_NONE;
-        data->clear_depth = 1.0f;
-
-        vr_pipeline_key_init(&data->current_key);
-
-        data->script->filename = vr_strdup(filename);
-        data->script->framebuffer_format =
-                vr_format_lookup_by_vk_format(VK_FORMAT_B8G8R8A8_UNORM);
-        assert(data->script->framebuffer_format != NULL);
-
-        vr_buffer_set_length(&data->extensions, sizeof (const char *));
-        memset(data->extensions.data, 0, data->extensions.length);
-
-        for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++)
-                vr_list_init(&data->script->stages[stage]);
 }
 
 static bool
@@ -2077,34 +2047,98 @@ load_script_from_string(struct load_state *data,
         return res;
 }
 
-static struct vr_script *
-load_script_end(struct load_state *data, bool res)
+static bool
+load_script_from_file(struct load_state *data,
+                      const char *filename)
 {
-        struct vr_script *script = data->script;
+        FILE *f = fopen(filename, "r");
 
-        script->commands = (struct vr_script_command *) data->commands.data;
-        script->n_commands = (data->commands.length /
-                                   sizeof (struct vr_script_command));
+        if (f == NULL) {
+                vr_error_message(data->config,
+                                 "%s: %s",
+                                 filename,
+                                 strerror(errno));
+                return false;
+        }
+
+        bool res = load_script_from_stream(data, f);
+        fclose(f);
+
+        return res;
+}
+
+struct vr_script *
+vr_script_load(const struct vr_config *config,
+               const struct vr_source *source)
+{
+        struct vr_script *script = vr_calloc(sizeof (struct vr_script));
+        struct load_state data = {
+                .config = config,
+                .source = source,
+                .line_num = 1,
+                .script = script,
+                .current_stage = -1,
+                .current_section = SECTION_NONE,
+                .clear_depth = 1.0f,
+                .line = VR_BUFFER_STATIC_INIT,
+                .buffer = VR_BUFFER_STATIC_INIT,
+                .commands = VR_BUFFER_STATIC_INIT,
+                .pipeline_keys = VR_BUFFER_STATIC_INIT,
+                .extensions = VR_BUFFER_STATIC_INIT,
+                .buffers = VR_BUFFER_STATIC_INIT,
+        };
+
+        vr_pipeline_key_init(&data.current_key);
+
+        script->framebuffer_format =
+                vr_format_lookup_by_vk_format(VK_FORMAT_B8G8R8A8_UNORM);
+        assert(script->framebuffer_format != NULL);
+
+        vr_buffer_set_length(&data.extensions, sizeof (const char *));
+        memset(data.extensions.data, 0, data.extensions.length);
+
+        for (int stage = 0; stage < VR_SCRIPT_N_STAGES; stage++)
+                vr_list_init(&script->stages[stage]);
+
+        bool res = false;
+
+        switch (source->type) {
+        case VR_SOURCE_TYPE_FILE:
+                data.filename = source->string;
+                script->filename = vr_strdup(data.filename);
+                res = load_script_from_file(&data, source->string);
+                break;
+
+        case VR_SOURCE_TYPE_STRING:
+                data.filename = "(string script)";
+                script->filename = vr_strdup(data.filename);
+                res = load_script_from_string(&data, source->string);
+                break;
+        }
+
+        script->commands = (struct vr_script_command *) data.commands.data;
+        script->n_commands = (data.commands.length /
+                              sizeof (struct vr_script_command));
         script->pipeline_keys =
-                (struct vr_pipeline_key *) data->pipeline_keys.data;
-        script->n_pipeline_keys = (data->pipeline_keys.length /
-                                        sizeof (struct vr_pipeline_key));
+                (struct vr_pipeline_key *) data.pipeline_keys.data;
+        script->n_pipeline_keys = (data.pipeline_keys.length /
+                                   sizeof (struct vr_pipeline_key));
         script->extensions =
-                (const char *const *) data->extensions.data;
-        script->indices = (uint16_t *) data->indices.data;
+                (const char *const *) data.extensions.data;
+        script->indices = (uint16_t *) data.indices.data;
         script->n_indices =
-                data->indices.length / sizeof (uint16_t);
+                data.indices.length / sizeof (uint16_t);
 
-        script->buffers = (struct vr_script_buffer *) data->buffers.data;
-        script->n_buffers = (data->buffers.length /
-                                  sizeof (struct vr_script_buffer));
+        script->buffers = (struct vr_script_buffer *) data.buffers.data;
+        script->n_buffers = (data.buffers.length /
+                             sizeof (struct vr_script_buffer));
         qsort(script->buffers,
               script->n_buffers,
               sizeof script->buffers[0],
               compare_buffer_binding);
 
-        vr_buffer_destroy(&data->buffer);
-        vr_buffer_destroy(&data->line);
+        vr_buffer_destroy(&data.buffer);
+        vr_buffer_destroy(&data.line);
 
         if (res) {
                 return script;
@@ -2112,44 +2146,6 @@ load_script_end(struct load_state *data, bool res)
                 vr_script_free(script);
                 return NULL;
         }
-}
-
-struct vr_script *
-vr_script_load_from_file(const struct vr_config *config,
-                         const char *filename)
-{
-        struct vr_script *script;
-        struct load_state data = { NULL };
-        bool res;
-        FILE *f = fopen(filename, "r");
-
-        if (f == NULL) {
-                vr_error_message(config, "%s: %s", filename, strerror(errno));
-                return NULL;
-        }
-
-        load_script_begin(&data, config, filename);
-        res = load_script_from_stream(&data, f);
-        script = load_script_end(&data, res);
-
-        fclose(f);
-
-        return script;
-}
-
-struct vr_script *
-vr_script_load_from_string(const struct vr_config *config,
-                           const char *string)
-{
-        struct vr_script *script;
-        struct load_state data = { NULL };
-        bool res;
-
-        load_script_begin(&data, config, "(string script)");
-        res = load_script_from_string(&data, string);
-        script = load_script_end(&data, res);
-
-        return script;
 }
 
 void

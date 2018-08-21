@@ -28,7 +28,6 @@ LOCAL_PATH := $(call my-dir)
 VKRUNNER_SRC_FILES := vkrunner/vr-allocate-store.c \
 	vkrunner/vr-box.c \
 	vkrunner/vr-buffer.c \
-	vkrunner/vr-config.c \
 	vkrunner/vr-context.c \
 	vkrunner/vr-error-message.c \
 	vkrunner/vr-executor.c \
@@ -42,6 +41,7 @@ VKRUNNER_SRC_FILES := vkrunner/vr-allocate-store.c \
 	vkrunner/vr-pipeline-key.c \
 	vkrunner/vr-result.c \
 	vkrunner/vr-script.c \
+	vkrunner/vr-source.c \
 	vkrunner/vr-subprocess.c \
 	vkrunner/vr-temp-file.c \
 	vkrunner/vr-test.c \

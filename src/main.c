@@ -28,15 +28,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <stdint.h>
+#include <math.h>
 
 #include <vkrunner/vkrunner.h>
 
-struct main_data {
-        struct vr_config *config;
-        int n_scripts;
+struct string_array {
+        char **data;
+        size_t length;
+        size_t size;
 };
 
-typedef bool (* option_cb_t) (struct vr_config *config,
+struct main_data {
+        struct vr_executor *executor;
+        const char *image_filename;
+        const char *buffer_filename;
+        struct string_array filenames;
+        struct string_array token_replacements;
+        int binding;
+        bool inspect_failed;
+        bool quiet;
+};
+
+typedef bool (* option_cb_t) (struct main_data *data,
                               const char *arg);
 
 struct option {
@@ -51,27 +66,73 @@ struct option {
 };
 
 static bool
-opt_help(struct vr_config *config,
+opt_help(struct main_data *data,
          const char *arg);
 
+static void
+string_array_add(struct string_array *array,
+                 const char *value)
+{
+        if (array->length >= array->size) {
+                if (array->size == 0) {
+                        array->size = 4;
+                        array->data = malloc(array->size * sizeof (char *));
+                } else {
+                        array->size *= 2;
+                        array->data = realloc(array->data,
+                                              array->size * sizeof (char *));
+                }
+        }
+
+        size_t len = strlen(value);
+        char *str = malloc(len + 1);
+        memcpy(str, value, len + 1);
+        array->data[array->length++] = str;
+}
+
+static void
+string_array_destroy(struct string_array *array)
+{
+        for (size_t i = 0; i < array->length; i++)
+                free(array->data[i]);
+        if (array->data)
+                free(array->data);
+}
+
 static bool
-opt_image(struct vr_config *config,
+opt_image(struct main_data *data,
           const char *arg)
 {
-        vr_config_set_image_filename(config, arg);
+        data->image_filename = arg;
         return true;
 }
 
 static bool
-opt_disassembly(struct vr_config *config,
+opt_buffer(struct main_data *data,
+           const char *arg)
+{
+        data->buffer_filename = arg;
+        return true;
+}
+
+static bool
+opt_binding(struct main_data *data,
+            const char *arg)
+{
+        data->binding = strtoul(arg, NULL, 0);
+        return true;
+}
+
+static bool
+opt_disassembly(struct main_data *data,
                 const char *arg)
 {
-        vr_config_set_show_disassembly(config, true);
+        vr_executor_set_show_disassembly(data->executor, true);
         return true;
 }
 
 static bool
-opt_token_replacement(struct vr_config *config,
+opt_token_replacement(struct main_data *data,
                       const char *arg)
 {
         const char *equals = strchr(arg, '=');
@@ -87,9 +148,19 @@ opt_token_replacement(struct vr_config *config,
         memcpy(token, arg, equals - arg);
         token[equals - arg] = '\0';
 
-        vr_config_add_token_replacement(config, token, equals + 1);
+        string_array_add(&data->token_replacements, token);
+        string_array_add(&data->token_replacements, equals + 1);
 
         free(token);
+
+        return true;
+}
+
+static bool
+opt_quiet(struct main_data *data,
+          const char *arg)
+{
+        data->quiet = true;
 
         return true;
 }
@@ -99,15 +170,22 @@ options[] = {
         { 'h', "Show this help message", NULL, opt_help },
         { 'i', "Write the final rendering to IMG as a PPM image", "IMG",
           opt_image },
+        { 'b', "Dump contents of a UBO or SSBO to BUF", "BUF",
+          opt_buffer },
+        { 'B', "Select which buffer to dump using the -b option. "
+          "Defaults to first buffer", "BINDING",
+          opt_binding },
         { 'd', "Show the SPIR-V disassembly", NULL, opt_disassembly },
         { 'D', "Replace occurences of TOK with REPL in the scripts",
           "TOK=REPL", opt_token_replacement },
+        { 'q', "Don’t print any non-error information to stdout", NULL,
+          opt_quiet }
 };
 
 #define N_OPTIONS (sizeof options / sizeof options[0])
 
 static bool
-opt_help(struct vr_config *config,
+opt_help(struct main_data *data,
          const char *arg)
 {
         printf("usage: vkrunner [OPTION]... SCRIPT...\n"
@@ -129,7 +207,7 @@ opt_help(struct vr_config *config,
 }
 
 static bool
-handle_option(struct vr_config *config,
+handle_option(struct main_data *data,
               const struct option *option,
               const char *p,
               int argc, char **argv,
@@ -146,7 +224,7 @@ handle_option(struct vr_config *config,
                                 fprintf(stderr,
                                         "option ‘%c’ expects an argument\n",
                                         *p);
-                                opt_help(config, NULL);
+                                opt_help(data, NULL);
                                 return false;
                         }
                         arg = argv[*arg_num];
@@ -155,7 +233,7 @@ handle_option(struct vr_config *config,
                 arg = NULL;
         }
 
-        return option->cb(config, arg);
+        return option->cb(data, arg);
 }
 
 static bool
@@ -178,7 +256,7 @@ process_argv(struct main_data *data,
                                         if (options[option_num].letter != *p)
                                                 continue;
 
-                                        if (!handle_option(data->config,
+                                        if (!handle_option(data,
                                                            options + option_num,
                                                            p,
                                                            argc, argv,
@@ -194,7 +272,7 @@ process_argv(struct main_data *data,
                                 fprintf(stderr,
                                         "unknown option ‘%c’\n",
                                         *p);
-                                opt_help(data->config, NULL);
+                                opt_help(data, NULL);
                                 return false;
 
                         found_option:
@@ -204,58 +282,211 @@ process_argv(struct main_data *data,
                 handled_arg:
                         (void) 0;
                 } else {
-                        vr_config_add_script_file(data->config, argv[i]);
-                        data->n_scripts++;
+                        string_array_add(&data->filenames, argv[i]);
                 }
         }
 
-        if (data->n_scripts <= 0) {
+        if (data->filenames.length <= 0) {
                 fprintf(stderr, "no script specified\n");
-                opt_help(data->config, NULL);
+                opt_help(data, NULL);
                 return false;
         }
 
         return true;
 }
 
+static bool
+write_ppm(const struct vr_inspect_image *image,
+          const char *filename)
+{
+        const struct vr_format *format = image->format;
+        int format_size = vr_format_get_size(image->format);
+        FILE *out = fopen(filename, "wb");
+
+        if (out == NULL) {
+                fprintf(stderr,
+                        "%s: %s",
+                        filename,
+                        strerror(errno));
+                return false;
+        }
+
+        fprintf(out,
+                "P6\n"
+                "%i %i\n"
+                "255\n",
+                image->width,
+                image->height);
+
+        for (int y = 0; y < image->height; y++) {
+                const uint8_t *p = (uint8_t *) image->data + y * image->stride;
+
+                for (int x = 0; x < image->width; x++) {
+                        double pixel[4];
+
+                        vr_format_load_pixel(format, p, pixel);
+
+                        for (int i = 0; i < 3; i++) {
+                                double v = pixel[i];
+
+                                if (v < 0.0)
+                                        v = 0.0;
+                                else if (v > 1.0)
+                                        v = 1.0;
+
+                                fputc(round(v * 255.0), out);
+                        }
+                        p += format_size;
+                }
+        }
+
+        fclose(out);
+
+        return true;
+}
+
+static bool
+write_buffer(const struct vr_inspect_data *data,
+             int binding,
+             const char *filename)
+{
+        const struct vr_inspect_buffer *buffer;
+
+        if (data->n_buffers < 1) {
+                fprintf(stderr,
+                        "%s: no buffers are used in the test script\n",
+                        filename);
+                return false;
+        }
+
+        if (binding == -1) {
+                buffer = data->buffers;
+        } else {
+                for (int i = 0; i < data->n_buffers; i++) {
+                        if (data->buffers[i].binding == binding) {
+                                buffer = data->buffers + i;
+                                goto found_buffer;
+                        }
+                }
+
+                fprintf(stderr,
+                        "%s: no buffer with binding %i was found\n",
+                        filename,
+                        binding);
+                return false;
+
+        found_buffer:
+                (void) 0;
+        }
+
+        FILE *out = fopen(filename, "wb");
+
+        if (out == NULL) {
+                fprintf(stderr,
+                        "%s: %s",
+                        filename,
+                        strerror(errno));
+                return false;
+        }
+
+        fwrite(buffer->data, 1, buffer->size, out);
+        fclose(out);
+
+        return true;
+}
+
 static void
-before_test_cb(const char *filename,
-               void *user_data)
+inspect_cb(const struct vr_inspect_data *inspect_data,
+           void *user_data)
 {
         struct main_data *data = user_data;
 
-        if (data->n_scripts > 1)
-                printf("%s\n", filename);
+        if (data->image_filename) {
+                if (!write_ppm(&inspect_data->color_buffer,
+                               data->image_filename))
+                        data->inspect_failed = true;
+        }
+
+        if (data->buffer_filename) {
+                if (!write_buffer(inspect_data,
+                                  data->binding,
+                                  data->buffer_filename))
+                        data->inspect_failed = true;
+        }
+}
+
+static void
+add_token_replacements(struct main_data *data,
+                       struct vr_source *source)
+{
+        for (size_t i = 0; i < data->token_replacements.length; i += 2) {
+                const char *token = data->token_replacements.data[i];
+                const char *val = data->token_replacements.data[i + 1];
+                vr_source_add_token_replacement(source, token, val);
+        }
+}
+
+static enum vr_result
+run_scripts(struct main_data *data)
+{
+        enum vr_result overall_result = VR_RESULT_SKIP;
+
+        for (size_t i = 0; i < data->filenames.length; i++) {
+                const char *filename = data->filenames.data[i];
+
+                if (data->filenames.length > 1 && !data->quiet)
+                        printf("%s\n", filename);
+
+                struct vr_source *source = vr_source_from_file(filename);
+
+                add_token_replacements(data, source);
+
+                enum vr_result result = vr_executor_execute(data->executor,
+                                                            source);
+                vr_source_free(source);
+
+                overall_result = vr_result_merge(result, overall_result);
+        }
+
+        return overall_result;
 }
 
 int
 main(int argc, char **argv)
 {
-        enum vr_result result;
+        int return_value = EXIT_SUCCESS;
 
         struct main_data data = {
-                .config = vr_config_new(),
-                .n_scripts = 0
+                .executor = vr_executor_new(),
+                .filenames = { .data = NULL },
+                .token_replacements = { .data = NULL },
+                .binding = -1,
+                .quiet = false
         };
 
-        vr_config_set_user_data(data.config, &data);
-        vr_config_set_before_test_cb(data.config, before_test_cb);
+        vr_executor_set_user_data(data.executor, &data);
+        vr_executor_set_inspect_cb(data.executor, inspect_cb);
 
-        if (!process_argv(&data, argc, argv)) {
-                vr_config_free(data.config);
-                return EXIT_FAILURE;
+        if (process_argv(&data, argc, argv)) {
+                enum vr_result result = run_scripts(&data);
+
+                if (data.inspect_failed)
+                        result = vr_result_merge(result, VR_RESULT_FAIL);
+
+                if (!data.quiet || result != VR_RESULT_PASS) {
+                        printf("PIGLIT: {\"result\": \"%s\" }\n",
+                               vr_result_to_string(result));
+                }
+
+                if (result != VR_RESULT_PASS)
+                        return_value = EXIT_FAILURE;
+        } else {
+                return_value = EXIT_FAILURE;
         }
 
-        struct vr_executor *executor = vr_executor_new();
+        vr_executor_free(data.executor);
+        string_array_destroy(&data.filenames);
+        string_array_destroy(&data.token_replacements);
 
-        result = vr_executor_execute(executor, data.config);
-
-        vr_executor_free(executor);
-
-        vr_config_free(data.config);
-
-        printf("PIGLIT: {\"result\": \"%s\" }\n",
-               vr_result_to_string(result));
-
-        return result == VR_RESULT_FAIL ? EXIT_FAILURE : EXIT_SUCCESS;
+        return return_value;
 }

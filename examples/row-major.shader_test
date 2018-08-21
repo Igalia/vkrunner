@@ -1,0 +1,30 @@
+[vertex shader passthrough]
+
+[fragment shader]
+#version 430
+
+layout (location = 0) out vec4 color_out;
+layout (binding = 5) uniform block {
+  layout(row_major) mat3x4 m;
+};
+
+void main()
+{
+   color_out = m[0] + m[1] + m[2];
+}
+
+
+[test]
+clear
+
+# The shader uses a mat3x4 that it is specified on row_major
+# layout. So we need to manually re-sort it here when specify the
+# data.
+uniform ubo 5 vec3 0  0.11 0.21 0.31
+uniform ubo 5 vec3 16 0.12 0.22 0.32
+uniform ubo 5 vec3 32 0.13 0.23 0.33
+uniform ubo 5 vec3 48 0.14 0.24 0.34
+
+draw rect -1 -1 2 2
+
+probe all rgba 0.63 0.66 0.69 0.72

@@ -23,36 +23,19 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_PIPELINE_H
-#define VR_PIPELINE_H
+#ifndef VR_CALLBACK_H
+#define VR_CALLBACK_H
 
-#include "vr-script.h"
-#include "vr-window.h"
-#include "vr-config.h"
-#include "vr-pipeline-key.h"
+#include <vkrunner/vr-result.h>
+#include <vkrunner/vr-inspect.h>
 
-struct vr_pipeline {
-        struct vr_window *window;
-        VkPipelineLayout layout;
-        VkDescriptorSetLayout descriptor_set_layout;
-        int n_pipelines;
-        VkPipeline *pipelines;
-        VkPipelineCache pipeline_cache;
-        VkPipeline compute_pipeline;
-        VkShaderModule modules[VR_SCRIPT_N_STAGES];
-        VkShaderStageFlagBits stages;
-};
+typedef void
+(* vr_callback_error)(const char *message,
+                      void *user_data);
 
-struct vr_pipeline_vertex {
-        float x, y, z;
-};
 
-struct vr_pipeline *
-vr_pipeline_create(const struct vr_config *config,
-                   struct vr_window *window,
-                   const struct vr_script *script);
+typedef void
+(* vr_callback_inspect)(const struct vr_inspect_data *inspect_data,
+                        void *user_data);
 
-void
-vr_pipeline_free(struct vr_pipeline *pipeline);
-
-#endif /* VR_PIPELINE_H */
+#endif /* VR_CALLBACK_H */

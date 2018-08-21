@@ -23,34 +23,40 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_CONFIG_PRIVATE_H
-#define VR_CONFIG_PRIVATE_H
+#ifndef VR_INSPECT_H
+#define VR_INSPECT_H
 
-#include "vr-config.h"
-#include "vr-list.h"
+#include <stdlib.h>
+#include <vkrunner/vr-format.h>
 
-struct vr_config_script {
-        struct vr_list link;
-        char *filename;
-        char *string;
+struct vr_inspect_image {
+        /* Dimensions of the buffer */
+        int width, height;
+        /* The stride in pixels from one row of the image to the next */
+        size_t stride;
+        /* An opaque pointer describing the format of each pixel in
+         * the buffer
+         */
+        const struct vr_format *format;
+        /* The buffer data */
+        const void *data;
 };
 
-struct vr_config_token_replacement {
-        struct vr_list link;
-        char *token;
-        char *replacement;
+struct vr_inspect_buffer {
+        /* The binding number of the buffer */
+        int binding;
+        /* Size in bytes of the buffer */
+        size_t size;
+        /* The buffer data */
+        const void *data;
 };
 
-struct vr_config {
-        char *image_filename;
-        struct vr_list scripts;
-        struct vr_list token_replacements;
-        bool show_disassembly;
-
-        vr_config_error_cb error_cb;
-        vr_config_before_test_cb before_test_cb;
-        vr_config_after_test_cb after_test_cb;
-        void *user_data;
+struct vr_inspect_data {
+        /* The color buffer */
+        struct vr_inspect_image color_buffer;
+        /* An array of buffers used as UBOs or SSBOs */
+        size_t n_buffers;
+        const struct vr_inspect_buffer *buffers;
 };
 
-#endif /* VR_CONFIG_PRIVATE_H */
+#endif /* VR_CONFIG_H */
