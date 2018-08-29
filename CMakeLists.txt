@@ -31,7 +31,9 @@ else()
   endforeach()
 endif()
 
-CHECK_LIBRARY_EXISTS(m sinf "" NEED_LIBM)
+if(UNIX)
+  set(NEED_LIBM true)
+endif()
 
 CHECK_FUNCTION_EXISTS(ffs HAVE_FFS)
 if(HAVE_FFS)
