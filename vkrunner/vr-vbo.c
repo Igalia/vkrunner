@@ -323,7 +323,11 @@ parse_datum(const struct vr_config *config,
                 }
                 case 32: {
                         unsigned long value = strtoul(*text, &endptr, 0);
-                        if (errno == ERANGE || value > UINT32_MAX) {
+                        if (errno == ERANGE
+#if ULONG_MAX > UINT32_MAX
+                            || value > UINT32_MAX
+#endif
+                                ) {
                                 vr_error_message(config,
                                                  "Could not parse as "
                                                  "unsigned integer");
@@ -334,7 +338,11 @@ parse_datum(const struct vr_config *config,
                 }
                 case 64: {
                         unsigned long value = strtoul(*text, &endptr, 0);
-                        if (errno == ERANGE || value > UINT64_MAX) {
+                        if (errno == ERANGE
+#if ULONG_MAX > UINT64_MAX
+                            || value > UINT64_MAX
+#endif
+                                ) {
                                 vr_error_message(config,
                                                  "Could not parse as "
                                                  "unsigned long");
@@ -375,8 +383,11 @@ parse_datum(const struct vr_config *config,
                 }
                 case 32: {
                         long value = strtol(*text, &endptr, 0);
-                        if (errno == ERANGE ||
-                            value > INT32_MAX || value < INT32_MIN) {
+                        if (errno == ERANGE
+#if LONG_MAX > INT32_MAX
+                            || value > INT32_MAX || value < INT32_MIN
+#endif
+                                ) {
                                 vr_error_message(config,
                                                  "Could not parse as "
                                                  "signed integer");
@@ -387,8 +398,11 @@ parse_datum(const struct vr_config *config,
                 }
                 case 64: {
                         long value = strtol(*text, &endptr, 0);
-                        if (errno == ERANGE ||
-                            value > INT64_MAX || value < INT64_MIN) {
+                        if (errno == ERANGE
+#if LONG_MAX > INT64_MAX
+                            || value > INT64_MAX || value < INT64_MIN
+#endif
+                                ) {
                                 vr_error_message(config,
                                                  "Could not parse as "
                                                  "signed long");
