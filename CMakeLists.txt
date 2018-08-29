@@ -23,8 +23,9 @@ else()
   foreach(FLAG -Wall -Wuninitialized -Wempty-body -Wformat
       -Wformat-security -Winit-self -Wundef
       -Wvla -Wpointer-arith -Wmissing-declarations)
-    CHECK_C_COMPILER_FLAG("${FLAG}" HAVE_FLAG-${FLAG})
-    if(${HAVE_FLAG-${FLAG}})
+    string(REPLACE "-" "_" FLAG_VAR "${FLAG}")
+    CHECK_C_COMPILER_FLAG("${FLAG}" HAVE_FLAG_${FLAG_VAR})
+    if(${HAVE_FLAG_${FLAG_VAR}})
       add_definitions("${FLAG}")
     endif()
   endforeach()
