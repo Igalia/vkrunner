@@ -45,6 +45,7 @@ enum vr_script_op {
         VR_SCRIPT_OP_PROBE_SSBO,
         VR_SCRIPT_OP_SET_PUSH_CONSTANT,
         VR_SCRIPT_OP_SET_BUFFER_SUBDATA,
+        VR_SCRIPT_OP_SET_IMAGE_COLOR,
         VR_SCRIPT_OP_CLEAR
 };
 
@@ -52,6 +53,13 @@ enum vr_script_source_type {
         VR_SCRIPT_SOURCE_TYPE_GLSL,
         VR_SCRIPT_SOURCE_TYPE_SPIRV,
         VR_SCRIPT_SOURCE_TYPE_BINARY
+};
+
+enum vr_script_image_color {
+        VR_SCRIPT_IMAGE_COLOR_RED,
+        VR_SCRIPT_IMAGE_COLOR_GREEN,
+        VR_SCRIPT_IMAGE_COLOR_BLUE,
+        VR_SCRIPT_IMAGE_COLOR_RGBW,
 };
 
 struct vr_script_shader {
@@ -123,19 +131,50 @@ struct vr_script_command {
                         uint32_t first_instance;
                         unsigned pipeline_key;
                 } draw_arrays;
+
+                struct {
+                        unsigned desc_set;
+                        unsigned binding;
+                        size_t width;
+                        size_t height;
+                        enum vr_script_image_color color;
+                } set_image_color;
         };
 };
 
-enum vr_script_buffer_type {
-        VR_SCRIPT_BUFFER_TYPE_UBO,
-        VR_SCRIPT_BUFFER_TYPE_SSBO,
+enum vr_script_resource_type {
+        VR_SCRIPT_RESOURCE_TYPE_SAMPLER,
+        VR_SCRIPT_RESOURCE_TYPE_COMBINED_IMAGE,
+        VR_SCRIPT_RESOURCE_TYPE_SAMPLED_IMAGE,
+        VR_SCRIPT_RESOURCE_TYPE_STORAGE_IMAGE,
+        VR_SCRIPT_RESOURCE_TYPE_UNIFORM_TEXEL,
+        VR_SCRIPT_RESOURCE_TYPE_STORAGE_TEXEL,
+        VR_SCRIPT_RESOURCE_TYPE_UNIFORM_BUFFER,
+        VR_SCRIPT_RESOURCE_TYPE_STORAGE_BUFFER,
+        VR_SCRIPT_RESOURCE_N_TYPES,
 };
 
-struct vr_script_buffer {
+struct vr_script_resource {
         unsigned desc_set;
         unsigned binding;
-        enum vr_script_buffer_type type;
-        size_t size;
+        enum vr_script_resource_type type;
+        union {
+                struct {
+                        size_t size;
+                } buffer;
+
+                /* VR_SCRIPT_RESOURCE_TYPE_SAMPLER resource uses only |sampler|
+                 * of |struct image|. VR_SCRIPT_RESOURCE_TYPE_SAMPLED_IMAGE
+                 * and VR_SCRIPT_RESOURCE_TYPE_STORAGE_IMAGE resources uses only
+                 * |format|, |width|, and |height|.
+                 * VR_SCRIPT_RESOURCE_TYPE_COMBINED_IMAGE uses all of them. */
+                struct {
+                        const struct vr_format *format;
+                        size_t width;
+                        size_t height;
+                        VkSamplerCreateInfo sampler;
+                } image;
+        };
 };
 
 struct vr_script {
@@ -152,8 +191,8 @@ struct vr_script {
         struct vr_vbo *vertex_data;
         uint16_t *indices;
         size_t n_indices;
-        struct vr_script_buffer *buffers;
-        size_t n_buffers;
+        struct vr_script_resource *resources;
+        size_t n_resources;
 };
 
 struct vr_script *

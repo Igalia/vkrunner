@@ -43,13 +43,31 @@
 #include <inttypes.h>
 #include <limits.h>
 
-struct test_buffer {
+enum test_resource_type {
+        VR_TEST_RESOURCE_TYPE_BUFFER,
+        VR_TEST_RESOURCE_TYPE_SAMPLER,
+        VR_TEST_RESOURCE_TYPE_IMAGE,
+};
+
+struct test_resource {
         struct vr_list link;
-        VkBuffer buffer;
+        enum test_resource_type type;
+        union {
+                VkBuffer buffer;
+                VkSampler sampler;
+                VkImage image;
+        };
         VkDeviceMemory memory;
         void *memory_map;
         int memory_type_index;
-        size_t size;
+        union {
+                /* For buffer type */
+                size_t size;
+        } data;
+        union {
+                VkBufferView buffer_view;
+                VkImageView image_view;
+        } coupled;
 };
 
 enum test_state {
@@ -65,30 +83,46 @@ enum test_state {
 struct test_data {
         struct vr_window *window;
         struct vr_pipeline *pipeline;
-        struct vr_list buffers;
-        struct test_buffer **ubo_buffers;
+        struct vr_list all_resources;
+        struct test_resource **resources;
         const struct vr_script *script;
-        struct test_buffer *vbo_buffer;
-        struct test_buffer *index_buffer;
-        bool ubo_descriptor_set_bound;
-        VkDescriptorSet *ubo_descriptor_set;
+        struct test_resource *vbo_buffer;
+        struct test_resource *index_buffer;
+        bool descriptor_set_bound;
+        VkDescriptorSet *descriptor_set;
         unsigned bound_pipeline;
         enum test_state test_state;
         bool first_render;
 };
 
-static struct test_buffer *
+static VkDescriptorType
+get_descriptor_type(enum vr_script_resource_type type)
+{
+        return type - VR_SCRIPT_RESOURCE_TYPE_SAMPLER +
+               VK_DESCRIPTOR_TYPE_SAMPLER;
+}
+
+static VkBufferUsageFlagBits
+get_buffer_usage(enum vr_script_resource_type type)
+{
+        uint32_t shift = type - VR_SCRIPT_RESOURCE_TYPE_UNIFORM_TEXEL;
+        return VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT << shift;
+}
+
+static struct test_resource *
 allocate_test_buffer(struct test_data *data,
                      size_t size,
-                     VkBufferUsageFlagBits usage)
+                     VkBufferUsageFlagBits usage,
+                     bool need_buffer_view)
 {
         struct vr_vk *vkfn = &data->window->vkfn;
-        struct test_buffer *buffer = vr_calloc(sizeof *buffer);
+        struct test_resource *buffer = vr_calloc(sizeof *buffer);
         VkResult res;
 
-        vr_list_insert(data->buffers.prev, &buffer->link);
+        vr_list_insert(data->all_resources.prev, &buffer->link);
 
-        buffer->size = size;
+        buffer->data.size = size;
+        buffer->type = VR_TEST_RESOURCE_TYPE_BUFFER;
 
         VkBufferCreateInfo buffer_create_info = {
                 .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -132,12 +166,16 @@ allocate_test_buffer(struct test_data *data,
                 return NULL;
         }
 
+        if (!need_buffer_view)
+                return buffer;
+
+        // TODO(jaebaek): Create VkBufferView
         return buffer;
 }
 
 static void
 free_test_buffer(struct test_data *data,
-                 struct test_buffer *buffer)
+                 struct test_resource *buffer)
 {
         struct vr_window *window = data->window;
         struct vr_vk *vkfn = &window->vkfn;
@@ -159,6 +197,183 @@ free_test_buffer(struct test_data *data,
 
         vr_list_remove(&buffer->link);
         vr_free(buffer);
+}
+
+static struct test_resource *
+allocate_test_image(struct test_data *data,
+                    VkFormat format,
+                    size_t width,
+                    size_t height,
+                    VkImageUsageFlagBits usage)
+{
+        // TODO(jaebaek): Support more image formats.
+        if (format != VK_FORMAT_R8G8B8A8_UNORM)
+                vr_fatal("Currently only VK_FORMAT_R8G8B8A8_UNORM format images"
+                         " are supported");
+
+        struct vr_vk *vkfn = &data->window->vkfn;
+        struct test_resource *image = vr_calloc(sizeof *image);
+        VkResult res;
+
+        vr_list_insert(data->all_resources.prev, &image->link);
+
+        image->type = VR_TEST_RESOURCE_TYPE_IMAGE;
+
+        VkImageCreateInfo image_create_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+                .imageType = VK_IMAGE_TYPE_2D,
+                .format = format,
+                .extent = {
+                        .width = width,
+                        .height = height,
+                        .depth = 1
+                },
+                .mipLevels = 1,
+                .arrayLayers = 1,
+                .samples = VK_SAMPLE_COUNT_1_BIT,
+                .tiling = VK_IMAGE_TILING_LINEAR,
+                .usage = usage,
+                .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                .initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED
+        };
+        res = vkfn->vkCreateImage(data->window->device,
+                                  &image_create_info,
+                                  NULL, /* allocator */
+                                  &image->image);
+        if (res != VK_SUCCESS) {
+                image->image = VK_NULL_HANDLE;
+                vr_error_message(data->window->config, "Error creating image");
+                return NULL;
+        }
+
+        res = vr_allocate_store_image(data->window->context,
+                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                                      1, /* n_images */
+                                      &image->image,
+                                      &image->memory,
+                                      &image->memory_type_index);
+        if (res != VK_SUCCESS) {
+                image->memory = VK_NULL_HANDLE;
+                vr_error_message(data->window->config,
+                                 "Error allocating memory");
+                return NULL;
+        }
+
+        res = vkfn->vkMapMemory(data->window->device,
+                                image->memory,
+                                0, /* offset */
+                                VK_WHOLE_SIZE,
+                                0, /* flags */
+                                &image->memory_map);
+        if (res != VK_SUCCESS) {
+                image->memory_map = NULL;
+                vr_error_message(data->window->config, "Error mapping memory");
+                return NULL;
+        }
+
+        VkImageViewCreateInfo image_view_create_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = image->image,
+                .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                .format = format,
+                .components = {
+                        .r = VK_COMPONENT_SWIZZLE_R,
+                        .g = VK_COMPONENT_SWIZZLE_G,
+                        .b = VK_COMPONENT_SWIZZLE_B,
+                        .a = VK_COMPONENT_SWIZZLE_A
+                },
+                .subresourceRange = {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1
+                }
+        };
+
+        res = vkfn->vkCreateImageView(data->window->device,
+                                      &image_view_create_info,
+                                      NULL, /* allocator */
+                                      &image->coupled.image_view);
+        if (res != VK_SUCCESS) {
+                image->coupled.image_view = VK_NULL_HANDLE;
+                vr_error_message(data->window->config,
+                                 "Error creating image view");
+                return false;
+        }
+
+        return image;
+}
+
+static void
+free_test_image(struct test_data *data,
+                struct test_resource *image)
+{
+        struct vr_window *window = data->window;
+        struct vr_vk *vkfn = &window->vkfn;
+
+        if (image->coupled.image_view) {
+                vkfn->vkDestroyImageView(window->device,
+                                         image->coupled.image_view,
+                                         NULL);
+        }
+        if (image->memory_map) {
+                vkfn->vkUnmapMemory(window->device,
+                                    image->memory);
+        }
+        if (image->memory) {
+                vkfn->vkFreeMemory(window->device,
+                                   image->memory,
+                                   NULL /* allocator */);
+        }
+        if (image->image) {
+                vkfn->vkDestroyImage(window->device,
+                                     image->image,
+                                     NULL /* allocator */);
+        }
+
+        vr_list_remove(&image->link);
+        vr_free(image);
+}
+
+static struct test_resource *
+allocate_test_sampler(struct test_data *data,
+                      const VkSamplerCreateInfo *sampler_create_info)
+{
+        struct vr_vk *vkfn = &data->window->vkfn;
+        struct test_resource *sampler = vr_calloc(sizeof *sampler);
+        VkResult res;
+
+        vr_list_insert(data->all_resources.prev, &sampler->link);
+
+        sampler->type = VR_TEST_RESOURCE_TYPE_SAMPLER;
+
+        res = vkfn->vkCreateSampler(data->window->device,
+                                    sampler_create_info,
+                                    NULL, /* allocator */
+                                    &sampler->sampler);
+        if (res != VK_SUCCESS) {
+                sampler->sampler = VK_NULL_HANDLE;
+                vr_error_message(data->window->config,
+                                 "Error creating sampler");
+                return NULL;
+        }
+        return sampler;
+}
+
+static void
+free_test_sampler(struct test_data *data,
+                  struct test_resource *sampler)
+{
+        struct vr_window *window = data->window;
+        struct vr_vk *vkfn = &window->vkfn;
+        if (sampler->sampler) {
+                vkfn->vkDestroySampler(window->device,
+                                       sampler->sampler,
+                                       NULL /* allocator */);
+        }
+        vr_list_remove(&sampler->link);
+        vr_free(sampler);
 }
 
 static bool
@@ -186,11 +401,12 @@ invalidate_ssbos(struct test_data *data)
 {
         struct vr_vk *vkfn = &data->window->vkfn;
 
-        for (unsigned i = 0; i < data->script->n_buffers; i++) {
-                if (data->script->buffers[i].type != VR_SCRIPT_BUFFER_TYPE_SSBO)
+        for (unsigned i = 0; i < data->script->n_resources; i++) {
+                if (data->script->resources[i].type !=
+                    VR_SCRIPT_RESOURCE_TYPE_STORAGE_BUFFER)
                         continue;
 
-                const struct test_buffer *buffer = data->ubo_buffers[i];
+                const struct test_resource *buffer = data->resources[i];
 
                 const VkMemoryType *memory_type =
                         (data->window->context->memory_properties.memoryTypes +
@@ -204,7 +420,7 @@ invalidate_ssbos(struct test_data *data)
 
                 VkMappedMemoryRange memory_range = {
                         .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-                        .memory = data->ubo_buffers[i]->memory,
+                        .memory = data->resources[i]->memory,
                         .offset = 0,
                         .size = VK_WHOLE_SIZE
                 };
@@ -300,7 +516,7 @@ begin_render_pass(struct test_data *data)
                                    VK_SUBPASS_CONTENTS_INLINE);
 
         data->bound_pipeline = UINT_MAX;
-        data->ubo_descriptor_set_bound = false;
+        data->descriptor_set_bound = false;
         data->first_render = false;
 
         return true;
@@ -382,11 +598,18 @@ bind_ubo_descriptor_set(struct test_data *data)
         struct vr_vk *vkfn = &data->window->vkfn;
         const struct vr_context *context = data->window->context;
 
-        if (data->ubo_descriptor_set_bound || !data->ubo_descriptor_set)
+        if (data->descriptor_set_bound || !data->descriptor_set)
                 return;
 
         if (data->pipeline->stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
                 for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
+                        if (data->descriptor_set[i] == VK_NULL_HANDLE) {
+                                vr_error_message(data->window->config,
+                                                 "Warning buffer descriptor set"
+                                                 " [%u] is VK_NULL_HANDLE",
+                                                 i);
+                                continue;
+                        }
                         vkfn->vkCmdBindDescriptorSets(
                                         context->command_buffer,
                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -394,14 +617,16 @@ bind_ubo_descriptor_set(struct test_data *data)
                                         /* firstSet */
                                         data->pipeline->desc_sets[i],
                                         1, /* descriptorSetCount */
-                                        &data->ubo_descriptor_set[i],
+                                        &data->descriptor_set[i],
                                         0, /* dynamicOffsetCount */
                                         NULL /* pDynamicOffsets */);
                 }
         }
 
-        if (data->pipeline->stages & VK_SHADER_STAGE_COMPUTE_BIT) {
+        if (data->pipeline->compute_pipeline) {
                 for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
+                        if (data->descriptor_set[i] == VK_NULL_HANDLE)
+                                continue;
                         vkfn->vkCmdBindDescriptorSets(
                                         context->command_buffer,
                                         VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -409,13 +634,13 @@ bind_ubo_descriptor_set(struct test_data *data)
                                         /* firstSet */
                                         data->pipeline->desc_sets[i],
                                         1, /* descriptorSetCount */
-                                        &data->ubo_descriptor_set[i],
+                                        &data->descriptor_set[i],
                                         0, /* dynamicOffsetCount */
                                         NULL /* pDynamicOffsets */);
                 }
         }
 
-        data->ubo_descriptor_set_bound = true;
+        data->descriptor_set_bound = true;
 }
 
 static void
@@ -455,15 +680,15 @@ print_command_fail(const struct vr_config *config,
                          command->line_num);
 }
 
-static struct test_buffer *
-get_ubo_buffer(struct test_data *data,
-               int desc_set,
-               int binding)
+static struct test_resource *
+get_resource(struct test_data *data,
+             int desc_set,
+             int binding)
 {
-        for (unsigned i = 0; i < data->script->n_buffers; i++) {
-                if (data->script->buffers[i].binding == binding &&
-                    data->script->buffers[i].desc_set == desc_set)
-                        return data->ubo_buffers[i];
+        for (unsigned i = 0; i < data->script->n_resources; i++) {
+                if (data->script->resources[i].binding == binding &&
+                    data->script->resources[i].desc_set == desc_set)
+                        return data->resources[i];
         }
 
         return NULL;
@@ -474,11 +699,12 @@ draw_rect(struct test_data *data,
           const struct vr_script_command *command)
 {
         struct vr_vk *vkfn = &data->window->vkfn;
-        struct test_buffer *buffer;
+        struct test_resource *buffer;
 
         buffer = allocate_test_buffer(data,
                                       sizeof (struct vr_pipeline_vertex) * 4,
-                                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+                                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                      false);
         if (buffer == NULL)
                 return false;
 
@@ -540,7 +766,8 @@ ensure_index_buffer(struct test_data *data)
                 allocate_test_buffer(data,
                                      data->script->n_indices *
                                      sizeof data->script->indices[0],
-                                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+                                     VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                                     false);
         if (data->index_buffer == NULL)
                 return false;
 
@@ -569,7 +796,8 @@ ensure_vbo_buffer(struct test_data *data)
                 allocate_test_buffer(data,
                                      vbo->stride *
                                      vbo->num_rows,
-                                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+                                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                     false);
         if (data->vbo_buffer == NULL)
                 return false;
 
@@ -839,10 +1067,10 @@ probe_ssbo(struct test_data *data,
         if (!set_state(data, TEST_STATE_IDLE))
                 return false;
 
-        struct test_buffer *buffer =
-                get_ubo_buffer(data,
-                               command->probe_ssbo.desc_set,
-                               command->probe_ssbo.binding);
+        struct test_resource *buffer =
+                get_resource(data,
+                             command->probe_ssbo.desc_set,
+                             command->probe_ssbo.binding);
 
         if (buffer == NULL) {
                 print_command_fail(data->window->config, command);
@@ -928,15 +1156,15 @@ set_push_constant(struct test_data *data,
 }
 
 static bool
-allocate_ubo_buffers(struct test_data *data)
+allocate_resources(struct test_data *data)
 {
         struct vr_vk *vkfn = &data->window->vkfn;
         unsigned desc_set;
         unsigned desc_set_index;
 
         VkResult res;
-        data->ubo_descriptor_set = vr_alloc(data->pipeline->n_desc_sets *
-                                            sizeof(VkDescriptorSet *));
+        data->descriptor_set = vr_alloc(data->pipeline->n_desc_sets *
+                                        sizeof(VkDescriptorSet *));
         for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
                 VkDescriptorSetAllocateInfo allocate_info = {
                         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -947,72 +1175,144 @@ allocate_ubo_buffers(struct test_data *data)
                 res = vkfn->vkAllocateDescriptorSets(
                                 data->window->device,
                                 &allocate_info,
-                                &data->ubo_descriptor_set[i]);
+                                &data->descriptor_set[i]);
                 if (res != VK_SUCCESS) {
-                        data->ubo_descriptor_set[i] = VK_NULL_HANDLE;
+                        data->descriptor_set[i] = VK_NULL_HANDLE;
                         vr_error_message(data->window->config,
                                          "Error allocating descriptor set");
                         return false;
                 }
         }
 
-        data->ubo_buffers = vr_alloc(sizeof *data->ubo_buffers *
-                                     data->script->n_buffers);
+        data->resources = vr_alloc(sizeof *data->resources *
+                                   data->script->n_resources);
 
-        desc_set = data->script->buffers[0].desc_set;
+        desc_set = data->script->resources[0].desc_set;
         desc_set_index = 0;
-        for (unsigned i = 0; i < data->script->n_buffers; i++) {
-                const struct vr_script_buffer *script_buffer =
-                        data->script->buffers + i;
+        for (unsigned i = 0; i < data->script->n_resources; i++) {
+                const struct vr_script_resource *script_resource =
+                        data->script->resources + i;
 
-                if (script_buffer->desc_set != desc_set) {
-                        desc_set = script_buffer->desc_set;
+                if (script_resource->desc_set != desc_set) {
+                        desc_set = script_resource->desc_set;
                         ++desc_set_index;
                 }
 
-                enum VkBufferUsageFlagBits usage;
-                VkDescriptorType descriptor_type;
-                switch (script_buffer->type) {
-                case VR_SCRIPT_BUFFER_TYPE_UBO:
-                        usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-                        descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                        goto found_type;
-                case VR_SCRIPT_BUFFER_TYPE_SSBO:
-                        usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-                        descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                        goto found_type;
-                }
-                vr_fatal("Unexpected buffer type");
-        found_type:
-                ((void) 0);
-
-                struct test_buffer *test_buffer =
-                        allocate_test_buffer(data, script_buffer->size, usage);
-
-                if (test_buffer == NULL)
-                        return false;
-
-                data->ubo_buffers[i] = test_buffer;
+                VkWriteDescriptorSet write = {
+                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                        .dstSet = data->descriptor_set[desc_set_index],
+                        .dstBinding = script_resource->binding,
+                        .dstArrayElement = 0,
+                        .descriptorCount = 1,
+                        .descriptorType =
+                                get_descriptor_type(script_resource->type),
+                };
 
                 VkDescriptorBufferInfo buffer_info = {
-                        .buffer = test_buffer->buffer,
                         .offset = 0,
                         .range = VK_WHOLE_SIZE
                 };
-                VkWriteDescriptorSet write = {
-                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = data->ubo_descriptor_set[desc_set_index],
-                        .dstBinding = script_buffer->binding,
-                        .dstArrayElement = 0,
-                        .descriptorCount = 1,
-                        .descriptorType = descriptor_type,
-                        .pBufferInfo = &buffer_info
-                };
-                vkfn->vkUpdateDescriptorSets(data->window->device,
-                                             1, /* descriptorWriteCount */
-                                             &write,
-                                             0, /* descriptorCopyCount */
-                                             NULL /* pDescriptorCopies */);
+                VkDescriptorImageInfo image_info = {0};
+                switch (script_resource->type) {
+                // Sampler.
+                case VR_SCRIPT_RESOURCE_TYPE_SAMPLER:
+                        ((void) 0);
+
+                        struct test_resource *sampler =
+                                allocate_test_sampler(
+                                        data,
+                                        &script_resource->image.sampler);
+                        if (sampler == NULL)
+                                return false;
+                        image_info.sampler = sampler->sampler;
+                        write.pImageInfo = &image_info;
+                        break;
+
+                // Images.
+                case VR_SCRIPT_RESOURCE_TYPE_COMBINED_IMAGE:
+                case VR_SCRIPT_RESOURCE_TYPE_SAMPLED_IMAGE:
+                case VR_SCRIPT_RESOURCE_TYPE_STORAGE_IMAGE:
+                        ((void) 0);
+
+                        VkImageUsageFlagBits image_usage;
+                        if (script_resource->type ==
+                            VR_SCRIPT_RESOURCE_TYPE_STORAGE_IMAGE) {
+                                image_usage =
+                                        VK_IMAGE_USAGE_STORAGE_BIT;
+                        } else {
+                                image_usage =
+                                        VK_IMAGE_USAGE_SAMPLED_BIT;
+                        }
+
+                        VkFormat format =
+                                script_resource->image.format->vk_format;
+                        struct test_resource *image =
+                                allocate_test_image(
+                                        data,
+                                        format,
+                                        script_resource->image.width,
+                                        script_resource->image.height,
+                                        image_usage);
+
+                        if (image == NULL)
+                                return false;
+
+                        data->resources[i] = image;
+
+                        if (script_resource->type ==
+                            VR_SCRIPT_RESOURCE_TYPE_COMBINED_IMAGE) {
+                                sampler =
+                                        allocate_test_sampler(
+                                                data,
+                                                &script_resource->
+                                                image.sampler);
+                                if (sampler == NULL)
+                                        return false;
+                                image_info.sampler = sampler->sampler;
+                        }
+                        image_info.imageView = image->coupled.image_view;
+                        image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                        write.pImageInfo = &image_info;
+                        break;
+
+                // Buffers.
+                case VR_SCRIPT_RESOURCE_TYPE_UNIFORM_TEXEL:
+                case VR_SCRIPT_RESOURCE_TYPE_STORAGE_TEXEL:
+                case VR_SCRIPT_RESOURCE_TYPE_UNIFORM_BUFFER:
+                case VR_SCRIPT_RESOURCE_TYPE_STORAGE_BUFFER:
+                        ((void) 0);
+
+                        bool need_buffer_view =
+                                script_resource->type ==
+                                VR_SCRIPT_RESOURCE_TYPE_UNIFORM_TEXEL ||
+                                script_resource->type ==
+                                VR_SCRIPT_RESOURCE_TYPE_STORAGE_TEXEL;
+
+                        struct test_resource *buffer =
+                                allocate_test_buffer(
+                                        data,
+                                        script_resource->buffer.size,
+                                        get_buffer_usage(script_resource->type),
+                                        need_buffer_view);
+
+                        if (buffer == NULL)
+                                return false;
+
+                        data->resources[i] = buffer;
+
+                        buffer_info.buffer = buffer->buffer;
+                        write.pBufferInfo = &buffer_info;
+                        break;
+                default:
+                        vr_fatal("Unexpected buffer type");
+                }
+
+                vkfn->vkUpdateDescriptorSets(
+                        data->window->device,
+                        1, /* descriptorWriteCount */
+                        &write,
+                        0, /* descriptorCopyCount */
+                        NULL /* pDescriptorCopies */);
         }
 
         return true;
@@ -1022,10 +1322,10 @@ static bool
 set_buffer_subdata(struct test_data *data,
                    const struct vr_script_command *command)
 {
-        struct test_buffer *buffer =
-                get_ubo_buffer(data,
-                               command->set_buffer_subdata.desc_set,
-                               command->set_buffer_subdata.binding);
+        struct test_resource *buffer =
+                get_resource(data,
+                             command->set_buffer_subdata.desc_set,
+                             command->set_buffer_subdata.binding);
         assert(buffer);
 
         memcpy((uint8_t *) buffer->memory_map +
@@ -1037,6 +1337,35 @@ set_buffer_subdata(struct test_data *data,
                         buffer->memory,
                         command->set_push_constant.offset,
                         command->set_buffer_subdata.size);
+
+        return true;
+}
+
+static bool
+set_image_color(struct test_data *data,
+               const struct vr_script_command *command)
+{
+        struct test_resource *image =
+                get_resource(data,
+                             command->set_image_color.desc_set,
+                             command->set_image_color.binding);
+        assert(image);
+
+        uint32_t * p = image->memory_map;
+        for (size_t y = 0; y < command->set_image_color.height; ++y) {
+                for (size_t x = 0; x < command->set_image_color.width; ++x)
+                        p[command->set_image_color.width * y + x] = 0xff0000ff;
+        }
+
+        VkDeviceSize size =
+                command->set_image_color.width *
+                command->set_image_color.height *
+                sizeof(uint32_t);
+        vr_flush_memory(data->window->context,
+                        image->memory_type_index,
+                        image->memory,
+                        0,
+                        size);
 
         return true;
 }
@@ -1148,6 +1477,10 @@ run_commands(struct test_data *data)
                         if (!set_buffer_subdata(data, command))
                                 ret = false;
                         break;
+                case VR_SCRIPT_OP_SET_IMAGE_COLOR:
+                        if (!set_image_color(data, command))
+                                ret = false;
+                        break;
                 case VR_SCRIPT_OP_CLEAR:
                         if (!clear(data, command))
                                 ret = false;
@@ -1162,31 +1495,96 @@ static void
 call_inspect(struct test_data *data)
 {
         struct vr_inspect_data inspect_data;
+        unsigned buffer_index;
+        unsigned image_index;
 
         memset(&inspect_data, 0, sizeof inspect_data);
 
-        inspect_data.n_buffers = data->script->n_buffers;
+        inspect_data.n_buffers = 0;
+        inspect_data.n_images = 0;
+        for (unsigned i = 0; i < data->script->n_resources; i++) {
+                switch (data->script->resources[i].type) {
+                case VR_SCRIPT_RESOURCE_TYPE_COMBINED_IMAGE:
+                case VR_SCRIPT_RESOURCE_TYPE_SAMPLED_IMAGE:
+                case VR_SCRIPT_RESOURCE_TYPE_STORAGE_IMAGE:
+                        ++inspect_data.n_images;
+                        break;
+                case VR_SCRIPT_RESOURCE_TYPE_UNIFORM_TEXEL:
+                case VR_SCRIPT_RESOURCE_TYPE_STORAGE_TEXEL:
+                case VR_SCRIPT_RESOURCE_TYPE_UNIFORM_BUFFER:
+                case VR_SCRIPT_RESOURCE_TYPE_STORAGE_BUFFER:
+                        ++inspect_data.n_buffers;
+                        break;
+                default:
+                        break;
+                }
+        }
 
         if (inspect_data.n_buffers > 0) {
-                struct vr_inspect_buffer *buffers =
-                        alloca(sizeof (struct vr_inspect_buffer) *
+                struct vr_inspect_resource *images =
+                        alloca(sizeof (struct vr_inspect_resource) *
+                               inspect_data.n_images);
+                struct vr_inspect_resource *buffers =
+                        alloca(sizeof (struct vr_inspect_resource) *
                                inspect_data.n_buffers);
 
-                for (size_t i = 0; i < inspect_data.n_buffers; i++) {
-                        buffers[i].binding = data->script->buffers[i].binding;
-                        buffers[i].size = data->ubo_buffers[i]->size;
-                        buffers[i].data = data->ubo_buffers[i]->memory_map;
+                buffer_index = 0;
+                image_index = 0;
+                for (unsigned i = 0; i < data->script->n_resources; i++) {
+                        switch (data->script->resources[i].type) {
+                        case VR_SCRIPT_RESOURCE_TYPE_COMBINED_IMAGE:
+                        case VR_SCRIPT_RESOURCE_TYPE_SAMPLED_IMAGE:
+                        case VR_SCRIPT_RESOURCE_TYPE_STORAGE_IMAGE:
+                                images[i].desc_set =
+                                        data->script->resources[image_index].
+                                        desc_set;
+                                images[i].binding =
+                                        data->script->resources[image_index].
+                                        binding;
+                                images[i].data =
+                                        data->resources[i]->memory_map;
+                                images[i].image.width =
+                                        data->script->resources[buffer_index].
+                                        image.width;
+                                images[i].image.height =
+                                        data->script->resources[buffer_index].
+                                        image.height;
+                                images[i].image.format =
+                                        data->script->resources[image_index].
+                                        image.format;
+                                ++image_index;
+                                break;
+                        case VR_SCRIPT_RESOURCE_TYPE_UNIFORM_TEXEL:
+                        case VR_SCRIPT_RESOURCE_TYPE_STORAGE_TEXEL:
+                        case VR_SCRIPT_RESOURCE_TYPE_UNIFORM_BUFFER:
+                        case VR_SCRIPT_RESOURCE_TYPE_STORAGE_BUFFER:
+                                buffers[i].desc_set =
+                                        data->script->resources[buffer_index].
+                                        desc_set;
+                                buffers[i].binding =
+                                        data->script->resources[buffer_index].
+                                        binding;
+                                buffers[i].data =
+                                        data->resources[i]->memory_map;
+                                buffers[i].buffer.size =
+                                        data->script->resources[buffer_index].
+                                        buffer.size;
+                                ++buffer_index;
+                                break;
+                        default:
+                                break;
+                        }
                 }
 
                 inspect_data.buffers = buffers;
         }
 
-        struct vr_inspect_image *color_buffer = &inspect_data.color_buffer;
+        struct vr_inspect_resource *color_buffer = &inspect_data.color_buffer;
 
-        color_buffer->width = VR_WINDOW_WIDTH;
-        color_buffer->height = VR_WINDOW_HEIGHT;
-        color_buffer->stride = data->window->linear_memory_stride;
-        color_buffer->format = data->window->framebuffer_format;
+        color_buffer->image.width = VR_WINDOW_WIDTH;
+        color_buffer->image.height = VR_WINDOW_HEIGHT;
+        color_buffer->image.stride = data->window->linear_memory_stride;
+        color_buffer->image.format = data->window->framebuffer_format;
         color_buffer->data = data->window->linear_memory_map;
 
         data->window->config->inspect_cb(&inspect_data,
@@ -1210,9 +1608,9 @@ vr_test_run(struct vr_window *window,
         };
         bool ret = true;
 
-        vr_list_init(&data.buffers);
+        vr_list_init(&data.all_resources);
 
-        if (script->n_buffers > 0 && !allocate_ubo_buffers(&data)) {
+        if (script->n_resources > 0 && !allocate_resources(&data)) {
                 ret = false;
         } else {
                 if (!run_commands(&data))
@@ -1225,24 +1623,36 @@ vr_test_run(struct vr_window *window,
                         call_inspect(&data);
         }
 
-        struct test_buffer *buffer, *tmp;
-        vr_list_for_each_safe(buffer, tmp, &data.buffers, link) {
-                free_test_buffer(&data, buffer);
+        struct test_resource *resource, *tmp;
+        vr_list_for_each_safe(resource, tmp, &data.all_resources, link) {
+                switch (resource->type) {
+                case VR_TEST_RESOURCE_TYPE_BUFFER:
+                        free_test_buffer(&data, resource);
+                        break;
+                case VR_TEST_RESOURCE_TYPE_SAMPLER:
+                        free_test_sampler(&data, resource);
+                        break;
+                case VR_TEST_RESOURCE_TYPE_IMAGE:
+                        free_test_image(&data, resource);
+                        break;
+                default:
+                        vr_fatal("Unexpected resource type");
+                }
         }
 
-        vr_free(data.ubo_buffers);
+        vr_free(data.resources);
 
-        if (data.ubo_descriptor_set) {
+        if (data.descriptor_set) {
                 for (unsigned i = 0; i < pipeline->n_desc_sets; i++) {
-                        if (data.ubo_descriptor_set[i]) {
+                        if (data.descriptor_set[i]) {
                                 vkfn->vkFreeDescriptorSets(
                                                 window->device,
                                                 pipeline->descriptor_pool,
                                                 1, /* descriptorSetCount */
-                                                &data.ubo_descriptor_set[i]);
+                                                &data.descriptor_set[i]);
                         }
                 }
-                vr_free(data.ubo_descriptor_set);
+                vr_free(data.descriptor_set);
         }
 
         return ret;

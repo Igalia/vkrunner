@@ -72,7 +72,7 @@ struct load_state {
         struct vr_buffer commands;
         struct vr_buffer pipeline_keys;
         struct vr_buffer extensions;
-        struct vr_buffer buffers;
+        struct vr_buffer resources;
         struct vr_pipeline_key current_key;
         struct vr_buffer indices;
         float clear_color[4];
@@ -769,16 +769,17 @@ parse_buffer_subdata(const char **p,
 
 static bool
 parse_format(struct load_state *data,
-             const char *p,
-             const struct vr_format **format_out)
+             const char **p,
+             const struct vr_format **format_out,
+             bool at_end)
 {
-        while (isspace(*p))
-                p++;
-        const char *end = p;
+        while (isspace(**p))
+                (*p)++;
+        const char *end = *p;
         while (*end && !isspace(*end))
                 end++;
 
-        if (!is_end(end)) {
+        if (at_end && !is_end(end)) {
                 vr_error_message(data->config,
                                  "%s:%i: Missing format name",
                                  data->filename,
@@ -786,7 +787,7 @@ parse_format(struct load_state *data,
                 return false;
         }
 
-        char *format_name = vr_strndup(p, end - p);
+        char *format_name = vr_strndup(*p, end - *p);
         const struct vr_format *format = vr_format_lookup_by_name(format_name);
         bool ret;
 
@@ -799,12 +800,90 @@ parse_format(struct load_state *data,
                 ret = false;
         } else {
                 *format_out = format;
+                *p = end;
                 ret = true;
         }
 
         vr_free(format_name);
 
         return ret;
+}
+
+#include "vr-script-resource.h"
+
+static bool
+parse_sampler_filter(struct load_state *data,
+                     const char *p,
+                     VkFilter *filter,
+                     uint32_t n_filter)
+{
+        for (uint32_t i = 0; i < n_filter; ++i) {
+                while (isspace(*p))
+                        p++;
+                VR_SCRIPT_RESOURCE_ATTRIBUTE_FIND(sampler,
+                                                  filter,
+                                                  filter[i],
+                                                  &p);
+        }
+        if (!is_end(p)) {
+                vr_error_message(data->config,
+                                 "%s:%i: \"sampler filter\" has unnecessary "
+                                 "args: %s",
+                                 data->filename,
+                                 data->line_num,
+                                 p);
+                return false;
+        }
+        return true;
+}
+
+static bool
+parse_sampler_mipmap(struct load_state *data,
+                     const char *p,
+                     VkSamplerMipmapMode *mipmap)
+{
+        while (isspace(*p))
+                p++;
+        VR_SCRIPT_RESOURCE_ATTRIBUTE_FIND(sampler,
+                                          mipmap,
+                                          *mipmap,
+                                          &p);
+        if (!is_end(p)) {
+                vr_error_message(data->config,
+                                 "%s:%i: \"sampler mipmap\" has unnecessary "
+                                 "args: %s",
+                                 data->filename,
+                                 data->line_num,
+                                 p);
+                return false;
+        }
+        return true;
+}
+
+static bool
+parse_sampler_address(struct load_state *data,
+                      const char *p,
+                      VkSamplerAddressMode *address,
+                      uint32_t n_address)
+{
+        for (uint32_t i = 0; i < n_address; ++i) {
+                while (isspace(*p))
+                        p++;
+                VR_SCRIPT_RESOURCE_ATTRIBUTE_FIND(sampler,
+                                                  address,
+                                                  address[i],
+                                                  &p);
+        }
+        if (!is_end(p)) {
+                vr_error_message(data->config,
+                                 "%s:%i: \"sampler address\" has unnecessary "
+                                 "args: %s",
+                                 data->filename,
+                                 data->line_num,
+                                 p);
+                return false;
+        }
+        return true;
 }
 
 static bool
@@ -899,14 +978,16 @@ process_require_line(struct load_state *data)
 
         if (looking_at(&p, "framebuffer ")) {
                 return parse_format(data,
-                                    p,
-                                    &data->script->framebuffer_format);
+                                    &p,
+                                    &data->script->framebuffer_format,
+                                    true);
         }
 
         if (looking_at(&p, "depthstencil ")) {
                 return parse_format(data,
-                                    p,
-                                    &data->script->depth_stencil_format);
+                                    &p,
+                                    &data->script->depth_stencil_format,
+                                    true);
         }
 
         int extension_len = 0;
@@ -1471,23 +1552,23 @@ process_pipeline_property(struct load_state *data,
         vr_fatal("Unknown pipeline property type");
 }
 
-static struct vr_script_buffer *
-get_buffer(struct load_state *data,
-           unsigned desc_set,
-           unsigned binding,
-           enum vr_script_buffer_type type)
+static struct vr_script_resource *
+get_resource(struct load_state *data,
+             unsigned desc_set,
+             unsigned binding,
+             enum vr_script_resource_type type)
 {
-        struct vr_script_buffer *buffer =
-                (struct vr_script_buffer *) data->buffers.data;
-        unsigned n_buffers = (data->buffers.length /
-                              sizeof (struct vr_script_buffer));
+        struct vr_script_resource *resource =
+                (struct vr_script_resource *) data->resources.data;
+        unsigned n_resources = (data->resources.length /
+                                sizeof (struct vr_script_resource));
 
-        for (unsigned i = 0; i < n_buffers; i++) {
-                if (buffer[i].desc_set == desc_set &&
-                    buffer[i].binding == binding) {
-                        if (buffer[i].type != type) {
+        for (unsigned i = 0; i < n_resources; i++) {
+                if (resource[i].desc_set == desc_set &&
+                    resource[i].binding == binding) {
+                        if (resource[i].type != type) {
                                 vr_error_message(data->config,
-                                                 "%s:%i: Buffer binding point "
+                                                 "%s:%i: Resource binding point "
                                                  "%u:%u used with different "
                                                  "types",
                                                  data->filename,
@@ -1497,35 +1578,35 @@ get_buffer(struct load_state *data,
                                 return NULL;
                         }
 
-                        return buffer + i;
+                        return resource + i;
                 }
         }
 
-        vr_buffer_set_length(&data->buffers,
-                             data->buffers.length + sizeof *buffer);
-        buffer = ((struct vr_script_buffer *)
-                  (data->buffers.data + data->buffers.length) - 1);
-        buffer->type = type;
-        buffer->size = 0;
-        buffer->desc_set = desc_set;
-        buffer->binding = binding;
+        vr_buffer_set_length(&data->resources,
+                             data->resources.length + sizeof *resource);
+        resource = ((struct vr_script_resource *)
+                  (data->resources.data + data->resources.length) - 1);
+        memset(resource, 0, sizeof *resource);
+        resource->type = type;
+        resource->desc_set = desc_set;
+        resource->binding = binding;
 
-        return buffer;
+        return resource;
 }
 
 static bool
 process_set_buffer_subdata(struct load_state *data,
                            unsigned desc_set,
                            unsigned binding,
-                           enum vr_script_buffer_type type,
+                           enum vr_script_resource_type type,
                            const char *p,
                            struct vr_script_command *command)
 {
         command->set_buffer_subdata.desc_set = desc_set;
         command->set_buffer_subdata.binding = binding;
 
-        struct vr_script_buffer *buffer =
-                get_buffer(data, desc_set, binding, type);
+        struct vr_script_resource *buffer =
+                get_resource(data, desc_set, binding, type);
         if (buffer == NULL)
                 return false;
 
@@ -1546,8 +1627,8 @@ process_set_buffer_subdata(struct load_state *data,
 
         size_t end = (command->set_buffer_subdata.offset +
                       command->set_buffer_subdata.size);
-        if (end > buffer->size)
-                buffer->size = end;
+        if (end > buffer->buffer.size)
+                buffer->buffer.size = end;
 
         command->op = VR_SCRIPT_OP_SET_BUFFER_SUBDATA;
 
@@ -1567,13 +1648,134 @@ process_set_ssbo_size(struct load_state *data,
                       unsigned binding,
                       unsigned size)
 {
-        struct vr_script_buffer *buffer =
-                get_buffer(data, desc_set, binding, VR_SCRIPT_BUFFER_TYPE_SSBO);
+        struct vr_script_resource *buffer =
+                get_resource(data,
+                             desc_set,
+                             binding,
+                             VR_SCRIPT_RESOURCE_TYPE_STORAGE_BUFFER);
         if (buffer == NULL)
                 return false;
 
-        if (size > buffer->size)
-                buffer->size = size;
+        if (size > buffer->buffer.size)
+                buffer->buffer.size = size;
+
+        return true;
+}
+
+static bool
+process_image_checkerboard(struct load_state *data,
+                           unsigned desc_set,
+                           unsigned binding,
+                           const struct vr_format *format,
+                           unsigned width,
+                           unsigned height,
+                           enum vr_script_resource_type type,
+                           const char *p,
+                           struct vr_script_command *command)
+{
+        struct vr_script_resource *image =
+                get_resource(data, desc_set, binding, type);
+        if (image == NULL)
+                return false;
+
+        while (*p && isspace(*p))
+                p++;
+
+        if (looking_at(&p, "rgbw"))
+                command->set_image_color.color = VR_SCRIPT_IMAGE_COLOR_RGBW;
+        else if (looking_at(&p, "red"))
+                command->set_image_color.color = VR_SCRIPT_IMAGE_COLOR_RED;
+        else if (looking_at(&p, "green"))
+                command->set_image_color.color = VR_SCRIPT_IMAGE_COLOR_GREEN;
+        else if (looking_at(&p, "blue"))
+                command->set_image_color.color = VR_SCRIPT_IMAGE_COLOR_BLUE;
+        else
+                vr_fatal("Unexpected image color");
+
+        command->op = VR_SCRIPT_OP_SET_IMAGE_COLOR;
+        command->set_image_color.desc_set = desc_set;
+        command->set_image_color.binding = binding;
+        command->set_image_color.width = width;
+        command->set_image_color.height = height;
+
+        if (width > image->image.width)
+                image->image.width = width;
+
+        if (height > image->image.height)
+                image->image.height = height;
+
+        if (format)
+                image->image.format = format;
+
+        return true;
+}
+
+static bool
+process_sampler(struct load_state *data,
+                unsigned desc_set,
+                unsigned binding,
+                enum vr_script_resource_type type)
+{
+        struct vr_script_resource *sampler =
+                get_resource(data, desc_set, binding, type);
+        if (sampler == NULL)
+                return false;
+
+        sampler->image.sampler = default_sampler;
+
+        return true;
+}
+
+static bool
+setup_sampler_filter(struct load_state *data,
+                     unsigned desc_set,
+                     unsigned binding,
+                     const VkFilter *filter,
+                     enum vr_script_resource_type type)
+{
+        struct vr_script_resource *sampler =
+                get_resource(data, desc_set, binding, type);
+        if (sampler == NULL)
+                return false;
+
+        sampler->image.sampler.magFilter = filter[0];
+        sampler->image.sampler.minFilter = filter[1];
+
+        return true;
+}
+
+static bool
+setup_sampler_mimap(struct load_state *data,
+                    unsigned desc_set,
+                    unsigned binding,
+                    VkSamplerMipmapMode mipmap,
+                    enum vr_script_resource_type type)
+{
+        struct vr_script_resource *sampler =
+                get_resource(data, desc_set, binding, type);
+        if (sampler == NULL)
+                return false;
+
+        sampler->image.sampler.mipmapMode = mipmap;
+
+        return true;
+}
+
+static bool
+setup_sampler_address(struct load_state *data,
+                      unsigned desc_set,
+                      unsigned binding,
+                      const VkSamplerAddressMode *address,
+                      enum vr_script_resource_type type)
+{
+        struct vr_script_resource *sampler =
+                get_resource(data, desc_set, binding, type);
+        if (sampler == NULL)
+                return false;
+
+        sampler->image.sampler.addressModeU = address[0];
+        sampler->image.sampler.addressModeV = address[1];
+        sampler->image.sampler.addressModeW = address[2];
 
         return true;
 }
@@ -1665,7 +1867,7 @@ process_test_line(struct load_state *data)
                 if (parse_desc_set_and_binding(&p, values) &&
                     parse_uints(&p, &values[2], 1, NULL)) {
                         if (!is_end(p))
-                                return false;
+                                goto error;
                         return process_set_ssbo_size(data,
                                                      values[0],
                                                      values[1],
@@ -1686,6 +1888,92 @@ process_test_line(struct load_state *data)
 
         if (process_entrypoint(data, p))
                 return true;
+
+        if (looking_at(&p, "sampler filter ")) {
+                unsigned values[2];
+                if (!parse_desc_set_and_binding(&p, values))
+                        goto error;
+
+                VkFilter filter[2];
+                if (!parse_sampler_filter(data,
+                                           p,
+                                           filter,
+                                           VR_N_ELEMENTS(filter)))
+                        goto error;
+
+                return setup_sampler_filter(data,
+                                             values[0],
+                                             values[1],
+                                             filter,
+                                             VR_SCRIPT_RESOURCE_TYPE_SAMPLER);
+        }
+
+        if (looking_at(&p, "sampler mipmap ")) {
+                unsigned values[2];
+                if (!parse_desc_set_and_binding(&p, values))
+                        goto error;
+
+                VkSamplerMipmapMode mipmap;
+                if (!parse_sampler_mipmap(data,
+                                          p,
+                                          &mipmap))
+                        goto error;
+
+                return setup_sampler_mimap(data,
+                                           values[0],
+                                           values[1],
+                                           mipmap,
+                                           VR_SCRIPT_RESOURCE_TYPE_SAMPLER);
+        }
+
+        if (looking_at(&p, "sampler address")) {
+                unsigned values[2];
+                if (!parse_desc_set_and_binding(&p, values))
+                        goto error;
+
+                VkSamplerAddressMode address[3];
+                if (!parse_sampler_address(data,
+                                           p,
+                                           address,
+                                           VR_N_ELEMENTS(address)))
+                        goto error;
+
+                return setup_sampler_address(data,
+                                             values[0],
+                                             values[1],
+                                             address,
+                                             VR_SCRIPT_RESOURCE_TYPE_SAMPLER);
+        }
+
+        if (looking_at(&p, "sampler norm ")) {
+                unsigned values[2];
+                if (!parse_desc_set_and_binding(&p, values))
+                        goto error;
+                struct vr_script_resource *sampler =
+                        get_resource(data,
+                                     values[0],
+                                     values[1],
+                                     VR_SCRIPT_RESOURCE_TYPE_SAMPLER);
+                if (!sampler)
+                        goto error;
+                uint8_t norm;
+                if (!parse_uint8s(&p, &norm, 1, NULL))
+                        goto error;
+                if (!is_end(p))
+                        goto error;
+                sampler->image.sampler.unnormalizedCoordinates = !norm;
+                return true;
+        }
+
+        if (looking_at(&p, "sampler ")) {
+                unsigned values[2];
+                if (!parse_desc_set_and_binding(&p, values))
+                        goto error;
+                return process_sampler(data,
+                                       values[0],
+                                       values[1],
+                                       VR_SCRIPT_RESOURCE_TYPE_SAMPLER);
+        }
 
         if (isalnum(*p)) {
                 const char *end = p + 1;
@@ -1741,16 +2029,53 @@ process_test_line(struct load_state *data)
         if (looking_at(&p, "compute "))
                 return process_compute_command(data, p, command);
 
+        if (looking_at(&p, "image ")) {
+                unsigned values[4];
+                const struct vr_format *format;
+                if (!parse_desc_set_and_binding(&p, values))
+                        goto error;
+
+                while (isspace(*p))
+                        p++;
+                if (*p != '(')
+                        goto error;
+                p++;
+
+                if (!parse_uints(&p, &values[2], 2, ","))
+                        goto error;
+
+                while (isspace(*p))
+                        p++;
+                if (*p != ')')
+                        goto error;
+                p++;
+
+                if (!parse_format(data, &p, &format, false))
+                        goto error;
+
+                return process_image_checkerboard(
+                                data,
+                                values[0],
+                                values[1],
+                                format,
+                                values[2],
+                                values[3],
+                                VR_SCRIPT_RESOURCE_TYPE_SAMPLED_IMAGE,
+                                p,
+                                command);
+        }
+
         if (looking_at(&p, "uniform ubo ")) {
                 unsigned values[2];
                 if (!parse_desc_set_and_binding(&p, values))
                         goto error;
-                return process_set_buffer_subdata(data,
-                                                  values[0],
-                                                  values[1],
-                                                  VR_SCRIPT_BUFFER_TYPE_UBO,
-                                                  p,
-                                                  command);
+                return process_set_buffer_subdata(
+                        data,
+                        values[0],
+                        values[1],
+                        VR_SCRIPT_RESOURCE_TYPE_UNIFORM_BUFFER,
+                        p,
+                        command);
         }
 
         if (looking_at(&p, "ssbo ")) {
@@ -1764,12 +2089,13 @@ process_test_line(struct load_state *data)
                 if (!looking_at(&p, "subdata "))
                         goto error;
 
-                return process_set_buffer_subdata(data,
-                                                  values[0],
-                                                  values[1],
-                                                  VR_SCRIPT_BUFFER_TYPE_SSBO,
-                                                  p,
-                                                  command);
+                return process_set_buffer_subdata(
+                        data,
+                        values[0],
+                        values[1],
+                        VR_SCRIPT_RESOURCE_TYPE_STORAGE_BUFFER,
+                        p,
+                        command);
         }
 
         if (looking_at(&p, "uniform ")) {
@@ -2071,16 +2397,16 @@ process_line(struct load_state *data)
 }
 
 static int
-compare_buffer_set_and_binding(const void *a,
-                               const void *b)
+compare_resource_set_and_binding(const void *a,
+                                 const void *b)
 {
-        const struct vr_script_buffer *buffer_a =
-                (const struct vr_script_buffer *) a;
-        const struct vr_script_buffer *buffer_b =
-                (const struct vr_script_buffer *) b;
-        if ((int) buffer_a->desc_set == (int) buffer_b->desc_set)
-                return ((int) buffer_a->binding - (int) buffer_b->binding);
-        return ((int) buffer_a->desc_set - (int) buffer_b->desc_set);
+        const struct vr_script_resource *a_ =
+                (const struct vr_script_resource *) a;
+        const struct vr_script_resource *b_ =
+                (const struct vr_script_resource *) b;
+        if ((int) a_->desc_set == (int) b_->desc_set)
+                return ((int) a_->binding - (int) b_->binding);
+        return ((int) a_->desc_set - (int) b_->desc_set);
 }
 
 static bool
@@ -2219,7 +2545,7 @@ vr_script_load(const struct vr_config *config,
                 .commands = VR_BUFFER_STATIC_INIT,
                 .pipeline_keys = VR_BUFFER_STATIC_INIT,
                 .extensions = VR_BUFFER_STATIC_INIT,
-                .buffers = VR_BUFFER_STATIC_INIT,
+                .resources = VR_BUFFER_STATIC_INIT,
                 .tolerance = {
                         .value = {
                                 DEFAULT_TOLERANCE,
@@ -2272,13 +2598,13 @@ vr_script_load(const struct vr_config *config,
         script->n_indices =
                 data.indices.length / sizeof (uint16_t);
 
-        script->buffers = (struct vr_script_buffer *) data.buffers.data;
-        script->n_buffers = (data.buffers.length /
-                             sizeof (struct vr_script_buffer));
-        qsort(script->buffers,
-              script->n_buffers,
-              sizeof script->buffers[0],
-              compare_buffer_set_and_binding);
+        script->resources = (struct vr_script_resource *) data.resources.data;
+        script->n_resources = (data.resources.length /
+                             sizeof (struct vr_script_resource));
+        qsort(script->resources,
+              script->n_resources,
+              sizeof script->resources[0],
+              compare_resource_set_and_binding);
 
         vr_buffer_destroy(&data.buffer);
         vr_buffer_destroy(&data.line);
@@ -2330,7 +2656,7 @@ vr_script_free(struct vr_script *script)
                 vr_pipeline_key_destroy(script->pipeline_keys + i);
         vr_free(script->pipeline_keys);
 
-        vr_free(script->buffers);
+        vr_free(script->resources);
 
         if (script->extensions != NULL) {
                 for (const char *const *ext = script->extensions; *ext; ext++)

@@ -706,69 +706,63 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
         struct vr_vk *vkfn = &pipeline->window->vkfn;
         VkResult res;
         bool ret = false;
-        size_t n_buffers = script->n_buffers;
+        size_t n_resources = script->n_resources;
 
-        assert(n_buffers);
+        assert(n_resources);
 
         VkDescriptorSetLayoutBinding *bindings =
-                vr_calloc(sizeof (*bindings) * n_buffers);
+                vr_calloc(sizeof (*bindings) * n_resources);
         struct desc_set_bindings_info *info =
-                vr_alloc(sizeof *info * n_buffers);
+                vr_alloc(sizeof *info * n_resources);
         size_t n_desc_sets = 0;
         unsigned prev_desc_set = UINT_MAX;
 
-        unsigned n_ubo = 0;
-        unsigned n_ssbo = 0;
+        unsigned n_type[VR_SCRIPT_RESOURCE_N_TYPES] = {0};
 
-        for (unsigned i = 0; i < n_buffers; i++) {
-                const struct vr_script_buffer *buffer = script->buffers + i;
+        for (unsigned i = 0; i < n_resources; i++) {
+                const struct vr_script_resource *resource =
+                        script->resources + i;
                 VkDescriptorType descriptor_type;
-                switch (buffer->type) {
-                case VR_SCRIPT_BUFFER_TYPE_UBO:
-                        descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                        ++n_ubo;
-                        goto found_type;
-                case VR_SCRIPT_BUFFER_TYPE_SSBO:
-                        descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                        ++n_ssbo;
-                        goto found_type;
+                for (unsigned j = 0; j < VR_SCRIPT_RESOURCE_N_TYPES; ++j) {
+                        if (resource->type == j) {
+                                descriptor_type =
+                                        VK_DESCRIPTOR_TYPE_SAMPLER + j;
+                                ++n_type[j];
+                                goto found_type;
+                        }
                 }
-                vr_fatal("Unexpected buffer type");
+                vr_fatal("Unexpected resource type");
         found_type:
-                bindings[i].binding = buffer->binding;
+                bindings[i].binding = resource->binding;
                 bindings[i].descriptorType = descriptor_type;
                 bindings[i].descriptorCount = 1;
                 bindings[i].stageFlags = pipeline->stages;
 
-                if (prev_desc_set != buffer->desc_set) {
+                if (prev_desc_set != resource->desc_set) {
                         if (prev_desc_set != UINT_MAX) {
                                 info[n_desc_sets].n_bindings =
                                         &bindings[i] -
                                         info[n_desc_sets].bindings;
                                 ++n_desc_sets;
                         }
-                        info[n_desc_sets].desc_set = buffer->desc_set;
+                        info[n_desc_sets].desc_set = resource->desc_set;
                         info[n_desc_sets].bindings = &bindings[i];
-                        prev_desc_set = buffer->desc_set;
+                        prev_desc_set = resource->desc_set;
                 }
         }
         info[n_desc_sets].n_bindings =
-                &bindings[n_buffers] - info[n_desc_sets].bindings;
+                &bindings[n_resources] - info[n_desc_sets].bindings;
         ++n_desc_sets;
 
-        VkDescriptorPoolSize pool_sizes[2] = {0};
+        VkDescriptorPoolSize pool_sizes[VR_SCRIPT_RESOURCE_N_TYPES] = {0};
         uint32_t n_pool_sizes = 0;
-        if (n_ubo) {
-                pool_sizes[n_pool_sizes].type =
-                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                pool_sizes[n_pool_sizes].descriptorCount = n_ubo;
-                n_pool_sizes++;
-        }
-        if (n_ssbo) {
-                pool_sizes[n_pool_sizes].type =
-                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                pool_sizes[n_pool_sizes].descriptorCount = n_ssbo;
-                n_pool_sizes++;
+        for (unsigned i = 0; i < VR_SCRIPT_RESOURCE_N_TYPES; ++i) {
+                if (n_type[i]) {
+                        pool_sizes[n_pool_sizes].type =
+                                VK_DESCRIPTOR_TYPE_SAMPLER + i;
+                        pool_sizes[n_pool_sizes].descriptorCount = n_type[i];
+                        ++n_pool_sizes;
+                }
         }
 
         VkDescriptorPoolCreateInfo descriptor_pool_create_info = {
