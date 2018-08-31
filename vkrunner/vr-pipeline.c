@@ -853,7 +853,7 @@ vr_pipeline_create(const struct vr_config *config,
 
         pipeline->stages = get_script_stages(script);
 
-        if (script->n_buffers > 0) {
+        if (script->n_resources > 0) {
                 if (!create_vk_descriptor_set_layout(pipeline, script))
                         goto error;
         }

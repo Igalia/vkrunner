@@ -1663,18 +1663,37 @@ process_set_ssbo_size(struct load_state *data,
 }
 
 static bool
-process_image_checkerboard(struct load_state *data,
-                           unsigned desc_set,
-                           unsigned binding,
-                           const struct vr_format *format,
-                           unsigned width,
-                           unsigned height,
-                           enum vr_script_resource_type type,
-                           const char *p,
-                           struct vr_script_command *command)
+process_image(struct load_state *data,
+              const char *p,
+              struct vr_script_command *command,
+              unsigned desc_set,
+              unsigned binding,
+              enum vr_script_resource_type type)
 {
+        unsigned values[2];
+        const struct vr_format *format;
+
+        while (isspace(*p))
+                p++;
+        if (*p != '(')
+                return false;
+        p++;
+
+        if (!parse_uints(&p, values, 2, ","))
+                return false;
+
+        while (isspace(*p))
+                p++;
+        if (*p != ')')
+                return false;
+        p++;
+
+        if (!parse_format(data, &p, &format, false))
+                return false;
+
         struct vr_script_resource *image =
                 get_resource(data, desc_set, binding, type);
+
         if (image == NULL)
                 return false;
 
@@ -1695,14 +1714,14 @@ process_image_checkerboard(struct load_state *data,
         command->op = VR_SCRIPT_OP_SET_IMAGE_COLOR;
         command->set_image_color.desc_set = desc_set;
         command->set_image_color.binding = binding;
-        command->set_image_color.width = width;
-        command->set_image_color.height = height;
+        command->set_image_color.width = values[0];
+        command->set_image_color.height = values[1];
 
-        if (width > image->image.width)
-                image->image.width = width;
+        if (values[0] > image->image.width)
+                image->image.width = values[0];
 
-        if (height > image->image.height)
-                image->image.height = height;
+        if (values[1] > image->image.height)
+                image->image.height = values[1];
 
         if (format)
                 image->image.format = format;
@@ -1711,10 +1730,10 @@ process_image_checkerboard(struct load_state *data,
 }
 
 static bool
-process_sampler(struct load_state *data,
-                unsigned desc_set,
-                unsigned binding,
-                enum vr_script_resource_type type)
+create_sampler(struct load_state *data,
+               unsigned desc_set,
+               unsigned binding,
+               enum vr_script_resource_type type)
 {
         struct vr_script_resource *sampler =
                 get_resource(data, desc_set, binding, type);
@@ -1817,6 +1836,102 @@ found_stage:
 }
 
 static bool
+process_sampler_setup(struct load_state *data,
+                      const char *p,
+                      struct vr_script_command *command,
+                      enum vr_script_resource_type type)
+{
+        unsigned values[2];
+        if (looking_at(&p, "filter ")) {
+                if (!parse_desc_set_and_binding(&p, values))
+                        return false;
+
+                VkFilter filter[2];
+                if (!parse_sampler_filter(data,
+                                           p,
+                                           filter,
+                                           VR_N_ELEMENTS(filter)))
+                        return false;
+
+                return setup_sampler_filter(data,
+                                            values[0],
+                                            values[1],
+                                            filter,
+                                            type);
+        }
+
+        if (looking_at(&p, "mipmap ")) {
+                if (!parse_desc_set_and_binding(&p, values))
+                        return false;
+
+                VkSamplerMipmapMode mipmap;
+                if (!parse_sampler_mipmap(data,
+                                          p,
+                                          &mipmap))
+                        return false;
+
+                return setup_sampler_mimap(data,
+                                           values[0],
+                                           values[1],
+                                           mipmap,
+                                           type);
+        }
+
+        if (looking_at(&p, "address")) {
+                if (!parse_desc_set_and_binding(&p, values))
+                        return false;
+
+                VkSamplerAddressMode address[3];
+                if (!parse_sampler_address(data,
+                                           p,
+                                           address,
+                                           VR_N_ELEMENTS(address)))
+                        return false;
+
+                return setup_sampler_address(data,
+                                             values[0],
+                                             values[1],
+                                             address,
+                                             type);
+        }
+
+        if (looking_at(&p, "norm ")) {
+                if (!parse_desc_set_and_binding(&p, values))
+                        return false;
+                struct vr_script_resource *sampler =
+                        get_resource(data,
+                                     values[0],
+                                     values[1],
+                                     type);
+                if (!sampler)
+                        return false;
+                uint8_t norm;
+                if (!parse_uint8s(&p, &norm, 1, NULL))
+                        return false;
+                if (!is_end(p))
+                        return false;
+                sampler->image.sampler.unnormalizedCoordinates = !norm;
+                return true;
+        }
+
+        if (!parse_desc_set_and_binding(&p, values))
+                return false;
+        bool success = create_sampler(data,
+                                      values[0],
+                                      values[1],
+                                      type);
+        if (!success || type == VR_SCRIPT_RESOURCE_TYPE_SAMPLER)
+                return success;
+
+        return process_image(data,
+                             p,
+                             command,
+                             values[0],
+                             values[1],
+                             type);
+}
+
+static bool
 process_test_line(struct load_state *data)
 {
         const char *p = (char *) data->line.data;
@@ -1889,90 +2004,11 @@ process_test_line(struct load_state *data)
         if (process_entrypoint(data, p))
                 return true;
 
-        if (looking_at(&p, "sampler filter ")) {
-                unsigned values[2];
-                if (!parse_desc_set_and_binding(&p, values))
-                        goto error;
-
-                VkFilter filter[2];
-                if (!parse_sampler_filter(data,
-                                           p,
-                                           filter,
-                                           VR_N_ELEMENTS(filter)))
-                        goto error;
-
-                return setup_sampler_filter(data,
-                                             values[0],
-                                             values[1],
-                                             filter,
-                                             VR_SCRIPT_RESOURCE_TYPE_SAMPLER);
-        }
-
-        if (looking_at(&p, "sampler mipmap ")) {
-                unsigned values[2];
-                if (!parse_desc_set_and_binding(&p, values))
-                        goto error;
-
-                VkSamplerMipmapMode mipmap;
-                if (!parse_sampler_mipmap(data,
-                                          p,
-                                          &mipmap))
-                        goto error;
-
-                return setup_sampler_mimap(data,
-                                           values[0],
-                                           values[1],
-                                           mipmap,
-                                           VR_SCRIPT_RESOURCE_TYPE_SAMPLER);
-        }
-
-        if (looking_at(&p, "sampler address")) {
-                unsigned values[2];
-                if (!parse_desc_set_and_binding(&p, values))
-                        goto error;
-
-                VkSamplerAddressMode address[3];
-                if (!parse_sampler_address(data,
-                                           p,
-                                           address,
-                                           VR_N_ELEMENTS(address)))
-                        goto error;
-
-                return setup_sampler_address(data,
-                                             values[0],
-                                             values[1],
-                                             address,
-                                             VR_SCRIPT_RESOURCE_TYPE_SAMPLER);
-        }
-
-        if (looking_at(&p, "sampler norm ")) {
-                unsigned values[2];
-                if (!parse_desc_set_and_binding(&p, values))
-                        goto error;
-                struct vr_script_resource *sampler =
-                        get_resource(data,
-                                     values[0],
-                                     values[1],
-                                     VR_SCRIPT_RESOURCE_TYPE_SAMPLER);
-                if (!sampler)
-                        goto error;
-                uint8_t norm;
-                if (!parse_uint8s(&p, &norm, 1, NULL))
-                        goto error;
-                if (!is_end(p))
-                        goto error;
-                sampler->image.sampler.unnormalizedCoordinates = !norm;
-                return true;
-        }
-
         if (looking_at(&p, "sampler ")) {
-                unsigned values[2];
-                if (!parse_desc_set_and_binding(&p, values))
-                        goto error;
-                return process_sampler(data,
-                                       values[0],
-                                       values[1],
-                                       VR_SCRIPT_RESOURCE_TYPE_SAMPLER);
+                return process_sampler_setup(data,
+                                             p,
+                                             NULL,
+                                             VR_SCRIPT_RESOURCE_TYPE_SAMPLER);
         }
 
         if (isalnum(*p)) {
@@ -2029,40 +2065,33 @@ process_test_line(struct load_state *data)
         if (looking_at(&p, "compute "))
                 return process_compute_command(data, p, command);
 
+        if (looking_at(&p, "combined ")) {
+                return process_sampler_setup(
+                                data,
+                                p,
+                                command,
+                                VR_SCRIPT_RESOURCE_TYPE_COMBINED_IMAGE);
+        }
+
         if (looking_at(&p, "image ")) {
-                unsigned values[4];
-                const struct vr_format *format;
+                unsigned values[2];
+                enum vr_script_resource_type image_type;
+
+                if (looking_at(&p, "storage ")) {
+                        image_type = VR_SCRIPT_RESOURCE_TYPE_STORAGE_IMAGE;
+                } else {
+                        image_type = VR_SCRIPT_RESOURCE_TYPE_SAMPLED_IMAGE;
+                }
+
                 if (!parse_desc_set_and_binding(&p, values))
                         goto error;
 
-                while (isspace(*p))
-                        p++;
-                if (*p != '(')
-                        goto error;
-                p++;
-
-                if (!parse_uints(&p, &values[2], 2, ","))
-                        goto error;
-
-                while (isspace(*p))
-                        p++;
-                if (*p != ')')
-                        goto error;
-                p++;
-
-                if (!parse_format(data, &p, &format, false))
-                        goto error;
-
-                return process_image_checkerboard(
-                                data,
-                                values[0],
-                                values[1],
-                                format,
-                                values[2],
-                                values[3],
-                                VR_SCRIPT_RESOURCE_TYPE_SAMPLED_IMAGE,
-                                p,
-                                command);
+                return process_image(data,
+                                     p,
+                                     command,
+                                     values[0],
+                                     values[1],
+                                     image_type);
         }
 
         if (looking_at(&p, "uniform ubo ")) {

@@ -60,10 +60,7 @@ struct test_resource {
         VkDeviceMemory memory;
         void *memory_map;
         int memory_type_index;
-        union {
-                /* For buffer type */
-                size_t size;
-        } data;
+        size_t size;
         union {
                 VkBufferView buffer_view;
                 VkImageView image_view;
@@ -121,7 +118,7 @@ allocate_test_buffer(struct test_data *data,
 
         vr_list_insert(data->all_resources.prev, &buffer->link);
 
-        buffer->data.size = size;
+        buffer->size = size;
         buffer->type = VR_TEST_RESOURCE_TYPE_BUFFER;
 
         VkBufferCreateInfo buffer_create_info = {
@@ -603,13 +600,6 @@ bind_ubo_descriptor_set(struct test_data *data)
 
         if (data->pipeline->stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
                 for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
-                        if (data->descriptor_set[i] == VK_NULL_HANDLE) {
-                                vr_error_message(data->window->config,
-                                                 "Warning buffer descriptor set"
-                                                 " [%u] is VK_NULL_HANDLE",
-                                                 i);
-                                continue;
-                        }
                         vkfn->vkCmdBindDescriptorSets(
                                         context->command_buffer,
                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -623,10 +613,8 @@ bind_ubo_descriptor_set(struct test_data *data)
                 }
         }
 
-        if (data->pipeline->compute_pipeline) {
+        if (data->pipeline->stages & VK_SHADER_STAGE_COMPUTE_BIT) {
                 for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
-                        if (data->descriptor_set[i] == VK_NULL_HANDLE)
-                                continue;
                         vkfn->vkCmdBindDescriptorSets(
                                         context->command_buffer,
                                         VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -1341,6 +1329,38 @@ set_buffer_subdata(struct test_data *data,
         return true;
 }
 
+static void
+set_color(enum vr_script_image_color color,
+          size_t width,
+          size_t height,
+          uint32_t *memory)
+{
+        // TODO(jaebaek): Currently, we assume that the format is
+        // R8G8B8A8_UNORM. Support other formats.
+        for (size_t y = 0; y < height; ++y) {
+                for (size_t x = 0; x < width; ++x) {
+                        uint32_t rgb;
+                        if (color == VR_SCRIPT_IMAGE_COLOR_RGBW) {
+                                if (x < width / 2 && y < height / 2)
+                                        rgb = 0xff0000ff;
+                                else if (x >= width / 2 && y < height / 2)
+                                        rgb = 0xff00ff00;
+                                else if (x < width / 2 && y >= height / 2)
+                                        rgb = 0xffff0000;
+                                else
+                                        rgb = 0xffffffff;
+                        } else if (color == VR_SCRIPT_IMAGE_COLOR_RED) {
+                                        rgb = 0xff0000ff;
+                        } else if (color == VR_SCRIPT_IMAGE_COLOR_GREEN) {
+                                        rgb = 0xff00ff00;
+                        } else if (color == VR_SCRIPT_IMAGE_COLOR_BLUE) {
+                                        rgb = 0xffff0000;
+                        }
+                        memory[width * y + x] = rgb;
+                }
+        }
+}
+
 static bool
 set_image_color(struct test_data *data,
                const struct vr_script_command *command)
@@ -1351,11 +1371,10 @@ set_image_color(struct test_data *data,
                              command->set_image_color.binding);
         assert(image);
 
-        uint32_t * p = image->memory_map;
-        for (size_t y = 0; y < command->set_image_color.height; ++y) {
-                for (size_t x = 0; x < command->set_image_color.width; ++x)
-                        p[command->set_image_color.width * y + x] = 0xff0000ff;
-        }
+        set_color(command->set_image_color.color,
+                  command->set_image_color.width,
+                  command->set_image_color.height,
+                  image->memory_map);
 
         VkDeviceSize size =
                 command->set_image_color.width *
