@@ -7,9 +7,26 @@ possible.
 
 ## Building
 
-- Install [cmake](https://cmake.org/)
-- Run `cmake . && make`
-- You can find `vkrunner` under `src/`
+VkRunner requires the Vulkan headers in order to build. On a Linux
+system these can be installed via the standard system packages which
+are `libvulkan-dev` on Ubuntu and Debian or `vulkan-headers` on
+Fedora. On Windows the header can be found by installing LunarG’s VulkanSDK
+from [here](https://www.lunarg.com/vulkan-sdk/).
+
+Additonally VkRunner requires [CMake](https://cmake.org/).
+
+If the Vulkan headers are installed in a non-standard location (as
+will be the case for Windows), you can point CMake to it when
+configuring the build as follows:
+
+    cmake -E env CFLAGS=-Ic:/path/to/vulkan/include cmake .
+
+Otherwise you can just run CMake as below:
+
+    cmake .
+
+Next type `make` to build the program. You will find the VkRunner
+executable under `src/`.
 
 ## Running
 
