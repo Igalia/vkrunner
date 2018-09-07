@@ -482,7 +482,8 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
                 stages[num_stages].stage = VK_SHADER_STAGE_VERTEX_BIT << i;
                 stages[num_stages].module = pipeline->modules[i];
-                stages[num_stages].pName = "main";
+                stages[num_stages].pName =
+                        vr_pipeline_key_get_entrypoint(key, i);
                 num_stages++;
         }
 
@@ -579,6 +580,8 @@ create_compute_pipeline(struct vr_pipeline *pipeline,
 {
         struct vr_window *window = pipeline->window;
         struct vr_vk *vkfn = &window->vkfn;
+        const char *entrypoint =
+                vr_pipeline_key_get_entrypoint(key, VR_SHADER_STAGE_COMPUTE);
         VkResult res;
 
         VkComputePipelineCreateInfo info = {
@@ -590,7 +593,7 @@ create_compute_pipeline(struct vr_pipeline *pipeline,
                         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
                         .module =
                         pipeline->modules[VR_SHADER_STAGE_COMPUTE],
-                        .pName = "main"
+                        .pName = entrypoint
                 },
                 .layout = pipeline->layout,
                 .basePipelineHandle = VK_NULL_HANDLE,
