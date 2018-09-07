@@ -168,6 +168,11 @@ draw calls. If multiple draw calls are issued with different values
 for these properties then a separate pipeline will be created for each
 set of state. See the `properties.shader_test` example for details.
 
+> _stage_ entrypoint _name_
+
+Sets the entrypoint function to _name_ for the given stage. This will
+be used for subsequent draw calls or compute dispatches.
+
 Take a look in the examples directory for more examples.
 
 ## [require] section

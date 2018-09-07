@@ -1497,6 +1497,42 @@ process_set_ssbo_size(struct load_state *data,
 }
 
 static bool
+process_entrypoint(struct load_state *data,
+                   const char *p)
+{
+        int stage;
+
+        for (stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++) {
+                if (looking_at(&p, stage_names[stage]))
+                        goto found_stage;
+        }
+
+        return false;
+
+found_stage:
+
+        if (!looking_at(&p, " entrypoint "))
+                return false;
+
+        while (*p && isspace(*p))
+                p++;
+
+        const char *end = p + strlen(p);
+
+        while (end > p && isspace(end[-1]))
+                end--;
+
+        if (end <= p)
+                return false;
+
+        char *entrypoint = vr_strndup(p, end - p);
+        vr_pipeline_key_set_entrypoint(&data->current_key, stage, entrypoint);
+        vr_free(entrypoint);
+
+        return true;
+}
+
+static bool
 process_test_line(struct load_state *data)
 {
         const char *p = (char *) data->line.data;
@@ -1555,6 +1591,9 @@ process_test_line(struct load_state *data)
                 }
                 p = command_start;
         }
+
+        if (process_entrypoint(data, p))
+                return true;
 
         if (isalnum(*p)) {
                 const char *end = p + 1;
