@@ -33,6 +33,7 @@
 
 static const struct vr_pipeline_key
 base_key = {
+        .type = VR_PIPELINE_KEY_TYPE_GRAPHICS,
         .topology = { .i = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP },
         .polygonMode = { .i = VK_POLYGON_MODE_FILL },
         .cullMode = { .i = VK_CULL_MODE_NONE },
@@ -143,16 +144,35 @@ bool
 vr_pipeline_key_equal(const struct vr_pipeline_key *a,
                       const struct vr_pipeline_key *b)
 {
-        if (memcmp(a, b, offsetof(struct vr_pipeline_key, entrypoints)))
+        if (a->type != b->type)
                 return false;
 
-        for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
-                if (strcmp(vr_pipeline_key_get_entrypoint(a, i),
-                           vr_pipeline_key_get_entrypoint(b, i)))
+        switch (a->type) {
+        case VR_PIPELINE_KEY_TYPE_GRAPHICS:
+                if (memcmp(a, b, offsetof(struct vr_pipeline_key, entrypoints)))
                         return false;
+
+                for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
+                        if (i == VR_SHADER_STAGE_COMPUTE)
+                                continue;
+                        if (strcmp(vr_pipeline_key_get_entrypoint(a, i),
+                                   vr_pipeline_key_get_entrypoint(b, i)))
+                                return false;
+                }
+
+                return true;
+
+        case VR_PIPELINE_KEY_TYPE_COMPUTE: {
+                const enum vr_shader_stage stage = VR_SHADER_STAGE_COMPUTE;
+
+                if (strcmp(vr_pipeline_key_get_entrypoint(a, stage),
+                           vr_pipeline_key_get_entrypoint(b, stage)))
+                        return false;
+                return true;
+        }
         }
 
-        return true;
+        vr_fatal("Unexpected shader stage");
 }
 
 union vr_pipeline_key_value *

@@ -30,6 +30,11 @@
 #include "vr-vk.h"
 #include "vr-shader-stage.h"
 
+enum vr_pipeline_key_type {
+        VR_PIPELINE_KEY_TYPE_GRAPHICS,
+        VR_PIPELINE_KEY_TYPE_COMPUTE
+};
+
 union vr_pipeline_key_value {
         int i;
         float f;
@@ -47,6 +52,7 @@ enum vr_pipeline_key_source {
 };
 
 struct vr_pipeline_key {
+        enum vr_pipeline_key_type type;
         enum vr_pipeline_key_source source;
 
 #define VR_PIPELINE_STRUCT_BEGIN(m)
