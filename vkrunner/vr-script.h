@@ -72,6 +72,7 @@ struct vr_script_command {
 
                 struct {
                         unsigned x, y, z;
+                        unsigned pipeline_key;
                 } dispatch_compute;
 
                 struct {

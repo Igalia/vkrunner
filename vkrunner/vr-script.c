@@ -914,6 +914,7 @@ process_draw_rect_command(struct load_state *data,
 
         struct vr_pipeline_key key;
         vr_pipeline_key_copy(&key, &data->current_key);
+        key.type = VR_PIPELINE_KEY_TYPE_GRAPHICS;
         key.source = VR_PIPELINE_KEY_SOURCE_RECTANGLE;
 
         if (looking_at(&p, "patch "))
@@ -1196,6 +1197,7 @@ found_topology:
 
         struct vr_pipeline_key key;
         vr_pipeline_key_copy(&key, &data->current_key);
+        key.type = VR_PIPELINE_KEY_TYPE_GRAPHICS;
         key.source = VR_PIPELINE_KEY_SOURCE_VERTEX_DATA;
         key.topology.i = topology;
 
@@ -1207,6 +1209,28 @@ found_topology:
         command->draw_arrays.pipeline_key = add_pipeline_key(data, &key);
 
         vr_pipeline_key_destroy(&key);
+
+        return true;
+}
+
+static bool
+process_compute_command(struct load_state *data,
+                        const char *p,
+                        struct vr_script_command *command)
+{
+        if (!parse_uints(&p, &command->dispatch_compute.x, 3, NULL) ||
+            !is_end(p)) {
+                vr_error_message(data->config,
+                                 "%s:%i: Invalid compute command",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        data->current_key.type = VR_PIPELINE_KEY_TYPE_COMPUTE;
+        command->op = VR_SCRIPT_OP_DISPATCH_COMPUTE;
+        command->dispatch_compute.pipeline_key =
+                add_pipeline_key(data, &data->current_key);
 
         return true;
 }
@@ -1579,14 +1603,8 @@ process_test_line(struct load_state *data)
         if (looking_at(&p, "draw arrays "))
                 return process_draw_arrays_command(data, p, command);
 
-        if (looking_at(&p, "compute ")) {
-                if (!parse_uints(&p, &command->dispatch_compute.x, 3, NULL))
-                        goto error;
-                if (!is_end(p))
-                        goto error;
-                command->op = VR_SCRIPT_OP_DISPATCH_COMPUTE;
-                return true;
-        }
+        if (looking_at(&p, "compute "))
+                return process_compute_command(data, p, command);
 
         if (looking_at(&p, "uniform ubo ")) {
                 unsigned values[2];
