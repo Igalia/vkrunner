@@ -1,0 +1,57 @@
+# Tests a shader module containing two entrypoints. The entrypoints
+# are selected using commands in the test section to draw a different
+# rectangle for each entrypoint.
+#
+# Note that the test requires that the shader be written in SPIR-V
+# because glslang does not seem to provide a way to compile a shader
+# with multiple entrypoints.
+
+[vertex shader passthrough]
+
+[fragment shader spirv]
+               OpCapability Shader
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+
+; two entrypoints
+               OpEntryPoint Fragment %red "red" %color
+               OpEntryPoint Fragment %green "green" %color
+
+               OpExecutionMode %red OriginUpperLeft
+               OpExecutionMode %green OriginUpperLeft
+               OpSource GLSL 430
+               OpName %red "red"
+               OpDecorate %color Location 0
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+      %color = OpVariable %_ptr_Output_v4float Output
+    %float_1 = OpConstant %float 1
+    %float_0 = OpConstant %float 0
+  %red_color = OpConstantComposite %v4float %float_1 %float_0 %float_0 %float_1
+%green_color = OpConstantComposite %v4float %float_0 %float_1 %float_0 %float_1
+
+; this entrypoint outputs a red color
+        %red = OpFunction %void None %3
+          %5 = OpLabel
+               OpStore %color %red_color
+               OpReturn
+               OpFunctionEnd
+
+; this entrypoint outputs a green color
+      %green = OpFunction %void None %3
+          %6 = OpLabel
+               OpStore %color %green_color
+               OpReturn
+               OpFunctionEnd
+
+[test]
+fragment entrypoint red
+draw rect -1 -1 1 1
+fragment entrypoint green
+draw rect 0 0 1 1
+
+relative probe rect rgb (0, 0, 0.5, 0.5) (1, 0, 0)
+relative probe rect rgb (0.5, 0.5, 0.5, 0.5) (0, 1, 0)
