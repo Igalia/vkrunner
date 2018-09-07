@@ -28,6 +28,7 @@
 
 #include <stdbool.h>
 #include "vr-vk.h"
+#include "vr-shader-stage.h"
 
 union vr_pipeline_key_value {
         int i;
@@ -59,6 +60,10 @@ struct vr_pipeline_key {
 #undef VR_PIPELINE_PROP
 #undef VR_PIPELINE_PROP_NAME
 #undef VR_PIPELINE_STRUCT_END
+
+        /* This must be the last entry so that the rest can be
+         * compared with a simple memcmp in vr_pipeline_key_equal */
+        char *entrypoints[VR_SHADER_STAGE_N_STAGES];
 };
 
 void
@@ -75,6 +80,15 @@ vr_pipeline_key_equal(const struct vr_pipeline_key *a,
 void
 vr_pipeline_key_copy(struct vr_pipeline_key *dest,
                      const struct vr_pipeline_key *src);
+
+void
+vr_pipeline_key_set_entrypoint(struct vr_pipeline_key *key,
+                               enum vr_shader_stage stage,
+                               const char *entrypoint);
+
+const char *
+vr_pipeline_key_get_entrypoint(const struct vr_pipeline_key *key,
+                               enum vr_shader_stage stage);
 
 union vr_pipeline_key_value *
 vr_pipeline_key_lookup(struct vr_pipeline_key *key,

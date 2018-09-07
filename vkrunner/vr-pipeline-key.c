@@ -132,13 +132,27 @@ vr_pipeline_key_copy(struct vr_pipeline_key *dest,
                      const struct vr_pipeline_key *src)
 {
         *dest = *src;
+
+        for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
+                if (src->entrypoints[i])
+                        dest->entrypoints[i] = vr_strdup(src->entrypoints[i]);
+        }
 }
 
 bool
 vr_pipeline_key_equal(const struct vr_pipeline_key *a,
                       const struct vr_pipeline_key *b)
 {
-        return memcmp(a, b, sizeof *a) == 0;
+        if (memcmp(a, b, offsetof(struct vr_pipeline_key, entrypoints)))
+                return false;
+
+        for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
+                if (strcmp(vr_pipeline_key_get_entrypoint(a, i),
+                           vr_pipeline_key_get_entrypoint(b, i)))
+                        return false;
+        }
+
+        return true;
 }
 
 union vr_pipeline_key_value *
@@ -162,6 +176,25 @@ vr_pipeline_key_lookup(struct vr_pipeline_key *key,
         }
 
         return NULL;
+}
+
+void
+vr_pipeline_key_set_entrypoint(struct vr_pipeline_key *key,
+                               enum vr_shader_stage stage,
+                               const char *entrypoint)
+{
+        vr_free(key->entrypoints[stage]);
+        key->entrypoints[stage] = vr_strdup(entrypoint);
+}
+
+const char *
+vr_pipeline_key_get_entrypoint(const struct vr_pipeline_key *key,
+                               enum vr_shader_stage stage)
+{
+        if (key->entrypoints[stage])
+                return key->entrypoints[stage];
+        else
+                return "main";
 }
 
 static size_t
@@ -231,4 +264,6 @@ vr_pipeline_key_lookup_enum(const char *name,
 void
 vr_pipeline_key_destroy(struct vr_pipeline_key *key)
 {
+        for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++)
+                vr_free(key->entrypoints[i]);
 }
