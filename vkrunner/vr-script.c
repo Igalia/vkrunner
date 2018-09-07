@@ -889,7 +889,12 @@ add_pipeline_key(struct load_state *data,
                         return i;
         }
 
-        vr_buffer_append(&data->pipeline_keys, key, sizeof *key);
+        vr_buffer_set_length(&data->pipeline_keys,
+                             data->pipeline_keys.length + sizeof *key);
+        vr_pipeline_key_copy((struct vr_pipeline_key *)
+                             data->pipeline_keys.data +
+                             n_keys,
+                             key);
 
         return n_keys;
 }
@@ -907,7 +912,8 @@ process_draw_rect_command(struct load_state *data,
         if (looking_at(&p, "ortho "))
                 ortho = true;
 
-        struct vr_pipeline_key key = data->current_key;
+        struct vr_pipeline_key key;
+        vr_pipeline_key_copy(&key, &data->current_key);
         key.source = VR_PIPELINE_KEY_SOURCE_RECTANGLE;
 
         if (looking_at(&p, "patch "))
@@ -917,6 +923,8 @@ process_draw_rect_command(struct load_state *data,
         key.patchControlPoints.i = 4;
 
         command->draw_rect.pipeline_key = add_pipeline_key(data, &key);
+
+        vr_pipeline_key_destroy(&key);
 
         if (!parse_floats(&p, &command->draw_rect.x, 4, NULL) ||
             !is_end(p))
@@ -1113,9 +1121,6 @@ process_draw_arrays_command(struct load_state *data,
 
         command->draw_arrays.indexed = false;
 
-        struct vr_pipeline_key key = data->current_key;
-        key.source = VR_PIPELINE_KEY_SOURCE_VERTEX_DATA;
-
         while (true) {
                 if (looking_at(&p, "instanced ")) {
                         n_args = 3;
@@ -1127,6 +1132,8 @@ process_draw_arrays_command(struct load_state *data,
 
                 break;
         }
+
+        VkPrimitiveTopology topology;
 
         static const struct {
                 const char *name;
@@ -1166,7 +1173,7 @@ process_draw_arrays_command(struct load_state *data,
 
         for (int i = 0; i < VR_N_ELEMENTS(topologies); i++) {
                 if (looking_at(&p, topologies[i].name)) {
-                        key.topology.i = topologies[i].topology;
+                        topology = topologies[i].topology;
                         goto found_topology;
                 }
         }
@@ -1187,12 +1194,19 @@ found_topology:
                 return false;
         }
 
+        struct vr_pipeline_key key;
+        vr_pipeline_key_copy(&key, &data->current_key);
+        key.source = VR_PIPELINE_KEY_SOURCE_VERTEX_DATA;
+        key.topology.i = topology;
+
         command->op = VR_SCRIPT_OP_DRAW_ARRAYS;
         command->draw_arrays.first_vertex = args[0];
         command->draw_arrays.vertex_count = args[1];
         command->draw_arrays.first_instance = 0;
         command->draw_arrays.instance_count = args[2];
         command->draw_arrays.pipeline_key = add_pipeline_key(data, &key);
+
+        vr_pipeline_key_destroy(&key);
 
         return true;
 }
@@ -2171,6 +2185,7 @@ vr_script_load(const struct vr_config *config,
 
         vr_buffer_destroy(&data.buffer);
         vr_buffer_destroy(&data.line);
+        vr_pipeline_key_destroy(&data.current_key);
 
         if (res) {
                 return script;
@@ -2212,6 +2227,8 @@ vr_script_free(struct vr_script *script)
 
         vr_free(script->commands);
 
+        for (int i = 0; i < script->n_pipeline_keys; i++)
+                vr_pipeline_key_destroy(script->pipeline_keys + i);
         vr_free(script->pipeline_keys);
 
         vr_free(script->buffers);

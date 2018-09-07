@@ -127,6 +127,13 @@ vr_pipeline_key_init(struct vr_pipeline_key *key)
         *key = base_key;
 }
 
+void
+vr_pipeline_key_copy(struct vr_pipeline_key *dest,
+                     const struct vr_pipeline_key *src)
+{
+        *dest = *src;
+}
+
 bool
 vr_pipeline_key_equal(const struct vr_pipeline_key *a,
                       const struct vr_pipeline_key *b)
@@ -219,4 +226,9 @@ vr_pipeline_key_lookup_enum(const char *name,
         }
 
         return false;
+}
+
+void
+vr_pipeline_key_destroy(struct vr_pipeline_key *key)
+{
 }
