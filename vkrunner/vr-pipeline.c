@@ -861,21 +861,11 @@ vr_pipeline_create(const struct vr_config *config,
                 goto error;
 
         if (pipeline->stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
-                const struct vr_pipeline_key *keys;
-                struct vr_pipeline_key base_key;
+                const struct vr_pipeline_key *keys = script->pipeline_keys;
 
-                if (script->n_pipeline_keys > 0) {
-                        keys = script->pipeline_keys;
-                        pipeline->n_pipelines = script->n_pipeline_keys;
-                } else {
-                        /* Always create at least one pipeline */
-                        vr_pipeline_key_init(&base_key);
-                        keys = &base_key;
-                        pipeline->n_pipelines = 1;
-                }
-
+                pipeline->n_pipelines = script->n_pipeline_keys;
                 pipeline->pipelines = vr_calloc(sizeof (VkPipeline) *
-                                                pipeline->n_pipelines);
+                                                MAX(1, pipeline->n_pipelines));
 
                 bool use_derivatives = pipeline->n_pipelines > 1;
 
