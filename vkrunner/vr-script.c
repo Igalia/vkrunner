@@ -78,12 +78,12 @@ struct load_state {
 
 static const char *
 stage_names[VR_SHADER_STAGE_N_STAGES] = {
-        "vertex shader",
-        "tessellation control shader",
-        "tessellation evaluation shader",
-        "geometry shader",
-        "fragment shader",
-        "compute shader",
+        "vertex",
+        "tessellation control",
+        "tessellation evaluation",
+        "geometry",
+        "fragment",
+        "compute",
 };
 
 static uint32_t
@@ -1682,46 +1682,33 @@ is_stage_section(struct load_state *data,
                  const char *start,
                  const char *end)
 {
+        static const char tail[] = " shader";
         int stage;
 
         for (stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++) {
-                if (is_string(stage_names[stage], start, end)) {
-                        data->current_source_type = VR_SCRIPT_SOURCE_TYPE_GLSL;
-                        goto found;
+                int len = strlen(stage_names[stage]);
+
+                if (end - start >= len + (sizeof tail) - 1 &&
+                    !memcmp(start, stage_names[stage], len) &&
+                    !memcmp(start + len, tail, (sizeof tail) - 1)) {
+                        start += len + (sizeof tail) - 1;
+                        goto found_stage;
                 }
-        }
-
-        if (end - start > 6 && !memcmp(" spirv", end - 6, 6)) {
-                end -= 6;
-
-                for (stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++) {
-                        if (is_string(stage_names[stage], start, end)) {
-                                data->current_source_type =
-                                        VR_SCRIPT_SOURCE_TYPE_SPIRV;
-                                goto found;
-                        }
-                }
-
-                return false;
-        }
-
-        if (end - start > 7 && !memcmp(" binary", end - 7, 7)) {
-                end -= 7;
-
-                for (stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++) {
-                        if (is_string(stage_names[stage], start, end)) {
-                                data->current_source_type =
-                                        VR_SCRIPT_SOURCE_TYPE_BINARY;
-                                goto found;
-                        }
-                }
-
-                return false;
         }
 
         return false;
 
-found:
+found_stage:
+
+        if (is_string(" spirv", start, end))
+                data->current_source_type = VR_SCRIPT_SOURCE_TYPE_SPIRV;
+        else if (is_string(" binary", start, end))
+                data->current_source_type = VR_SCRIPT_SOURCE_TYPE_BINARY;
+        else if (start == end)
+                data->current_source_type = VR_SCRIPT_SOURCE_TYPE_GLSL;
+        else
+                return false;
+
         data->current_section = SECTION_SHADER;
         data->current_stage = stage;
         data->buffer.length = 0;
