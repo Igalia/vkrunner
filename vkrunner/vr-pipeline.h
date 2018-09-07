@@ -40,7 +40,6 @@ struct vr_pipeline {
         int n_pipelines;
         VkPipeline *pipelines;
         VkPipelineCache pipeline_cache;
-        VkPipeline compute_pipeline;
         VkShaderModule modules[VR_SHADER_STAGE_N_STAGES];
         VkShaderStageFlagBits stages;
 };

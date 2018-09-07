@@ -40,6 +40,7 @@
 #include <string.h>
 #include <assert.h>
 #include <inttypes.h>
+#include <limits.h>
 
 struct test_buffer {
         struct vr_list link;
@@ -70,7 +71,7 @@ struct test_data {
         struct test_buffer *index_buffer;
         bool ubo_descriptor_set_bound;
         VkDescriptorSet *ubo_descriptor_set;
-        VkPipeline bound_pipeline;
+        unsigned bound_pipeline;
         enum test_state test_state;
         bool first_render;
 };
@@ -300,7 +301,7 @@ begin_render_pass(struct test_data *data)
                                    &render_pass_begin_info,
                                    VK_SUBPASS_CONTENTS_INLINE);
 
-        data->bound_pipeline = VK_NULL_HANDLE;
+        data->bound_pipeline = UINT_MAX;
         data->ubo_descriptor_set_bound = false;
         data->first_render = false;
 
@@ -401,7 +402,7 @@ bind_ubo_descriptor_set(struct test_data *data)
                 }
         }
 
-        if (data->pipeline->compute_pipeline) {
+        if (data->pipeline->stages & VK_SHADER_STAGE_COMPUTE_BIT) {
                 for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
                         vkfn->vkCmdBindDescriptorSets(
                                         context->command_buffer,
@@ -421,25 +422,30 @@ bind_ubo_descriptor_set(struct test_data *data)
 
 static void
 bind_pipeline(struct test_data *data,
-              VkPipeline pipeline)
+              unsigned pipeline_num)
 {
         struct vr_vk *vkfn = &data->window->vkfn;
         struct vr_context *context = data->window->context;
 
-        if (pipeline == data->bound_pipeline)
+        if (pipeline_num == data->bound_pipeline)
                 return;
 
-        if (pipeline == data->pipeline->compute_pipeline) {
-                vkfn->vkCmdBindPipeline(context->command_buffer,
-                                        VK_PIPELINE_BIND_POINT_COMPUTE,
-                                        pipeline);
-        } else {
+        VkPipeline pipeline = data->pipeline->pipelines[pipeline_num];
+
+        switch (data->script->pipeline_keys[pipeline_num].type) {
+        case VR_PIPELINE_KEY_TYPE_GRAPHICS:
                 vkfn->vkCmdBindPipeline(context->command_buffer,
                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
                                         pipeline);
+                break;
+        case VR_PIPELINE_KEY_TYPE_COMPUTE:
+                vkfn->vkCmdBindPipeline(context->command_buffer,
+                                        VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        pipeline);
+                break;
         }
 
-        data->bound_pipeline = pipeline;
+        data->bound_pipeline = pipeline_num;
 }
 
 static void
@@ -510,9 +516,7 @@ draw_rect(struct test_data *data,
                         VK_WHOLE_SIZE);
 
         bind_ubo_descriptor_set(data);
-        VkPipeline pipeline =
-                data->pipeline->pipelines[command->draw_rect.pipeline_key];
-        bind_pipeline(data, pipeline);
+        bind_pipeline(data, command->draw_rect.pipeline_key);
 
         vkfn->vkCmdBindVertexBuffers(data->window->context->command_buffer,
                                      0, /* firstBinding */
@@ -609,9 +613,7 @@ draw_arrays(struct test_data *data,
         }
 
         bind_ubo_descriptor_set(data);
-        VkPipeline pipeline =
-                data->pipeline->pipelines[command->draw_arrays.pipeline_key];
-        bind_pipeline(data, pipeline);
+        bind_pipeline(data, command->draw_arrays.pipeline_key);
 
         if (command->draw_arrays.indexed) {
                 if (!ensure_index_buffer(data))
@@ -647,7 +649,7 @@ dispatch_compute(struct test_data *data,
                 return false;
 
         bind_ubo_descriptor_set(data);
-        bind_pipeline(data, data->pipeline->compute_pipeline);
+        bind_pipeline(data, command->dispatch_compute.pipeline_key);
 
         vkfn->vkCmdDispatch(data->window->context->command_buffer,
                             command->dispatch_compute.x,
@@ -1183,6 +1185,7 @@ vr_test_run(struct vr_window *window,
                 .script = script,
                 .test_state = TEST_STATE_IDLE,
                 .first_render = true,
+                .bound_pipeline = UINT_MAX
         };
         bool ret = true;
 

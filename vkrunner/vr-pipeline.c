@@ -574,7 +574,8 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
 }
 
 static VkPipeline
-create_compute_pipeline(struct vr_pipeline *pipeline)
+create_compute_pipeline(struct vr_pipeline *pipeline,
+                        const struct vr_pipeline_key *key)
 {
         struct vr_window *window = pipeline->window;
         struct vr_vk *vkfn = &window->vkfn;
@@ -860,31 +861,39 @@ vr_pipeline_create(const struct vr_config *config,
         if (pipeline->layout == VK_NULL_HANDLE)
                 goto error;
 
-        if (pipeline->stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
-                const struct vr_pipeline_key *keys = script->pipeline_keys;
+        const struct vr_pipeline_key *keys = script->pipeline_keys;
 
-                pipeline->n_pipelines = script->n_pipeline_keys;
-                pipeline->pipelines = vr_calloc(sizeof (VkPipeline) *
-                                                MAX(1, pipeline->n_pipelines));
+        pipeline->n_pipelines = script->n_pipeline_keys;
+        pipeline->pipelines = vr_calloc(sizeof (VkPipeline) *
+                                        MAX(1, pipeline->n_pipelines));
 
-                bool use_derivatives = pipeline->n_pipelines > 1;
+        VkPipeline first_graphics_pipeline = VK_NULL_HANDLE;
 
-                for (int i = 0; i < pipeline->n_pipelines; i++) {
+        for (int i = 0; i < pipeline->n_pipelines; i++) {
+                switch (keys[i].type) {
+                case VR_PIPELINE_KEY_TYPE_GRAPHICS: {
+                        bool allow_derivatives = (pipeline->n_pipelines > 1 &&
+                                                  first_graphics_pipeline ==
+                                                  VK_NULL_HANDLE);
                         pipeline->pipelines[i] =
                                 create_vk_pipeline(pipeline,
                                                    script,
                                                    keys + i,
-                                                   i == 0 && use_derivatives,
-                                                   pipeline->pipelines[0]);
-                        if (pipeline->pipelines[i] == VK_NULL_HANDLE)
-                                goto error;
+                                                   allow_derivatives,
+                                                   first_graphics_pipeline);
+                        if (first_graphics_pipeline == VK_NULL_HANDLE) {
+                                first_graphics_pipeline =
+                                        pipeline->pipelines[i];
+                        }
+                        break;
                 }
-        }
+                case VR_PIPELINE_KEY_TYPE_COMPUTE:
+                        pipeline->pipelines[i] =
+                                create_compute_pipeline(pipeline, keys + i);
+                        break;
+                }
 
-        if (pipeline->modules[VR_SHADER_STAGE_COMPUTE]) {
-                pipeline->compute_pipeline =
-                        create_compute_pipeline(pipeline);
-                if (pipeline->compute_pipeline == VK_NULL_HANDLE)
+                if (pipeline->pipelines[i] == VK_NULL_HANDLE)
                         goto error;
         }
 
@@ -900,12 +909,6 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
 {
         struct vr_window *window = pipeline->window;
         struct vr_vk *vkfn = &window->vkfn;
-
-        if (pipeline->compute_pipeline) {
-                vkfn->vkDestroyPipeline(window->device,
-                                        pipeline->compute_pipeline,
-                                        NULL /* allocator */);
-        }
 
         for (int i = 0; i < pipeline->n_pipelines; i++) {
                 if (pipeline->pipelines[i]) {
