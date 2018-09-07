@@ -62,7 +62,7 @@ struct load_state {
         struct vr_script *script;
         struct vr_buffer buffer;
         struct vr_buffer line;
-        enum vr_script_shader_stage current_stage;
+        enum vr_shader_stage current_stage;
         enum vr_script_source_type current_source_type;
         enum section current_section;
         struct vr_buffer commands;
@@ -77,7 +77,7 @@ struct load_state {
 };
 
 static const char *
-stage_names[VR_SCRIPT_N_STAGES] = {
+stage_names[VR_SHADER_STAGE_N_STAGES] = {
         "vertex shader",
         "tessellation control shader",
         "tessellation evaluation shader",
@@ -110,7 +110,7 @@ vertex_shader_passthrough[] = {
 
 static void
 add_shader(struct load_state *data,
-           enum vr_script_shader_stage stage,
+           enum vr_shader_stage stage,
            enum vr_script_source_type source_type,
            size_t length,
            const char *source)
@@ -1666,7 +1666,7 @@ is_stage_section(struct load_state *data,
 {
         int stage;
 
-        for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
+        for (stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++) {
                 if (is_string(stage_names[stage], start, end)) {
                         data->current_source_type = VR_SCRIPT_SOURCE_TYPE_GLSL;
                         goto found;
@@ -1676,7 +1676,7 @@ is_stage_section(struct load_state *data,
         if (end - start > 6 && !memcmp(" spirv", end - 6, 6)) {
                 end -= 6;
 
-                for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
+                for (stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++) {
                         if (is_string(stage_names[stage], start, end)) {
                                 data->current_source_type =
                                         VR_SCRIPT_SOURCE_TYPE_SPIRV;
@@ -1690,7 +1690,7 @@ is_stage_section(struct load_state *data,
         if (end - start > 7 && !memcmp(" binary", end - 7, 7)) {
                 end -= 7;
 
-                for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
+                for (stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++) {
                         if (is_string(stage_names[stage], start, end)) {
                                 data->current_source_type =
                                         VR_SCRIPT_SOURCE_TYPE_BINARY;
@@ -1712,7 +1712,7 @@ found:
 
 static bool
 start_spirv_shader(struct load_state *data,
-                   enum vr_script_shader_stage stage)
+                   enum vr_shader_stage stage)
 {
         if (!vr_list_empty(&data->script->stages[stage])) {
                 vr_error_message(data->config,
@@ -1766,11 +1766,11 @@ process_section_header(struct load_state *data)
         }
 
         if (is_string("vertex shader passthrough", start, end)) {
-                if (!start_spirv_shader(data, VR_SCRIPT_SHADER_STAGE_VERTEX))
+                if (!start_spirv_shader(data, VR_SHADER_STAGE_VERTEX))
                         return false;
                 data->current_section = SECTION_NONE;
                 add_shader(data,
-                           VR_SCRIPT_SHADER_STAGE_VERTEX,
+                           VR_SHADER_STAGE_VERTEX,
                            VR_SCRIPT_SOURCE_TYPE_BINARY,
                            sizeof vertex_shader_passthrough,
                            (const char *) vertex_shader_passthrough);
@@ -2143,7 +2143,7 @@ vr_script_load(const struct vr_config *config,
         vr_buffer_set_length(&data.extensions, sizeof (const char *));
         memset(data.extensions.data, 0, data.extensions.length);
 
-        for (int stage = 0; stage < VR_SCRIPT_N_STAGES; stage++)
+        for (int stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++)
                 vr_list_init(&script->stages[stage]);
 
         bool res = false;
@@ -2209,7 +2209,7 @@ vr_script_free(struct vr_script *script)
                         vr_free(command->set_push_constant.data);
         }
 
-        for (stage = 0; stage < VR_SCRIPT_N_STAGES; stage++) {
+        for (stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++) {
                 vr_list_for_each_safe(shader,
                                       tmp,
                                       &script->stages[stage],

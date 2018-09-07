@@ -34,17 +34,7 @@
 #include "vr-config.h"
 #include "vr-box.h"
 #include "vr-source.h"
-
-enum vr_script_shader_stage {
-        VR_SCRIPT_SHADER_STAGE_VERTEX,
-        VR_SCRIPT_SHADER_STAGE_TESS_CTRL,
-        VR_SCRIPT_SHADER_STAGE_TESS_EVAL,
-        VR_SCRIPT_SHADER_STAGE_GEOMETRY,
-        VR_SCRIPT_SHADER_STAGE_FRAGMENT,
-        VR_SCRIPT_SHADER_STAGE_COMPUTE
-};
-
-#define VR_SCRIPT_N_STAGES 6
+#include "vr-shader-stage.h"
 
 enum vr_script_op {
         VR_SCRIPT_OP_DRAW_RECT,
@@ -144,7 +134,7 @@ struct vr_script_buffer {
 
 struct vr_script {
         char *filename;
-        struct vr_list stages[VR_SCRIPT_N_STAGES];
+        struct vr_list stages[VR_SHADER_STAGE_N_STAGES];
         size_t n_commands;
         struct vr_script_command *commands;
         size_t n_pipeline_keys;

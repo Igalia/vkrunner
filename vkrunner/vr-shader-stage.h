@@ -23,38 +23,18 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_PIPELINE_H
-#define VR_PIPELINE_H
+#ifndef VR_SHADER_STAGE_H
+#define VR_SHADER_STAGE_H
 
-#include "vr-script.h"
-#include "vr-window.h"
-#include "vr-config.h"
-#include "vr-pipeline-key.h"
-
-struct vr_pipeline {
-        struct vr_window *window;
-        VkPipelineLayout layout;
-        VkDescriptorSetLayout *descriptor_set_layout;
-        unsigned *desc_sets;
-        unsigned n_desc_sets;
-        int n_pipelines;
-        VkPipeline *pipelines;
-        VkPipelineCache pipeline_cache;
-        VkPipeline compute_pipeline;
-        VkShaderModule modules[VR_SHADER_STAGE_N_STAGES];
-        VkShaderStageFlagBits stages;
+enum vr_shader_stage {
+        VR_SHADER_STAGE_VERTEX,
+        VR_SHADER_STAGE_TESS_CTRL,
+        VR_SHADER_STAGE_TESS_EVAL,
+        VR_SHADER_STAGE_GEOMETRY,
+        VR_SHADER_STAGE_FRAGMENT,
+        VR_SHADER_STAGE_COMPUTE
 };
 
-struct vr_pipeline_vertex {
-        float x, y, z;
-};
+#define VR_SHADER_STAGE_N_STAGES 6
 
-struct vr_pipeline *
-vr_pipeline_create(const struct vr_config *config,
-                   struct vr_window *window,
-                   const struct vr_script *script);
-
-void
-vr_pipeline_free(struct vr_pipeline *pipeline);
-
-#endif /* VR_PIPELINE_H */
+#endif /* VR_SHADER_STAGE_H */

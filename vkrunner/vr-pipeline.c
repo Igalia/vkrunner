@@ -50,13 +50,13 @@ struct desc_set_bindings_info {
 };
 
 static const char *
-stage_names[VR_SCRIPT_N_STAGES] = {
-        [VR_SCRIPT_SHADER_STAGE_VERTEX] = "vert",
-        [VR_SCRIPT_SHADER_STAGE_TESS_CTRL] = "tesc",
-        [VR_SCRIPT_SHADER_STAGE_TESS_EVAL] = "tese",
-        [VR_SCRIPT_SHADER_STAGE_GEOMETRY] = "geom",
-        [VR_SCRIPT_SHADER_STAGE_FRAGMENT] = "frag",
-        [VR_SCRIPT_SHADER_STAGE_COMPUTE] = "comp",
+stage_names[VR_SHADER_STAGE_N_STAGES] = {
+        [VR_SHADER_STAGE_VERTEX] = "vert",
+        [VR_SHADER_STAGE_TESS_CTRL] = "tesc",
+        [VR_SHADER_STAGE_TESS_EVAL] = "tese",
+        [VR_SHADER_STAGE_GEOMETRY] = "geom",
+        [VR_SHADER_STAGE_FRAGMENT] = "frag",
+        [VR_SHADER_STAGE_COMPUTE] = "comp",
 };
 
 static const VkViewport
@@ -162,7 +162,7 @@ static VkShaderModule
 compile_stage(const struct vr_config *config,
               struct vr_window *window,
               const struct vr_script *script,
-              enum vr_script_shader_stage stage)
+              enum vr_shader_stage stage)
 {
         struct vr_vk *vkfn = &window->vkfn;
         const int n_base_args = 6;
@@ -380,7 +380,7 @@ static VkShaderModule
 build_stage(const struct vr_config *config,
             struct vr_window *window,
             const struct vr_script *script,
-            enum vr_script_shader_stage stage)
+            enum vr_shader_stage stage)
 {
         assert(!vr_list_empty(&script->stages[stage]));
 
@@ -471,11 +471,11 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
         VkResult res;
         int num_stages = 0;
 
-        VkPipelineShaderStageCreateInfo stages[VR_SCRIPT_N_STAGES];
+        VkPipelineShaderStageCreateInfo stages[VR_SHADER_STAGE_N_STAGES];
         memset(&stages, 0, sizeof stages);
 
-        for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
-                if (i == VR_SCRIPT_SHADER_STAGE_COMPUTE ||
+        for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
+                if (i == VR_SHADER_STAGE_COMPUTE ||
                     pipeline->modules[i] == VK_NULL_HANDLE)
                         continue;
                 stages[num_stages].sType =
@@ -588,7 +588,7 @@ create_compute_pipeline(struct vr_pipeline *pipeline)
                         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
                         .module =
-                        pipeline->modules[VR_SCRIPT_SHADER_STAGE_COMPUTE],
+                        pipeline->modules[VR_SHADER_STAGE_COMPUTE],
                         .pName = "main"
                 },
                 .layout = pipeline->layout,
@@ -639,7 +639,7 @@ get_script_stages(const struct vr_script *script)
 {
         VkShaderStageFlags flags = 0;
 
-        for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
+        for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
                 if (!vr_list_empty(script->stages + i))
                         flags |= VK_SHADER_STAGE_VERTEX_BIT << i;
         }
@@ -828,7 +828,7 @@ vr_pipeline_create(const struct vr_config *config,
 
         pipeline->window = window;
 
-        for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
+        for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
                 if (vr_list_empty(&script->stages[i]))
                         continue;
 
@@ -881,7 +881,7 @@ vr_pipeline_create(const struct vr_config *config,
                 }
         }
 
-        if (pipeline->modules[VR_SCRIPT_SHADER_STAGE_COMPUTE]) {
+        if (pipeline->modules[VR_SHADER_STAGE_COMPUTE]) {
                 pipeline->compute_pipeline =
                         create_compute_pipeline(pipeline);
                 if (pipeline->compute_pipeline == VK_NULL_HANDLE)
@@ -943,7 +943,7 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
                 vr_free(pipeline->desc_sets);
         }
 
-        for (int i = 0; i < VR_SCRIPT_N_STAGES; i++) {
+        for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
                 if (pipeline->modules[i] == VK_NULL_HANDLE)
                         continue;
                 vkfn->vkDestroyShaderModule(window->device,
