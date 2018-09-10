@@ -801,7 +801,8 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
 
                 if (res != VK_SUCCESS) {
                         vr_error_message(pipeline->window->config,
-                                         "Error creating descriptor set layout");
+                                         "Error creating descriptor set "
+                                         "layout");
                         goto error;
                 }
                 first_sets[i] = info[i].desc_set;
