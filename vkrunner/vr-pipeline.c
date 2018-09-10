@@ -783,7 +783,8 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
 
         pipeline->descriptor_set_layout =
                 vr_calloc(sizeof(VkDescriptorSetLayout) * n_desc_sets);
-        unsigned *first_sets = vr_alloc(sizeof(unsigned) * n_desc_sets);
+        pipeline->desc_sets = vr_alloc(sizeof(unsigned) * n_desc_sets);
+        pipeline->n_desc_sets = n_desc_sets;
 
         for (unsigned i = 0; i < n_desc_sets; i++) {
                 VkDescriptorSetLayoutCreateInfo create_info = {
@@ -805,11 +806,9 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
                                          "layout");
                         goto error;
                 }
-                first_sets[i] = info[i].desc_set;
+                pipeline->desc_sets[i] = info[i].desc_set;
         }
 
-        pipeline->desc_sets = first_sets;
-        pipeline->n_desc_sets = n_desc_sets;
         ret = true;
 
 error:
