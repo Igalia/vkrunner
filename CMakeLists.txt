@@ -61,3 +61,4 @@ configure_file(
 
 add_subdirectory(vkrunner)
 add_subdirectory(src)
+add_subdirectory(unittest)
