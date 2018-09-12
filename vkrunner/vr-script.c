@@ -43,6 +43,9 @@
 #include "vr-window.h"
 #include "vr-format-private.h"
 #include "vr-source-private.h"
+#include "vr-tolerance.h"
+
+#define DEFAULT_TOLERANCE 0.01
 
 enum section {
         SECTION_NONE,
@@ -74,6 +77,7 @@ struct load_state {
         float clear_color[4];
         float clear_depth;
         unsigned clear_stencil;
+        struct vr_tolerance tolerance;
 };
 
 static const char *
@@ -792,6 +796,57 @@ parse_format(struct load_state *data,
 }
 
 static bool
+parse_tolerance(struct load_state *data,
+                const char *p,
+                int n_tolerance,
+                bool parse_percent)
+{
+        if (parse_doubles(&p,
+                          data->tolerance.value,
+                          n_tolerance,
+                          parse_percent ? "%" : NULL)) {
+                data->tolerance.is_percent = parse_percent;
+                for (unsigned t = 0; t < n_tolerance; ++t) {
+                        if (data->tolerance.value[t] < 0.0) {
+                                vr_error_message(data->config,
+                                                 "%s:%i: tolerance values "
+                                                 "must be non-negative",
+                                                 data->filename,
+                                                 data->line_num);
+                                return false;
+                        }
+                }
+
+                if (n_tolerance == 1) {
+                        data->tolerance.is_percent = looking_at(&p, "%");
+                } else if (parse_percent && !looking_at(&p, "%")) {
+                        vr_error_message(data->config,
+                                         "%s:%i: only the last tolerance "
+                                         "value is not a percent",
+                                         data->filename,
+                                         data->line_num);
+                        return false;
+                }
+
+                if (!is_end(p)) {
+                        vr_error_message(data->config,
+                                         "%s:%i: tolerance command has extra "
+                                         "arguments \"%s\"",
+                                         data->filename,
+                                         data->line_num,
+                                         p);
+                        return false;
+                }
+
+                for (unsigned t = n_tolerance; t < 4; ++t) {
+                        data->tolerance.value[t] = data->tolerance.value[0];
+                }
+                return true;
+        }
+        return false;
+}
+
+static bool
 process_none_line(struct load_state *data)
 {
         const char *start = (char *) data->line.data;
@@ -947,11 +1002,14 @@ process_draw_rect_command(struct load_state *data,
 
 static bool
 process_probe_command(const char *p,
-                      struct vr_script_command *command)
+                      struct vr_script_command *command,
+                      const struct vr_tolerance *tolerance)
 {
         bool relative = false;
         enum { POINT, RECT, ALL } region_type = POINT;
         int n_components;
+
+        command->probe_rect.tolerance = *tolerance;
 
         if (looking_at(&p, "relative "))
                 relative = true;
@@ -1054,7 +1112,8 @@ process_probe_command(const char *p,
 
 static bool
 process_probe_ssbo_command(const char *p,
-                           struct vr_script_command *command)
+                           struct vr_script_command *command,
+                           const struct vr_tolerance *tolerance)
 {
         if (!looking_at(&p, "probe ssbo "))
                 return false;
@@ -1081,6 +1140,7 @@ process_probe_ssbo_command(const char *p,
         static const char *comparison_names[] =
         {
                 [VR_BOX_COMPARISON_EQUAL] = "==",
+                [VR_BOX_COMPARISON_FUZZY_EQUAL] = "~=",
                 [VR_BOX_COMPARISON_NOT_EQUAL] = "!=",
                 [VR_BOX_COMPARISON_LESS] = "<",
                 [VR_BOX_COMPARISON_GREATER_EQUAL] = ">=",
@@ -1108,6 +1168,7 @@ found_comparison:
                 return false;
 
         command->op = VR_SCRIPT_OP_PROBE_SSBO;
+        command->probe_ssbo.tolerance = *tolerance;
 
         return true;
 }
@@ -1592,6 +1653,16 @@ process_test_line(struct load_state *data)
                 p = command_start;
         }
 
+        if (looking_at(&p, "tolerance ")) {
+                if (parse_tolerance(data, p, 4, false))
+                        return true;
+                if (parse_tolerance(data, p, 4, true))
+                        return true;
+                if (parse_tolerance(data, p, 1, false))
+                        return true;
+                goto error;
+        }
+
         if (process_entrypoint(data, p))
                 return true;
 
@@ -1633,10 +1704,14 @@ process_test_line(struct load_state *data)
         if (process_draw_rect_command(data, p, command))
                 return true;
 
-        if (process_probe_command(p, command))
+        if (process_probe_command(p,
+                                  command,
+                                  &data->tolerance))
                 return true;
 
-        if (process_probe_ssbo_command(p, command))
+        if (process_probe_ssbo_command(p,
+                                       command,
+                                       &data->tolerance))
                 return true;
 
         if (looking_at(&p, "draw arrays "))
@@ -2176,6 +2251,15 @@ vr_script_load(const struct vr_config *config,
                 .pipeline_keys = VR_BUFFER_STATIC_INIT,
                 .extensions = VR_BUFFER_STATIC_INIT,
                 .buffers = VR_BUFFER_STATIC_INIT,
+                .tolerance = {
+                        .value = {
+                                DEFAULT_TOLERANCE,
+                                DEFAULT_TOLERANCE,
+                                DEFAULT_TOLERANCE,
+                                DEFAULT_TOLERANCE,
+                        },
+                        .is_percent = false,
+                },
         };
 
         vr_pipeline_key_init(&data.current_key);

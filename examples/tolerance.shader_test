@@ -1,0 +1,58 @@
+[require]
+fragmentStoresAndAtomics
+framebuffer R32G32B32A32_SFLOAT
+
+[vertex shader passthrough]
+
+[fragment shader]
+#version 430
+
+layout(location = 0) out vec4 color_out;
+
+layout(binding = 4) buffer block0 {
+        vec4 set0_binding4;
+        vec4 set0_binding4_result;
+};
+
+layout(set = 0, binding = 5) buffer block1 {
+        vec4 set0_binding5;
+        vec4 set0_binding5_result;
+};
+
+void
+main()
+{
+        // Descriptor set and binding test
+        set0_binding4_result = set0_binding5;
+        set0_binding5_result = set0_binding4;
+
+        color_out = vec4(atan(0.0, -1.0),
+                     42.0,
+                     length(vec2(1.0, 1.0)),
+                     fma(2.0, 3.0, 1.0));
+}
+
+[test]
+clear
+
+# Descriptor set and binding test
+ssbo 0:4 subdata vec4 0 0.4 0.4 0.4 0.4
+ssbo 5 subdata vec4 0 0.5 0.5 0.5 0.5
+ssbo 0:4 subdata vec4 16 0.4 0.4 0.4 0.4
+ssbo 5 subdata vec4 16 0.5 0.5 0.5 0.5
+
+draw rect -1 -1 2 2
+
+tolerance 0.01% 0.01% 0.01% 0.01%
+probe all rgba 3.141592653589793 42.0 1.4142135623730951 7.0
+
+tolerance 0.01% 0.001% 0.0001% 0.00001%
+probe all rgba 3.141592653589793 42.0 1.4142135623730951 7.0
+
+tolerance 0.00001
+probe ssbo vec4 4   16 ~= 0.5 0.5 0.5 0.5
+probe ssbo vec4 4   16 ~= 0.500002 0.500002 0.500002 0.500002
+probe ssbo vec4 4   16 ~= 0.499999 0.499999 0.499999 0.499999
+
+tolerance 0.001%
+probe ssbo vec4 0:5 16 ~= 0.4 0.4 0.4 0.4

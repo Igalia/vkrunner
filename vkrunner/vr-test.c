@@ -34,6 +34,7 @@
 #include "vr-box.h"
 #include "vr-buffer.h"
 #include "vr-format-private.h"
+#include "vr-tolerance.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -75,9 +76,6 @@ struct test_data {
         enum test_state test_state;
         bool first_render;
 };
-
-static const double
-tolerance[4] = { 0.01, 0.01, 0.01, 0.01 };
 
 static struct test_buffer *
 allocate_test_buffer(struct test_data *data,
@@ -662,12 +660,17 @@ dispatch_compute(struct test_data *data,
 static bool
 compare_pixels(const double *color1,
                const double *color2,
-               const double *tolerance,
+               const struct vr_tolerance *tolerance,
                int n_components)
 {
-        for (int p = 0; p < n_components; ++p)
-                if (fabs(color1[p] - color2[p]) > tolerance[p])
+        for (int p = 0; p < n_components; ++p) {
+                if (!vr_tolerance_equal(tolerance,
+                                        p,
+                                        color1[p],
+                                        color2[p]))
                         return false;
+        }
+
         return true;
 }
 
@@ -729,7 +732,7 @@ probe_rect(struct test_data *data,
 
                         if (!compare_pixels(pixel,
                                             command->probe_rect.color,
-                                            tolerance,
+                                            &command->probe_rect.tolerance,
                                             n_components)) {
                                 print_command_fail(data->window->config,
                                                    command);
@@ -861,6 +864,7 @@ probe_ssbo(struct test_data *data,
                type_size);
 
         if (!vr_box_compare(command->probe_ssbo.comparison,
+                            &command->probe_ssbo.tolerance,
                             &observed,
                             expected)) {
                 print_command_fail(data->window->config, command);

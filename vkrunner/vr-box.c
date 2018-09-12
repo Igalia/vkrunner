@@ -30,6 +30,7 @@
 #include <assert.h>
 
 #include "vr-util.h"
+#include "vr-tolerance.h"
 
 static const struct vr_box_type_info
 type_infos[] = {
@@ -174,6 +175,16 @@ vr_box_for_each_component(enum vr_box_type type,
         }
 }
 
+struct compare_closure {
+        enum vr_box_comparison comparison;
+        const struct vr_box *a;
+        const struct vr_box *b;
+        const struct vr_tolerance *tolerance;
+        int index;
+        int index_max;
+        bool result;
+};
+
 static bool
 compare_signed(enum vr_box_comparison comparison,
                int64_t a,
@@ -181,6 +192,7 @@ compare_signed(enum vr_box_comparison comparison,
 {
         switch (comparison) {
         case VR_BOX_COMPARISON_EQUAL:
+        case VR_BOX_COMPARISON_FUZZY_EQUAL:
                 return a == b;
         case VR_BOX_COMPARISON_NOT_EQUAL:
                 return a != b;
@@ -204,6 +216,7 @@ compare_unsigned(enum vr_box_comparison comparison,
 {
         switch (comparison) {
         case VR_BOX_COMPARISON_EQUAL:
+        case VR_BOX_COMPARISON_FUZZY_EQUAL:
                 return a == b;
         case VR_BOX_COMPARISON_NOT_EQUAL:
                 return a != b;
@@ -221,13 +234,18 @@ compare_unsigned(enum vr_box_comparison comparison,
 }
 
 static bool
-compare_double(enum vr_box_comparison comparison,
+compare_double(const struct compare_closure *data,
                double a,
                double b)
 {
-        switch (comparison) {
+        switch (data->comparison) {
         case VR_BOX_COMPARISON_EQUAL:
                 return a == b;
+        case VR_BOX_COMPARISON_FUZZY_EQUAL:
+                return vr_tolerance_equal(data->tolerance,
+                                          data->index % data->index_max,
+                                          a,
+                                          b);
         case VR_BOX_COMPARISON_NOT_EQUAL:
                 return a != b;
         case VR_BOX_COMPARISON_LESS:
@@ -244,63 +262,56 @@ compare_double(enum vr_box_comparison comparison,
 }
 
 static bool
-compare_value(enum vr_box_comparison comparison,
+compare_value(const struct compare_closure *data,
               enum vr_box_base_type type,
               const void *a,
               const void *b)
 {
         switch (type) {
         case VR_BOX_BASE_TYPE_INT:
-                return compare_signed(comparison,
+                return compare_signed(data->comparison,
                                       *(const int32_t *) a,
                                       *(const int32_t *) b);
         case VR_BOX_BASE_TYPE_UINT:
-                return compare_unsigned(comparison,
+                return compare_unsigned(data->comparison,
                                         *(const uint32_t *) a,
                                         *(const uint32_t *) b);
         case VR_BOX_BASE_TYPE_INT8:
-                return compare_signed(comparison,
+                return compare_signed(data->comparison,
                                       *(const int8_t *) a,
                                       *(const int8_t *) b);
         case VR_BOX_BASE_TYPE_UINT8:
-                return compare_unsigned(comparison,
+                return compare_unsigned(data->comparison,
                                         *(const uint8_t *) a,
                                         *(const uint8_t *) b);
         case VR_BOX_BASE_TYPE_INT16:
-                return compare_signed(comparison,
+                return compare_signed(data->comparison,
                                       *(const int16_t *) a,
                                       *(const int16_t *) b);
         case VR_BOX_BASE_TYPE_UINT16:
-                return compare_unsigned(comparison,
+                return compare_unsigned(data->comparison,
                                         *(const uint16_t *) a,
                                         *(const uint16_t *) b);
         case VR_BOX_BASE_TYPE_INT64:
-                return compare_signed(comparison,
+                return compare_signed(data->comparison,
                                       *(const int64_t *) a,
                                       *(const int64_t *) b);
         case VR_BOX_BASE_TYPE_UINT64:
-                return compare_unsigned(comparison,
+                return compare_unsigned(data->comparison,
                                         *(const uint64_t *) a,
                                         *(const uint64_t *) b);
         case VR_BOX_BASE_TYPE_FLOAT:
-                return compare_double(comparison,
+                return compare_double(data,
                                       *(const float *) a,
                                       *(const float *) b);
         case VR_BOX_BASE_TYPE_DOUBLE:
-                return compare_double(comparison,
+                return compare_double(data,
                                       *(const double *) a,
                                       *(const double *) b);
         }
 
         vr_fatal("Unexpected base type");
 }
-
-struct compare_closure {
-        enum vr_box_comparison comparison;
-        const struct vr_box *a;
-        const struct vr_box *b;
-        bool result;
-};
 
 static bool
 compare_cb(enum vr_box_base_type base_type,
@@ -309,7 +320,7 @@ compare_cb(enum vr_box_base_type base_type,
 {
         struct compare_closure *data = user_data;
 
-        if (!compare_value(data->comparison,
+        if (!compare_value(data,
                            base_type,
                            (const uint8_t *) data->a + offset,
                            (const uint8_t *) data->b + offset)) {
@@ -317,11 +328,14 @@ compare_cb(enum vr_box_base_type base_type,
                 return false;
         }
 
+        data->index++;
+
         return true;
 }
 
 bool
 vr_box_compare(enum vr_box_comparison comparison,
+               const struct vr_tolerance *tolerance,
                const struct vr_box *a,
                const struct vr_box *b)
 {
@@ -331,11 +345,13 @@ vr_box_compare(enum vr_box_comparison comparison,
                 .comparison = comparison,
                 .a = a,
                 .b = b,
+                .tolerance = tolerance,
+                .index = 0,
+                .index_max = type_infos[a->type].rows,
                 .result = true
         };
 
         vr_box_for_each_component(a->type, compare_cb, &data);
-
         return data.result;
 }
 

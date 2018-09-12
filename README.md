@@ -120,9 +120,32 @@ the largest offset.
 > probe ssbo _type_ _binding_ _offset_ _comparison_ _values_…
 
 Probes a value in the storage buffer at _binding_. The _comparison_
-can be one of `==`, `!=`, `<`, `>=`, `>` or `<=`. If the type has more
-than one component then they are compared individually until one of
-them fails the comparison.
+can be one of `==`, `!=`, `<`, `>=`, `>`, `<=` or `~=`. If the type
+has more than one component then they are compared individually until
+one of them fails the comparison. `~=` is the same with `==` but `~=`
+allows errors for `double` or `float` type numbers while `==` does
+not. Allowed errors can be set by the following `tolerance` command.
+See [examples/tolerance.shader_test](examples/tolerance.shader_test)
+for the usage of `~=`.
+
+> tolerance _tolerance0 tolerance1 tolerance2 tolerance3_
+
+Sets four tolerances i.e., allowed errors. `vecN` type values will
+use first `N` tolerances among those four. Each column of `matMxN` type
+values will also use first `N` tolerances. `float` and `double` type
+values will use only the first tolerance. Each tolerance value can be
+an `double` type real number or percentage e.g., `0.01%`. `tolerance`
+command can be also used for comparisons of pixels. See
+[examples/tolerance.shader_test]( examples/tolerance.shader_test) for
+the usage of `tolerance` command.
+
+> tolerance _tolerance0_
+
+Sets a tolerance i.e., an allowed error. If this command is set, all
+components of `vecN` and `matMxN` type values will use the same
+tolerance. Each tolerance value can be an `double` type real number or
+percentage e.g., `0.01%`. See [examples/tolerance.shader_test](
+examples/tolerance.shader_test) for the usage of `tolerance` command.
 
 > clear color _r_ _g_ _b_ _a_
 

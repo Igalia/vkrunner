@@ -35,6 +35,7 @@
 #include "vr-box.h"
 #include "vr-source.h"
 #include "vr-shader-stage.h"
+#include "vr-tolerance.h"
 
 enum vr_script_op {
         VR_SCRIPT_OP_DRAW_RECT,
@@ -79,6 +80,7 @@ struct vr_script_command {
                         int n_components;
                         int x, y, w, h;
                         double color[4];
+                        struct vr_tolerance tolerance;
                 } probe_rect;
 
                 struct {
@@ -87,6 +89,7 @@ struct vr_script_command {
                         enum vr_box_comparison comparison;
                         size_t offset;
                         struct vr_box value;
+                        struct vr_tolerance tolerance;
                 } probe_ssbo;
 
                 struct {

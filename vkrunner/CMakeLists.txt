@@ -62,6 +62,8 @@ set(VKRUNNER_SOURCE_FILES
         vr-subprocess.h
         vr-test.c
         vr-test.h
+        vr-tolerance.c
+        vr-tolerance.h
         vr-vbo.c
         vr-vbo.h
         vr-window.c

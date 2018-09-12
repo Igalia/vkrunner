@@ -30,6 +30,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "vr-tolerance.h"
+
 enum vr_box_type {
         VR_BOX_TYPE_INT,
         VR_BOX_TYPE_UINT,
@@ -106,6 +108,7 @@ enum vr_box_base_type {
 
 enum vr_box_comparison {
         VR_BOX_COMPARISON_EQUAL,
+        VR_BOX_COMPARISON_FUZZY_EQUAL,
         VR_BOX_COMPARISON_NOT_EQUAL,
         VR_BOX_COMPARISON_LESS,
         VR_BOX_COMPARISON_GREATER_EQUAL,
@@ -162,6 +165,7 @@ vr_box_for_each_component(enum vr_box_type type,
 
 bool
 vr_box_compare(enum vr_box_comparison comparison,
+               const struct vr_tolerance *tolerance,
                const struct vr_box *a,
                const struct vr_box *b);
 
