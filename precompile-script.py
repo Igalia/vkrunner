@@ -33,6 +33,7 @@ import argparse
 import os
 import struct
 
+TARGET_ENV = "vulkan1.0"
 
 SECTION_RE = re.compile(r'^\[([^]]+)\]\s*$')
 STAGE_MAP = {
@@ -63,10 +64,12 @@ class Converter:
                                        "-S", self._stage,
                                        "-G",
                                        "-V",
+                                       "--target-env", TARGET_ENV,
                                        "-o", temp_outfile.name,
                                        self._tempfile.name])
             else:
                 subprocess.check_call(["spirv-as",
+                                       "--target-env", TARGET_ENV,
                                        "-o", temp_outfile.name,
                                        self._tempfile.name])
 

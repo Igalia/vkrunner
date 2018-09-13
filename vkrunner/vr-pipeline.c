@@ -91,6 +91,8 @@ base_multisample_state = {
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
 };
 
+#define TARGET_ENV "vulkan1.0"
+
 static char *
 create_file_for_shader(const struct vr_config *config,
                        const struct vr_script_shader *shader)
@@ -165,7 +167,7 @@ compile_stage(const struct vr_config *config,
               enum vr_shader_stage stage)
 {
         struct vr_vk *vkfn = &window->vkfn;
-        const int n_base_args = 6;
+        const int n_base_args = 8;
         int n_shaders = vr_list_length(&script->stages[stage]);
         char **args = alloca((n_base_args + n_shaders + 1) * sizeof args[0]);
         const struct vr_script_shader *shader;
@@ -189,10 +191,12 @@ compile_stage(const struct vr_config *config,
                 args[0] = "glslangValidator";
 
         args[1] = "-V";
-        args[2] = "-S";
-        args[3] = (char *) stage_names[stage];
-        args[4] = "-o";
-        args[5] = module_filename;
+        args[2] = "--target-env";
+        args[3] = TARGET_ENV;
+        args[4] = "-S";
+        args[5] = (char *) stage_names[stage];
+        args[6] = "-o";
+        args[7] = module_filename;
 
         i = n_base_args;
         vr_list_for_each(shader, &script->stages[stage], link) {
@@ -277,6 +281,7 @@ assemble_stage(const struct vr_config *config,
 
         char *args[] = {
                 getenv("PIGLIT_SPIRV_AS_BINARY"),
+                "--target-env", TARGET_ENV,
                 "-o", module_filename,
                 source_filename,
                 NULL
