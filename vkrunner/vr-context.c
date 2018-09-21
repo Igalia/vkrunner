@@ -80,12 +80,6 @@ deinit_vk(struct vr_context *context)
                                      NULL /* allocator */);
                 context->vk_fence = VK_NULL_HANDLE;
         }
-        if (context->descriptor_pool) {
-                vkfn->vkDestroyDescriptorPool(context->device,
-                                              context->descriptor_pool,
-                                              NULL /* allocator */);
-                context->descriptor_pool = VK_NULL_HANDLE;
-        }
         if (context->command_buffer) {
                 vkfn->vkFreeCommandBuffers(context->device,
                                            context->command_pool,

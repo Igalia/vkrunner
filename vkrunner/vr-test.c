@@ -918,8 +918,7 @@ allocate_ubo_buffers(struct test_data *data)
         for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
                 VkDescriptorSetAllocateInfo allocate_info = {
                         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-                        .descriptorPool = data->window->context->
-                                          descriptor_pool,
+                        .descriptorPool = data->pipeline->descriptor_pool,
                         .descriptorSetCount = 1,
                         .pSetLayouts = &data->pipeline->descriptor_set_layout[i]
                 };
@@ -1216,8 +1215,7 @@ vr_test_run(struct vr_window *window,
                         if (data.ubo_descriptor_set[i]) {
                                 vkfn->vkFreeDescriptorSets(
                                                 window->device,
-                                                window->context->
-                                                descriptor_pool,
+                                                pipeline->descriptor_pool,
                                                 1, /* descriptorSetCount */
                                                 &data.ubo_descriptor_set[i]);
                         }

@@ -42,7 +42,6 @@ struct vr_context {
         VkPhysicalDeviceMemoryProperties memory_properties;
         VkPhysicalDeviceProperties device_properties;
         VkPhysicalDeviceFeatures features;
-        VkDescriptorPool descriptor_pool;
         VkCommandPool command_pool;
         VkCommandBuffer command_buffer;
         VkQueue queue;

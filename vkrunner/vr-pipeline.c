@@ -782,8 +782,7 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
         res = vkfn->vkCreateDescriptorPool(pipeline->window->device,
                                            &descriptor_pool_create_info,
                                            NULL, /* allocator */
-                                           &pipeline->window->context->
-                                           descriptor_pool);
+                                           &pipeline->descriptor_pool);
         if (res != VK_SUCCESS) {
                 vr_error_message(pipeline->window->config,
                                  "Error creating VkDescriptorPool");
@@ -952,6 +951,12 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
                 }
                 vr_free(pipeline->descriptor_set_layout);
                 vr_free(pipeline->desc_sets);
+        }
+
+        if (pipeline->descriptor_pool) {
+                vkfn->vkDestroyDescriptorPool(window->device,
+                                              pipeline->descriptor_pool,
+                                              NULL /* allocator */);
         }
 
         for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
