@@ -27,7 +27,6 @@
 #define VR_EXECUTOR_H
 
 #include <stdbool.h>
-#include <vkrunner/vr-config.h>
 #include <vkrunner/vr-result.h>
 #include <vkrunner/vr-source.h>
 #include <vkrunner/vr-callback.h>
