@@ -44,6 +44,7 @@
 #include "vr-format-private.h"
 #include "vr-source-private.h"
 #include "vr-tolerance.h"
+#include "vr-stream.h"
 
 #define DEFAULT_TOLERANCE 0.01
 
@@ -2069,48 +2070,6 @@ process_line(struct load_state *data)
         return true;
 }
 
-static bool
-read_line(FILE *f,
-          struct vr_buffer *buffer)
-{
-        buffer->length = 0;
-
-        while (true) {
-                vr_buffer_ensure_size(buffer, buffer->length + 128);
-
-                char *read_start = (char *) buffer->data + buffer->length;
-
-                if (!fgets(read_start, buffer->size - buffer->length, f))
-                        break;
-
-                buffer->length += strlen(read_start);
-
-                if (strchr(read_start, '\n'))
-                        break;
-        }
-
-        return buffer->length > 0;
-}
-
-static const char *
-read_line_from_string(const char *string,
-                      struct vr_buffer *buffer)
-{
-        buffer->length = 0;
-
-        const char *end = strchr(string, '\n');
-
-        if (end == NULL) {
-                vr_buffer_append_string(buffer, string);
-        } else {
-                vr_buffer_append(buffer, string, end - string + 1);
-                vr_buffer_append_c(buffer, '\0');
-                buffer->length--;
-        }
-
-        return string + buffer->length;
-}
-
 static int
 compare_buffer_set_and_binding(const void *a,
                                const void *b)
@@ -2181,39 +2140,12 @@ process_token_replacements(struct load_state *data)
 
 static bool
 load_script_from_stream(struct load_state *data,
-                        FILE *f)
+                        struct vr_stream *stream)
 {
         bool res = true;
 
         do {
-                if (!read_line(f, &data->line))
-                        break;
-
-                if (!process_token_replacements(data)) {
-                        res = false;
-                        break;
-                }
-
-                res = process_line(data);
-
-                data->line_num++;
-        } while (res);
-
-        if (res)
-                res = end_section(data);
-
-        return res;
-}
-
-static bool
-load_script_from_string(struct load_state *data,
-                        const char *string)
-{
-        bool res = true;
-
-        do {
-                string = read_line_from_string(string, &data->line);
-                if (data->line.length == 0)
+                if (!vr_stream_read_line(stream, &data->line))
                         break;
 
                 if (!process_token_replacements(data)) {
@@ -2246,8 +2178,23 @@ load_script_from_file(struct load_state *data,
                 return false;
         }
 
-        bool res = load_script_from_stream(data, f);
+        struct vr_stream stream;
+
+        vr_stream_init_file(&stream, f);
+        bool res = load_script_from_stream(data, &stream);
         fclose(f);
+
+        return res;
+}
+
+static bool
+load_script_from_string(struct load_state *data,
+                        const char *string)
+{
+        struct vr_stream stream;
+
+        vr_stream_init_string(&stream, string);
+        bool res = load_script_from_stream(data, &stream);
 
         return res;
 }
