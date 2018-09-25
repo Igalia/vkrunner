@@ -55,7 +55,11 @@ void
 vr_stream_init_file(struct vr_stream *stream,
                     FILE *file);
 
-bool
+/* Returns the number of physical lines conusmed or 0 at the end of
+ * the stream. Each returned line can consume multiple physical lines
+ * if backslashes are used to combine them into one.
+ */
+int
 vr_stream_read_line(struct vr_stream *stream,
                     struct vr_buffer *buffer);
 

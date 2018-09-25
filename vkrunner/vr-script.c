@@ -2145,7 +2145,9 @@ load_script_from_stream(struct load_state *data,
         bool res = true;
 
         do {
-                if (!vr_stream_read_line(stream, &data->line))
+                int lines_consumed = vr_stream_read_line(stream, &data->line);
+
+                if (lines_consumed == 0)
                         break;
 
                 if (!process_token_replacements(data)) {
@@ -2155,7 +2157,7 @@ load_script_from_stream(struct load_state *data,
 
                 res = process_line(data);
 
-                data->line_num++;
+                data->line_num += lines_consumed;
         } while (res);
 
         if (res)
