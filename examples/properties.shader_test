@@ -44,7 +44,9 @@ draw arrays LINE_LIST 0 2
 logicOpEnable false
 
 # Two rectangles, one gets culled, one doesn’t
-colorWriteMask VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT
+colorWriteMask VK_COLOR_COMPONENT_R_BIT | \
+               VK_COLOR_COMPONENT_G_BIT | \
+               VK_COLOR_COMPONENT_B_BIT
 cullMode VK_CULL_MODE_FRONT_BIT
 frontFace VK_FRONT_FACE_CLOCKWISE
 draw rect -1 -1 2 2
