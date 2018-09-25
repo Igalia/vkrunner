@@ -114,9 +114,38 @@ bool
 vr_stream_read_line(struct vr_stream *stream,
                     struct vr_buffer *buffer)
 {
+        bool got_something = false;
+
         buffer->length = 0;
 
-        if (!raw_read_line(stream, buffer))
+        while (true) {
+                size_t old_length = buffer->length;
+
+                if (!raw_read_line(stream, buffer))
+                        break;
+
+                got_something = true;
+
+                if (buffer->length >= old_length + 2) {
+                        if (!memcmp(buffer->data + buffer->length - 2,
+                                    "\\\n",
+                                    2)) {
+                                buffer->length -= 2;
+                                continue;
+                        }
+                        if (buffer->length >= old_length + 3 &&
+                            !memcmp(buffer->data + buffer->length - 3,
+                                    "\\\r\n",
+                                    3)) {
+                                buffer->length -= 3;
+                                continue;
+                        }
+                }
+
+                break;
+        }
+
+        if (!got_something)
                 return false;
 
         vr_buffer_append_c(buffer, '\0');
