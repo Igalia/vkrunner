@@ -752,7 +752,7 @@ probe_rect(struct test_data *data,
 
 struct append_box_closure {
         struct vr_buffer *buf;
-        const struct vr_box *value;
+        const uint8_t *value;
 };
 
 static bool
@@ -761,7 +761,7 @@ append_box_cb(enum vr_box_base_type base_type,
               void *user_data)
 {
         struct append_box_closure *data = user_data;
-        const uint8_t *p = (const uint8_t *) data->value + offset;
+        const uint8_t *p = data->value + offset;
 
         vr_buffer_append_c(data->buf, ' ');
 
@@ -815,14 +815,15 @@ append_box_cb(enum vr_box_base_type base_type,
 
 static void
 append_box(struct vr_buffer *buf,
-           const struct vr_box *value)
+           enum vr_box_type type,
+           const void *value)
 {
         struct append_box_closure data = {
                 .buf = buf,
                 .value = value
         };
 
-        vr_box_for_each_component(value->type,
+        vr_box_for_each_component(type,
                                   append_box_cb,
                                   &data);
 }
@@ -846,8 +847,8 @@ probe_ssbo(struct test_data *data,
                 return false;
         }
 
-        const struct vr_box *expected = &command->probe_ssbo.value;
-        size_t type_size = vr_box_type_size(expected->type);
+        const void *expected = command->probe_ssbo.value;
+        size_t type_size = vr_box_type_size(command->probe_ssbo.type);
 
         if (command->probe_ssbo.offset + type_size > buffer->size) {
                 print_command_fail(data->window->config, command);
@@ -856,16 +857,13 @@ probe_ssbo(struct test_data *data,
                 return false;
         }
 
-        struct vr_box observed;
-        observed.type = expected->type;
-        memcpy(&observed.i,
-               (const uint8_t *) buffer->memory_map +
-               command->probe_ssbo.offset,
-               type_size);
+        const void *observed = ((const uint8_t *) buffer->memory_map +
+                                command->probe_ssbo.offset);
 
         if (!vr_box_compare(command->probe_ssbo.comparison,
                             &command->probe_ssbo.tolerance,
-                            &observed,
+                            command->probe_ssbo.type,
+                            observed,
                             expected)) {
                 print_command_fail(data->window->config, command);
 
@@ -873,11 +871,11 @@ probe_ssbo(struct test_data *data,
                 vr_buffer_append_string(&buf,
                                         "SSBO probe failed\n"
                                         "  Reference:");
-                append_box(&buf, expected);
+                append_box(&buf, command->probe_ssbo.type, expected);
                 vr_buffer_append_string(&buf,
                                         "\n"
                                         "  Observed: ");
-                append_box(&buf, &observed);
+                append_box(&buf, command->probe_ssbo.type, observed);
                 vr_error_message(data->window->config,
                                  "%s",
                                  (const char *) buf.data);

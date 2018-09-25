@@ -116,34 +116,6 @@ enum vr_box_comparison {
         VR_BOX_COMPARISON_LESS_EQUAL
 };
 
-struct vr_box {
-        enum vr_box_type type;
-        union {
-                int i;
-                unsigned u;
-                int8_t i8;
-                uint8_t u8;
-                int16_t i16;
-                uint16_t u16;
-                int64_t i64;
-                uint64_t u64;
-                float f;
-                double d;
-                float vec[4];
-                double dvec[4];
-                int ivec[4];
-                unsigned uvec[4];
-                int8_t i8vec[4];
-                uint8_t u8vec[4];
-                int16_t i16vec[4];
-                uint16_t u16vec[4];
-                int64_t i64vec[4];
-                uint64_t u64vec[4];
-                float mat[16];
-                double dmat[16];
-        };
-};
-
 struct vr_box_type_info {
         enum vr_box_base_type base_type;
         int columns;
@@ -166,8 +138,9 @@ vr_box_for_each_component(enum vr_box_type type,
 bool
 vr_box_compare(enum vr_box_comparison comparison,
                const struct vr_tolerance *tolerance,
-               const struct vr_box *a,
-               const struct vr_box *b);
+               enum vr_box_type type,
+               const void *a,
+               const void *b);
 
 size_t
 vr_box_base_type_size(enum vr_box_base_type type);

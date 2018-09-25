@@ -1118,7 +1118,7 @@ process_probe_ssbo_command(const char *p,
         if (!looking_at(&p, "probe ssbo "))
                 return false;
 
-        if (!parse_value_type(&p, &command->probe_ssbo.value.type))
+        if (!parse_value_type(&p, &command->probe_ssbo.type))
                 return false;
 
         while (isspace(*p))
@@ -1160,12 +1160,16 @@ found_comparison:
         while (isspace(*p))
                 p++;
 
+        size_t type_size = vr_box_type_size(command->probe_ssbo.type);
+        command->probe_ssbo.value = vr_alloc(type_size);
+
         if (!parse_value(&p,
-                         command->probe_ssbo.value.type,
-                         &command->probe_ssbo.value.i))
+                         command->probe_ssbo.type,
+                         command->probe_ssbo.value) ||
+            !is_end(p)) {
+                vr_free(command->probe_ssbo.value);
                 return false;
-        if (!is_end(p))
-                return false;
+        }
 
         command->op = VR_SCRIPT_OP_PROBE_SSBO;
         command->probe_ssbo.tolerance = *tolerance;
@@ -2335,6 +2339,8 @@ vr_script_free(struct vr_script *script)
                         vr_free(command->set_buffer_subdata.data);
                 else if (command->op == VR_SCRIPT_OP_SET_PUSH_CONSTANT)
                         vr_free(command->set_push_constant.data);
+                else if (command->op == VR_SCRIPT_OP_PROBE_SSBO)
+                        vr_free(command->probe_ssbo.value);
         }
 
         for (stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++) {

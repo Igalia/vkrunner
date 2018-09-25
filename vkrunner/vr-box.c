@@ -161,7 +161,7 @@ vr_box_for_each_component(enum vr_box_type type,
         const struct vr_box_type_info *info = type_infos + type;
         size_t stride = vr_box_type_matrix_stride(type);
         size_t base_size = vr_box_base_type_size(info->base_type);
-        size_t offset = offsetof(struct vr_box, vec);
+        size_t offset = 0;
 
         for (int col = 0; col < info->columns; col++) {
                 for (int row = 0; row < info->rows; row++) {
@@ -177,8 +177,8 @@ vr_box_for_each_component(enum vr_box_type type,
 
 struct compare_closure {
         enum vr_box_comparison comparison;
-        const struct vr_box *a;
-        const struct vr_box *b;
+        const uint8_t *a;
+        const uint8_t *b;
         const struct vr_tolerance *tolerance;
         int index;
         int index_max;
@@ -322,8 +322,8 @@ compare_cb(enum vr_box_base_type base_type,
 
         if (!compare_value(data,
                            base_type,
-                           (const uint8_t *) data->a + offset,
-                           (const uint8_t *) data->b + offset)) {
+                           data->a + offset,
+                           data->b + offset)) {
                 data->result = false;
                 return false;
         }
@@ -336,22 +336,21 @@ compare_cb(enum vr_box_base_type base_type,
 bool
 vr_box_compare(enum vr_box_comparison comparison,
                const struct vr_tolerance *tolerance,
-               const struct vr_box *a,
-               const struct vr_box *b)
+               enum vr_box_type type,
+               const void *a,
+               const void *b)
 {
-        assert(a->type == b->type);
-
         struct compare_closure data = {
                 .comparison = comparison,
                 .a = a,
                 .b = b,
                 .tolerance = tolerance,
                 .index = 0,
-                .index_max = type_infos[a->type].rows,
+                .index_max = type_infos[type].rows,
                 .result = true
         };
 
-        vr_box_for_each_component(a->type, compare_cb, &data);
+        vr_box_for_each_component(type, compare_cb, &data);
         return data.result;
 }
 

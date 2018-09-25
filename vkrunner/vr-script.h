@@ -88,7 +88,8 @@ struct vr_script_command {
                         unsigned binding;
                         enum vr_box_comparison comparison;
                         size_t offset;
-                        struct vr_box value;
+                        enum vr_box_type type;
+                        void *value;
                         struct vr_tolerance tolerance;
                 } probe_ssbo;
 
