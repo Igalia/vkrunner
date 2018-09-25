@@ -816,16 +816,20 @@ append_box_cb(enum vr_box_base_type base_type,
 static void
 append_box(struct vr_buffer *buf,
            enum vr_box_type type,
-           const void *value)
+           size_t n_values,
+           size_t stride,
+           const uint8_t *value)
 {
-        struct append_box_closure data = {
-                .buf = buf,
-                .value = value
-        };
+        for (size_t i = 0; i < n_values; i++) {
+                struct append_box_closure data = {
+                        .buf = buf,
+                        .value = value + i * stride
+                };
 
-        vr_box_for_each_component(type,
-                                  append_box_cb,
-                                  &data);
+                vr_box_for_each_component(type,
+                                          append_box_cb,
+                                          &data);
+        }
 }
 
 static bool
@@ -847,35 +851,51 @@ probe_ssbo(struct test_data *data,
                 return false;
         }
 
-        const void *expected = command->probe_ssbo.value;
+        const uint8_t *expected = command->probe_ssbo.value;
         size_t type_size = vr_box_type_size(command->probe_ssbo.type);
+        size_t base_alignment =
+                vr_box_type_base_alignment(command->probe_ssbo.type);
+        size_t observed_stride = vr_align(type_size, base_alignment);
 
-        if (command->probe_ssbo.offset + type_size > buffer->size) {
+        if (command->probe_ssbo.offset +
+            (command->probe_ssbo.n_values - 1) * observed_stride +
+            type_size > buffer->size) {
                 print_command_fail(data->window->config, command);
                 vr_error_message(data->window->config,
                                  "Invalid offset in probe command");
                 return false;
         }
 
-        const void *observed = ((const uint8_t *) buffer->memory_map +
-                                command->probe_ssbo.offset);
+        const uint8_t *observed = ((const uint8_t *) buffer->memory_map +
+                                   command->probe_ssbo.offset);
 
-        if (!vr_box_compare(command->probe_ssbo.comparison,
-                            &command->probe_ssbo.tolerance,
-                            command->probe_ssbo.type,
-                            observed,
-                            expected)) {
+        for (size_t i = 0; i < command->probe_ssbo.n_values; i++) {
+                if (vr_box_compare(command->probe_ssbo.comparison,
+                                   &command->probe_ssbo.tolerance,
+                                   command->probe_ssbo.type,
+                                   observed + observed_stride * i,
+                                   expected + type_size * i))
+                        continue;
+
                 print_command_fail(data->window->config, command);
 
                 struct vr_buffer buf = VR_BUFFER_STATIC_INIT;
                 vr_buffer_append_string(&buf,
                                         "SSBO probe failed\n"
                                         "  Reference:");
-                append_box(&buf, command->probe_ssbo.type, expected);
+                append_box(&buf,
+                           command->probe_ssbo.type,
+                           command->probe_ssbo.n_values,
+                           type_size,
+                           expected);
                 vr_buffer_append_string(&buf,
                                         "\n"
                                         "  Observed: ");
-                append_box(&buf, command->probe_ssbo.type, observed);
+                append_box(&buf,
+                           command->probe_ssbo.type,
+                           command->probe_ssbo.n_values,
+                           observed_stride,
+                           observed);
                 vr_error_message(data->window->config,
                                  "%s",
                                  (const char *) buf.data);

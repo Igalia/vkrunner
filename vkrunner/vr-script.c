@@ -727,14 +727,14 @@ parse_value(const char **p,
 }
 
 static bool
-parse_buffer_subdata(const char **p,
-                     enum vr_box_type type,
-                     size_t *size_out,
-                     void **buffer_out)
+parse_box_values(const char **p,
+                 enum vr_box_type type,
+                 size_t alignment,
+                 size_t *size_out,
+                 void **buffer_out)
 {
         struct vr_buffer buffer = VR_BUFFER_STATIC_INIT;
         size_t type_size = vr_box_type_size(type);
-        size_t alignment = vr_box_type_base_alignment(type);
 
         do {
                 vr_buffer_set_length(&buffer,
@@ -753,6 +753,17 @@ parse_buffer_subdata(const char **p,
         *size_out = buffer.length;
 
         return true;
+}
+
+static bool
+parse_buffer_subdata(const char **p,
+                     enum vr_box_type type,
+                     size_t *size_out,
+                     void **buffer_out)
+{
+        size_t alignment = vr_box_type_base_alignment(type);
+
+        return parse_box_values(p, type, alignment, size_out, buffer_out);
 }
 
 static bool
@@ -1160,17 +1171,22 @@ found_comparison:
         while (isspace(*p))
                 p++;
 
-        size_t type_size = vr_box_type_size(command->probe_ssbo.type);
-        command->probe_ssbo.value = vr_alloc(type_size);
+        size_t value_size;
 
-        if (!parse_value(&p,
-                         command->probe_ssbo.type,
-                         command->probe_ssbo.value) ||
-            !is_end(p)) {
+        if (!parse_box_values(&p,
+                              command->probe_ssbo.type,
+                              1, /* alignment */
+                              &value_size,
+                              &command->probe_ssbo.value))
+                return false;
+
+        if (!is_end(p)) {
                 vr_free(command->probe_ssbo.value);
                 return false;
         }
 
+        size_t type_size = vr_box_type_size(command->probe_ssbo.type);
+        command->probe_ssbo.n_values = value_size / type_size;
         command->op = VR_SCRIPT_OP_PROBE_SSBO;
         command->probe_ssbo.tolerance = *tolerance;
 

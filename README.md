@@ -126,7 +126,9 @@ one of them fails the comparison. `~=` is the same with `==` but `~=`
 allows errors for `double` or `float` type numbers while `==` does
 not. Allowed errors can be set by the following `tolerance` command.
 See [examples/tolerance.shader_test](examples/tolerance.shader_test)
-for the usage of `~=`.
+for the usage of `~=`. Multiple values can be listed to compare an
+array of values. In that case the buffer is assumed to have std140
+layout.
 
 > tolerance _tolerance0 tolerance1 tolerance2 tolerance3_
 
