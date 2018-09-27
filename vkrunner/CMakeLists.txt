@@ -47,6 +47,8 @@ set(VKRUNNER_SOURCE_FILES
         vr-shader-stage.h
         vr-source-private.h
         vr-source.c
+        vr-stream.c
+        vr-stream.h
         vr-temp-file.c
         vr-temp-file.h
         vr-util.c

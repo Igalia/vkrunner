@@ -275,6 +275,19 @@ The `[indices]` section just contains a list of indices to use along
 with the vertices in `[vertex data]`. It will be used if the `indexed`
 option is given to the `draw arrays` test command.
 
+## Long lines
+
+Long lines anywhere in the script can be split into multiple lines by
+using a backslash to combine them. For example a line to set an array
+of ints could be split up as follows:
+
+```
+uniform ubo 0 int 0 \
+        1 2 3 5 8 13 21 34 55 89 144 233 377 610 \
+        987 1597 2584 4181 6765 10946 17711 28657 \
+        46368 75025 121393 196418 317811 514229
+```
+
 ## Command line arguments
 
     usage: vkrunner [OPTION]... SCRIPT...
