@@ -1,0 +1,98 @@
+[vertex shader]
+#version 430
+
+layout(location = 0) in vec4 position;
+layout(location = 1) in vec2 vert_texcoord;
+
+layout(location = 0) out vec2 frag_texCoord;
+
+void
+main()
+{
+    gl_Position = position;
+    frag_texCoord = vert_texcoord;
+}
+
+[fragment shader]
+#version 430
+
+layout(set = 0, binding = 1) uniform sampler2D tex_sampler;
+
+layout(location = 0) in vec2 frag_texCoord;
+
+layout(location = 0) out vec4 color_out;
+
+void
+main()
+{
+    color_out = texture(tex_sampler, frag_texCoord);
+}
+
+[vertex data]
+0/R32G32_SFLOAT 1/R32G32_SFLOAT
+
+   1    1       1 1
+-0.6    1       0 1
+   1 -0.6       1 0
+-0.6    1       0 1
+   1 -0.6       1 0
+-0.6 -0.6       0 0
+
+[test]
+clear
+
+# *** Combined image sampler related commands ***
+#
+# 1. Create default combined
+# combined [set:bind] (width, height) format color
+# e.g.,
+# combined 0:1 (8, 8) R8G8B8A8_UNORM rgbw
+#
+# 2. Change filter attributes
+# combined filter [set:bind] [magFilter] [minFilter]
+# e.g.,
+# combined filter 0:1 VK_FILTER_NEAREST VK_FILTER_NEAREST
+#
+# 3. Change mipmap mode
+# combined mipmap [set:bind] [mipmapMode]
+# e.g.,
+# combined mipmap 0:1 VK_SAMPLER_MIPMAP_MODE_NEAREST
+#
+# 4. Change address modes for U, V, and W
+# combined address [set:bind] [addressModeU] [addressModeV] [addressModeW]
+# e.g.,
+# combined address 0:1 VK_SAMPLER_ADDRESS_MODE_REPEAT VK_SAMPLER_ADDRESS_MODE_REPEAT VK_SAMPLER_ADDRESS_MODE_REPEAT
+#
+# 5. Change unnormalizedCoordinates
+# combined norm [set:bind] [normalizedCoordinates]
+#   --> normalizedCoordinates must be 0 for unnormalizedCoordinates = VK_TRUE
+#                                 and 1 for unnormalizedCoordinates = VK_FALSE
+# e.g.,
+# combined norm 0:1 0
+#   --> it means setting "unnormalizedCoordinates" attribute as VK_TRUE
+# combined norm 0:1 1
+#   --> it means setting "unnormalizedCoordinates" attribute as VK_FALSE
+#
+# 6. Change level of detail i.e., Lod
+# combined lod [set:bind] [minLod] [maxLod] [mipLodBias]
+#   --> minLod, maxLod, and mipLodBias must be float values
+# e.g.,
+# combined lod 0:1 0.0 0.0 0.0
+#
+# 7. Change other attributes
+# combined extra [set:bind] [maxAnisotropy] [compareOp] [borderColor]
+# e.g.,
+# combined extra 0:1 1 VK_COMPARE_OP_NEVER VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE
+
+combined 0:1 (8, 8) R8G8B8A8_UNORM rgbw
+combined filter 0:1 VK_FILTER_NEAREST VK_FILTER_NEAREST
+combined mipmap 0:1 VK_SAMPLER_MIPMAP_MODE_NEAREST
+combined address 0:1 VK_SAMPLER_ADDRESS_MODE_REPEAT VK_SAMPLER_ADDRESS_MODE_REPEAT VK_SAMPLER_ADDRESS_MODE_REPEAT
+combined norm 0:1 1
+
+draw arrays TRIANGLE_LIST 0 6
+
+relative probe rect rgb (0.2, 0.2, 0.4, 0.4) (1, 0, 0)
+relative probe rect rgb (0.6, 0.2, 0.4, 0.4) (0, 1, 0)
+relative probe rect rgb (0.2, 0.6, 0.4, 0.4) (0, 0, 1)
+relative probe rect rgb (0.6, 0.6, 0.4, 0.4) (1, 1, 1)

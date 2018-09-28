@@ -29,34 +29,44 @@
 #include <stdlib.h>
 #include <vkrunner/vr-format.h>
 
-struct vr_inspect_image {
-        /* Dimensions of the buffer */
-        int width, height;
-        /* The stride in pixels from one row of the image to the next */
-        size_t stride;
-        /* An opaque pointer describing the format of each pixel in
-         * the buffer
-         */
-        const struct vr_format *format;
-        /* The buffer data */
+struct vr_inspect_resource {
+        /* The descriptor set and binding number of the resource */
+        int desc_set, binding;
+        /* The data */
         const void *data;
-};
 
-struct vr_inspect_buffer {
-        /* The binding number of the buffer */
-        int binding;
-        /* Size in bytes of the buffer */
-        size_t size;
-        /* The buffer data */
-        const void *data;
+        union {
+                struct {
+                        /* Dimensions of the buffer */
+                        int width, height;
+                        /* The stride in pixels from one row of the image to
+                         * the next
+                         */
+                        size_t stride;
+                        /* An opaque pointer describing the format of each pixel
+                         * in the buffer
+                         */
+                        const struct vr_format *format;
+                } image;
+
+                struct {
+                        /* Size in bytes of the buffer */
+                        size_t size;
+                } buffer;
+        };
 };
 
 struct vr_inspect_data {
         /* The color buffer */
-        struct vr_inspect_image color_buffer;
+        struct vr_inspect_resource color_buffer;
+
         /* An array of buffers used as UBOs or SSBOs */
         size_t n_buffers;
-        const struct vr_inspect_buffer *buffers;
+        const struct vr_inspect_resource *buffers;
+
+        /* An array of images used as image or combined or image storage */
+        size_t n_images;
+        const struct vr_inspect_resource *images;
 };
 
 #endif /* VR_CONFIG_H */

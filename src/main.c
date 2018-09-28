@@ -296,11 +296,11 @@ process_argv(struct main_data *data,
 }
 
 static bool
-write_ppm(const struct vr_inspect_image *image,
+write_ppm(const struct vr_inspect_resource *image,
           const char *filename)
 {
-        const struct vr_format *format = image->format;
-        int format_size = vr_format_get_size(image->format);
+        const struct vr_format *format = image->image.format;
+        int format_size = vr_format_get_size(image->image.format);
         FILE *out = fopen(filename, "wb");
 
         if (out == NULL) {
@@ -315,13 +315,14 @@ write_ppm(const struct vr_inspect_image *image,
                 "P6\n"
                 "%i %i\n"
                 "255\n",
-                image->width,
-                image->height);
+                image->image.width,
+                image->image.height);
 
-        for (int y = 0; y < image->height; y++) {
-                const uint8_t *p = (uint8_t *) image->data + y * image->stride;
+        for (int y = 0; y < image->image.height; y++) {
+                const uint8_t *p =
+                        (uint8_t *) image->data + y * image->image.stride;
 
-                for (int x = 0; x < image->width; x++) {
+                for (int x = 0; x < image->image.width; x++) {
                         double pixel[4];
 
                         vr_format_load_pixel(format, p, pixel);
@@ -350,7 +351,7 @@ write_buffer(const struct vr_inspect_data *data,
              int binding,
              const char *filename)
 {
-        const struct vr_inspect_buffer *buffer;
+        const struct vr_inspect_resource *buffer;
 
         if (data->n_buffers < 1) {
                 fprintf(stderr,
@@ -389,7 +390,7 @@ write_buffer(const struct vr_inspect_data *data,
                 return false;
         }
 
-        fwrite(buffer->data, 1, buffer->size, out);
+        fwrite(buffer->data, 1, buffer->buffer.size, out);
         fclose(out);
 
         return true;
