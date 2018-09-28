@@ -47,6 +47,7 @@ VKRUNNER_SRC_FILES := vkrunner/vr-allocate-store.c \
 	vkrunner/vr-temp-file.c \
 	vkrunner/vr-test.c \
 	vkrunner/vr-tolerance.c \
+	vkrunner/vr-unit-test.c \
 	vkrunner/vr-util.c \
 	vkrunner/vr-vbo.c \
 	vkrunner/vr-vk.c \

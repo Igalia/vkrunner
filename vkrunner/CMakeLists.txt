@@ -1,5 +1,7 @@
 # cmake file for VkRunner
 
+include(CTest)
+
 include_directories(${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR})
 
 set(VKRUNNER_PUBLIC_HEADERS
@@ -66,11 +68,16 @@ set(VKRUNNER_SOURCE_FILES
         vr-test.h
         vr-tolerance.c
         vr-tolerance.h
+        vr-unit-test.c
+        vr-unit-test.h
         vr-vbo.c
         vr-vbo.h
         vr-window.c
         vr-window.h
         ${VKRUNNER_PUBLIC_HEADERS}
+        )
+
+set(VKRUNNER_TEST_SOURCES
         )
 
 add_library(vkrunner STATIC ${VKRUNNER_SOURCE_FILES})
@@ -101,3 +108,22 @@ configure_file(
   )
 install(FILES "${PROJECT_BINARY_DIR}/vkrunner/vkrunner.pc"
   DESTINATION lib/pkgconfig)
+
+option(BUILD_VKRUNNER_TESTS "Whether to buid VkRunner unit tests" OFF)
+
+if(BUILD_VKRUNNER_TESTS)
+  add_executable(unit-tester unit-tester.c ${VKRUNNER_TEST_SOURCES})
+  target_link_libraries(unit-tester vkrunner)
+
+  add_definitions("-DBUILD_VKRUNNER_TESTS")
+
+  execute_process(COMMAND sed -nr "s/^VR_UNIT_TEST\\(([a-z_0-9]+).*/\\1/p"
+    ${VKRUNNER_TEST_SOURCES}
+    ${VKRUNNER_SOURCE_FILES}
+    OUTPUT_VARIABLE TEST_NAMES
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  string(REPLACE "\n" ";" TEST_NAMES ${TEST_NAMES})
+  foreach(TEST ${TEST_NAMES})
+    add_test(NAME ${TEST} COMMAND unit-tester ${TEST})
+  endforeach()
+endif()

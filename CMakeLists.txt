@@ -61,3 +61,7 @@ configure_file(
 
 add_subdirectory(vkrunner)
 add_subdirectory(src)
+
+if(BUILD_VKRUNNER_TESTS)
+  enable_testing()
+endif()
