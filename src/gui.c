@@ -33,6 +33,7 @@
 struct gui {
         GtkWidget *window;
         GtkTextBuffer *text_buffer;
+        GtkTextBuffer *log_buffer;
         GtkWidget *statusbar;
         guint result_context_id;
         guint timeout_source;
@@ -61,6 +62,14 @@ worker_cb(const struct gui_worker_data *data,
                                    gui->result_context_id,
                                    note);
                 g_free(note);
+        }
+
+        if (g_utf8_validate(data->log, -1, NULL)) {
+                gtk_text_buffer_set_text(gui->log_buffer, data->log, -1);
+        } else {
+                char *log = g_utf8_make_valid(data->log, -1);
+                gtk_text_buffer_set_text(gui->log_buffer, log, -1);
+                g_free(log);
         }
 }
 
@@ -123,6 +132,10 @@ gui_new(void)
         gtk_orientable_set_orientation(GTK_ORIENTABLE(grid),
                                        GTK_ORIENTATION_VERTICAL);
 
+        GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
+        gtk_widget_set_hexpand(paned, true);
+        gtk_widget_set_vexpand(paned, true);
+
         GtkWidget *scrolled_view = gtk_scrolled_window_new(NULL, NULL);
 
         gui->text_buffer = gtk_text_buffer_new(NULL);
@@ -133,11 +146,28 @@ gui_new(void)
         GtkWidget *text_view = gtk_text_view_new_with_buffer(gui->text_buffer);
 
         gtk_container_add(GTK_CONTAINER(scrolled_view), text_view);
-        gtk_widget_set_hexpand(scrolled_view, true);
-        gtk_widget_set_vexpand(scrolled_view, true);
+
+        gtk_paned_pack1(GTK_PANED(paned),
+                        scrolled_view,
+                        true, /* resize */
+                        false /* shrink */);
+
+        gui->log_buffer = gtk_text_buffer_new(NULL);
+        GtkWidget *log_view = gtk_text_view_new_with_buffer(gui->log_buffer);
+        gtk_text_view_set_editable(GTK_TEXT_VIEW(log_view), false);
+        gtk_widget_set_can_focus(log_view, false);
+
+        scrolled_view = gtk_scrolled_window_new(NULL, NULL);
+
+        gtk_container_add(GTK_CONTAINER(scrolled_view), log_view);
+
+        gtk_paned_pack2(GTK_PANED(paned),
+                        scrolled_view,
+                        true, /* resize */
+                        false /* shrink */);
 
         gtk_grid_attach(GTK_GRID(grid),
-                        scrolled_view,
+                        paned,
                         0, 0, /* left / top */
                         1, 1 /* width / height */);
 
@@ -148,11 +178,13 @@ gui_new(void)
                                              "test-result");
         gtk_grid_attach_next_to(GTK_GRID(grid),
                                 gui->statusbar,
-                                scrolled_view,
+                                paned,
                                 GTK_POS_BOTTOM,
                                 1, 1 /* width / height */);
 
         gtk_container_add(GTK_CONTAINER(gui->window), grid);
+
+        gtk_widget_grab_focus(text_view);
 
         gtk_widget_show_all(gui->window);
 
@@ -164,6 +196,7 @@ gui_free(struct gui *gui)
 {
         g_object_unref(gui->window);
         g_object_unref(gui->text_buffer);
+        g_object_unref(gui->log_buffer);
 
         gui_worker_free(gui->worker);
 
