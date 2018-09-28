@@ -77,6 +77,7 @@ set(VKRUNNER_SOURCE_FILES
         )
 
 set(VKRUNNER_TEST_SOURCES
+        test-script.c
         )
 
 add_library(vkrunner STATIC ${VKRUNNER_SOURCE_FILES})
