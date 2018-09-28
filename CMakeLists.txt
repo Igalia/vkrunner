@@ -57,6 +57,8 @@ if (NOT VULKAN_HEADER)
   set(VULKAN_HEADER "<vulkan/vulkan.h>")
 endif()
 
+pkg_check_modules(GTK gtk+-3.0)
+
 configure_file(
   "${PROJECT_SOURCE_DIR}/config.h.in"
   "${PROJECT_BINARY_DIR}/config.h"
