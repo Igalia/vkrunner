@@ -33,6 +33,8 @@
 struct gui {
         GtkWidget *window;
         GtkTextBuffer *text_buffer;
+        GtkWidget *statusbar;
+        guint result_context_id;
         guint timeout_source;
 
         struct gui_worker *worker;
@@ -44,9 +46,22 @@ static void
 worker_cb(const struct gui_worker_data *data,
           void *user_data)
 {
+        struct gui *gui = user_data;
+
         g_print("Result: %s\nLog:\n%s\n",
                 vr_result_to_string(data->result),
                 data->log);
+
+        if (data->serial_id >= gui->serial_id) {
+                gtk_statusbar_remove_all(GTK_STATUSBAR(gui->statusbar),
+                                         gui->result_context_id);
+                char *note = g_strdup_printf("Result: %s",
+                                             vr_result_to_string(data->result));
+                gtk_statusbar_push(GTK_STATUSBAR(gui->statusbar),
+                                   gui->result_context_id,
+                                   note);
+                g_free(note);
+        }
 }
 
 static gboolean
@@ -75,10 +90,18 @@ text_changed_cb(GtkTextBuffer *buffer,
 {
         struct gui *gui = user_data;
 
-        if (gui->timeout_source)
+        if (gui->timeout_source) {
                 g_source_remove(gui->timeout_source);
+        } else {
+                gtk_statusbar_remove_all(GTK_STATUSBAR(gui->statusbar),
+                                         gui->result_context_id);
+                gtk_statusbar_push(GTK_STATUSBAR(gui->statusbar),
+                                   gui->result_context_id,
+                                   "Result pending…");
+        }
 
         gui->timeout_source = g_timeout_add(1000, timeout_cb, gui);
+
 }
 
 static struct gui *
@@ -96,6 +119,10 @@ gui_new(void)
 
         gui->worker = gui_worker_new(worker_cb, gui);
 
+        GtkWidget *grid = gtk_grid_new();
+        gtk_orientable_set_orientation(GTK_ORIENTABLE(grid),
+                                       GTK_ORIENTATION_VERTICAL);
+
         GtkWidget *scrolled_view = gtk_scrolled_window_new(NULL, NULL);
 
         gui->text_buffer = gtk_text_buffer_new(NULL);
@@ -106,8 +133,26 @@ gui_new(void)
         GtkWidget *text_view = gtk_text_view_new_with_buffer(gui->text_buffer);
 
         gtk_container_add(GTK_CONTAINER(scrolled_view), text_view);
+        gtk_widget_set_hexpand(scrolled_view, true);
+        gtk_widget_set_vexpand(scrolled_view, true);
 
-        gtk_container_add(GTK_CONTAINER(gui->window), scrolled_view);
+        gtk_grid_attach(GTK_GRID(grid),
+                        scrolled_view,
+                        0, 0, /* left / top */
+                        1, 1 /* width / height */);
+
+        gui->statusbar = gtk_statusbar_new();
+        gtk_widget_set_hexpand(gui->statusbar, true);
+        gui->result_context_id =
+                gtk_statusbar_get_context_id(GTK_STATUSBAR(gui->statusbar),
+                                             "test-result");
+        gtk_grid_attach_next_to(GTK_GRID(grid),
+                                gui->statusbar,
+                                scrolled_view,
+                                GTK_POS_BOTTOM,
+                                1, 1 /* width / height */);
+
+        gtk_container_add(GTK_CONTAINER(gui->window), grid);
 
         gtk_widget_show_all(gui->window);
 
