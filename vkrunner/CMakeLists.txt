@@ -76,6 +76,9 @@ set(VKRUNNER_SOURCE_FILES
         ${VKRUNNER_PUBLIC_HEADERS}
         )
 
+set(VKRUNNER_TEST_SOURCES
+        )
+
 add_library(vkrunner STATIC ${VKRUNNER_SOURCE_FILES})
 
 macro(vkrunner_add_lib libname)
@@ -96,6 +99,25 @@ add_definitions(${VULKAN_CFLAGS_OTHER})
 
 install(TARGETS vkrunner DESTINATION lib)
 install(FILES ${VKRUNNER_PUBLIC_HEADERS} DESTINATION include/vkrunner)
+
+option(BUILD_VKRUNNER_TESTS "Whether to buid VkRunner unit tests" OFF)
+
+if(BUILD_VKRUNNER_TESTS)
+  add_executable(unit-tester ${VKRUNNER_TEST_SOURCES})
+  target_link_libraries(unit-tester vkrunner)
+
+  pkg_check_modules(CRITERION criterion)
+  if(NOT CRITERION_FOUND)
+    message(FATAL_ERROR
+      "Criterion is required to build the unit tests")
+  endif()
+
+  target_link_libraries(unit-tester ${CRITERION_LDFLAGS} ${CRITERION_LIBRARIES})
+  include_directories(${CRITERION_INCLUDE_DIRS})
+  add_definitions(${CRITERION_CFLAGS_OTHER})
+
+  add_definitions("-DBUILD_VKRUNNER_TESTS")
+endif()
 
 configure_file(
   "${PROJECT_SOURCE_DIR}/vkrunner/vkrunner.pc.in"

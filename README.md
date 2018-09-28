@@ -368,6 +368,21 @@ This can by compiled using a command like the following after running
 
     cc -o myrunner myrunner.c $(pkg-config --cflags --libs vkrunner)
 
+## Unit tests
+
+VkRunner includes some unit tests to test the internal working of the
+library. If you want to run these tests, run cmake with the following
+options:
+
+    cmake -DBUILD_VKRUNNER_TESTS=ON
+
+This requires the [Criterion](https://github.com/Snaipe/Criterion)
+testing framework.
+
+Then you can run the unit tests with:
+
+    ./vkrunner/unit-tester
+
 ## Android
 
 VkRunner supports Android NDK build which generates the VkRunner static library
