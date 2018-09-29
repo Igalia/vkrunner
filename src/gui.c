@@ -49,10 +49,6 @@ worker_cb(const struct gui_worker_data *data,
 {
         struct gui *gui = user_data;
 
-        g_print("Result: %s\nLog:\n%s\n",
-                vr_result_to_string(data->result),
-                data->log);
-
         if (data->serial_id >= gui->serial_id) {
                 gtk_statusbar_remove_all(GTK_STATUSBAR(gui->statusbar),
                                          gui->result_context_id);
