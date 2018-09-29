@@ -137,6 +137,7 @@ gui_new(void)
                                        GTK_ORIENTATION_VERTICAL);
 
         GtkWidget *hpaned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
+        gtk_paned_set_position(GTK_PANED(hpaned), 400);
         gtk_widget_set_hexpand(hpaned, true);
         gtk_widget_set_vexpand(hpaned, true);
 
@@ -157,6 +158,7 @@ gui_new(void)
                         false /* shrink */);
 
         GtkWidget *vpaned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
+        gtk_paned_set_position(GTK_PANED(vpaned), 300);
         gtk_widget_set_hexpand(vpaned, true);
         gtk_widget_set_vexpand(vpaned, true);
 
