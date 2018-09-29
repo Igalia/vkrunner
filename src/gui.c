@@ -149,6 +149,7 @@ gui_new(void)
                          G_CALLBACK(text_changed_cb),
                          gui);
         GtkWidget *text_view = gtk_text_view_new_with_buffer(gui->text_buffer);
+        gtk_text_view_set_monospace(GTK_TEXT_VIEW(text_view), true);
 
         gtk_container_add(GTK_CONTAINER(scrolled_view), text_view);
 
@@ -172,6 +173,7 @@ gui_new(void)
         gui->log_buffer = gtk_text_buffer_new(NULL);
         GtkWidget *log_view = gtk_text_view_new_with_buffer(gui->log_buffer);
         gtk_text_view_set_editable(GTK_TEXT_VIEW(log_view), false);
+        gtk_text_view_set_monospace(GTK_TEXT_VIEW(log_view), true);
         gtk_widget_set_can_focus(log_view, false);
 
         scrolled_view = gtk_scrolled_window_new(NULL, NULL);
