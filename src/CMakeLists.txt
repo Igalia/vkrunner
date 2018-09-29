@@ -18,7 +18,7 @@ target_link_libraries(vkrunnerbin vkrunner)
 
 install(TARGETS vkrunnerbin DESTINATION bin)
 
-if(GTK_FOUND)
+if(GTK_FOUND AND UNIX)
   add_executable(vkrunner-gui ${VKRUNNERGUI_SOURCE_FILES})
   target_link_libraries(vkrunner-gui vkrunner)
   install(TARGETS vkrunner-gui DESTINATION bin)
