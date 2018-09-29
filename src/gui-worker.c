@@ -30,6 +30,8 @@
 #include <vkrunner/vkrunner.h>
 #include <glib.h>
 #include <stdbool.h>
+#include <math.h>
+#include <cairo.h>
 
 struct gui_worker {
         GMutex mutex;
@@ -52,10 +54,12 @@ struct gui_worker {
         uint64_t serial_id;
         enum vr_result result;
         guint idle_source;
+        cairo_surface_t *image;
 
         /* Owned by the worker thread, doesn’t need lock */
 
         GString *next_log;
+        cairo_surface_t *next_image;
 };
 
 static void
@@ -68,6 +72,60 @@ error_cb(const char *message,
         g_string_append_c(worker->next_log, '\n');
 }
 
+static void
+inspect_cb(const struct vr_inspect_data *data,
+           void *user_data)
+{
+        struct gui_worker *worker = user_data;
+
+        if (worker->next_image) {
+                worker->image = worker->next_image;
+                worker->next_image = NULL;
+        }
+
+        const struct vr_inspect_image *image = &data->color_buffer;
+        const struct vr_format *format = image->format;
+        int format_size = vr_format_get_size(format);
+
+        cairo_surface_t *surface =
+                cairo_image_surface_create(CAIRO_FORMAT_RGB24,
+                                           image->width,
+                                           image->height);
+        int dst_stride = cairo_image_surface_get_stride(surface);
+        uint32_t *dst = (uint32_t *) cairo_image_surface_get_data(surface);
+
+        for (int y = 0; y < image->height; y++) {
+                const uint8_t *src = ((uint8_t *) image->data +
+                                      y * image->stride);
+
+                for (int x = 0; x < image->width; x++) {
+                        double pixel[4];
+
+                        vr_format_load_pixel(format, src, pixel);
+
+                        uint32_t v = 0;
+
+                        for (int i = 0; i < 3; i++) {
+                                double c = pixel[i];
+
+                                if (c < 0.0)
+                                        c = 0.0;
+                                else if (c > 1.0)
+                                        c = 1.0;
+
+                                v = (v << 8) | (int) round(c * 255.0);
+                        }
+
+                        *(dst++) = v;
+                        src += format_size;
+                }
+
+                dst += dst_stride / sizeof *dst - image->width;
+        }
+
+        worker->next_image = surface;
+}
+
 static gboolean
 idle_cb(void *user_data)
 {
@@ -78,7 +136,8 @@ idle_cb(void *user_data)
         struct gui_worker_data data = {
                 .log = worker->log->str,
                 .serial_id = worker->serial_id,
-                .result = worker->result
+                .result = worker->result,
+                .image = worker->image
         };
 
         worker->callback(&data, worker->user_data);
@@ -98,6 +157,7 @@ thread_cb(void *user_data)
 
         vr_config_set_user_data(config, worker);
         vr_config_set_error_cb(config, error_cb);
+        vr_config_set_inspect_cb(config, inspect_cb);
 
         struct vr_executor *executor = vr_executor_new(config);
 
@@ -130,6 +190,16 @@ thread_cb(void *user_data)
                 g_string_append(worker->log, worker->next_log->str);
                 worker->serial_id = serial_id;
                 worker->result = res;
+
+                if (worker->image) {
+                        cairo_surface_destroy(worker->image);
+                        worker->image = NULL;
+                }
+
+                if (worker->next_image) {
+                        worker->image = worker->next_image;
+                        worker->next_image = NULL;
+                }
 
                 if (worker->idle_source == 0)
                         worker->idle_source = g_idle_add(idle_cb, worker);
@@ -202,6 +272,9 @@ gui_worker_free(struct gui_worker *worker)
 
         g_string_free(worker->next_log, true);
         g_string_free(worker->log, true);
+
+        if (worker->image)
+                cairo_surface_destroy(worker->image);
 
         if (worker->idle_source)
                 g_source_remove(worker->idle_source);

@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 #include <vkrunner/vkrunner.h>
+#include <cairo.h>
 
 struct gui_worker;
 
@@ -35,6 +36,7 @@ struct gui_worker_data {
         const char *log;
         uint64_t serial_id;
         enum vr_result result;
+        cairo_surface_t *image;
 };
 
 typedef void (* gui_worker_cb)(const struct gui_worker_data *data,
