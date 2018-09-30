@@ -8,6 +8,7 @@ set(VKRUNNERBIN_SOURCE_FILES
 
 set(VKRUNNERGUI_SOURCE_FILES
         gui.c
+        gui-initial-script.c
         gui-worker.c
         )
 

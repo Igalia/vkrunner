@@ -29,6 +29,7 @@
 #include <gtk/gtk.h>
 
 #include "gui-worker.h"
+#include "gui-initial-script.h"
 
 struct gui {
         GtkWidget *window;
@@ -209,6 +210,8 @@ gui_new(void)
         gtk_container_add(GTK_CONTAINER(gui->window), grid);
 
         gtk_widget_grab_focus(text_view);
+
+        gtk_text_buffer_set_text(gui->text_buffer, gui_initial_script, -1);
 
         gtk_widget_show_all(gui->window);
 
