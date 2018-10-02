@@ -23,22 +23,37 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_CONFIG_H
-#define VR_CONFIG_H
+#ifndef VR_STRTOF_H
+#define VR_STRTOF_H
 
-#include <stdbool.h>
-#include "vr-result.h"
-#include "vr-callback.h"
-#include "vr-strtof.h"
+#include <stdint.h>
 
-struct vr_config {
-        bool show_disassembly;
-
-        vr_callback_error error_cb;
-        vr_callback_inspect inspect_cb;
-        void *user_data;
-
-        struct vr_strtof_data strtof_data;
+/* This union has enough space to hold whatever locale_t is. We don’t
+ * want to actually use locale_t because we want to confine
+ * _GNU_SOURCE to vr-strtof.c so that we don’t accidentally break
+ * portability.
+ */
+struct vr_strtof_data {
+        union {
+                void *pointer;
+                uint64_t integer;
+        };
 };
 
-#endif /* VR_CONFIG_H */
+void
+vr_strtof_init(struct vr_strtof_data *data);
+
+float
+vr_strtof(const struct vr_strtof_data *data,
+          const char *nptr,
+          char **endptr);
+
+double
+vr_strtod(const struct vr_strtof_data *data,
+          const char *nptr,
+          char **endptr);
+
+void
+vr_strtof_destroy(struct vr_strtof_data *data);
+
+#endif /* VR_STRTOF_H */

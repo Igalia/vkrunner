@@ -43,6 +43,7 @@ VKRUNNER_SRC_FILES := vkrunner/vr-allocate-store.c \
 	vkrunner/vr-script.c \
 	vkrunner/vr-source.c \
 	vkrunner/vr-stream.c \
+	vkrunner/vr-strtof.c \
 	vkrunner/vr-subprocess.c \
 	vkrunner/vr-temp-file.c \
 	vkrunner/vr-test.c \

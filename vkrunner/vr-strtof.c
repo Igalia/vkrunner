@@ -23,22 +23,58 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_CONFIG_H
-#define VR_CONFIG_H
+#include "config.h"
 
-#include <stdbool.h>
-#include "vr-result.h"
-#include "vr-callback.h"
+#define _GNU_SOURCE
+
 #include "vr-strtof.h"
 
-struct vr_config {
-        bool show_disassembly;
+#include <stdlib.h>
 
-        vr_callback_error error_cb;
-        vr_callback_inspect inspect_cb;
-        void *user_data;
+#ifdef __GLIBC__
+#include <locale.h>
+#endif
 
-        struct vr_strtof_data strtof_data;
-};
+void
+vr_strtof_init(struct vr_strtof_data *data)
+{
+#ifdef __GLIBC__
+        *(locale_t *) data = newlocale(LC_CTYPE_MASK, "C", NULL);
+#endif
+}
 
-#endif /* VR_CONFIG_H */
+float
+vr_strtof(const struct vr_strtof_data *data,
+          const char *nptr,
+          char **endptr)
+{
+#ifdef __GLIBC__
+        locale_t c_locale = *(locale_t *) data;
+        if (c_locale)
+                return strtof_l(nptr, endptr, c_locale);
+#endif
+        return strtof(nptr, endptr);
+}
+
+double
+vr_strtod(const struct vr_strtof_data *data,
+          const char *nptr,
+          char **endptr)
+{
+#ifdef __GLIBC__
+        locale_t c_locale = *(locale_t *) data;
+        if (c_locale)
+                return strtod_l(nptr, endptr, c_locale);
+#endif
+        return strtod(nptr, endptr);
+}
+
+void
+vr_strtof_destroy(struct vr_strtof_data *data)
+{
+#ifdef __GLIBC__
+        locale_t c_locale = *(locale_t *) data;
+        if (c_locale)
+                freelocale(c_locale);
+#endif
+}

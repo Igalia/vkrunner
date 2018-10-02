@@ -25,17 +25,26 @@
 #define VR_HEX_H
 
 #include <stdint.h>
+#include "vr-strtof.h"
 
 float
-vr_hex_strtof(const char *nptr, char **endptr);
+vr_hex_strtof(const struct vr_strtof_data *data,
+              const char *nptr,
+              char **endptr);
 
 double
-vr_hex_strtod(const char *nptr, char **endptr);
+vr_hex_strtod(const struct vr_strtof_data *data,
+              const char *nptr,
+              char **endptr);
 
 int
-vr_hex_strtol(const char *nptr, char **endptr);
+vr_hex_strtol(const struct vr_strtof_data *data,
+              const char *nptr,
+              char **endptr);
 
 uint16_t
-vr_hex_strtohf(const char *nptr, char **endptr);
+vr_hex_strtohf(const struct vr_strtof_data *data,
+               const char *nptr,
+               char **endptr);
 
 #endif /* VR_HEX_H */
