@@ -49,6 +49,8 @@ set(VKRUNNER_SOURCE_FILES
         vr-source.c
         vr-stream.c
         vr-stream.h
+        vr-strtof.c
+        vr-strtof.h
         vr-temp-file.c
         vr-temp-file.h
         vr-util.c

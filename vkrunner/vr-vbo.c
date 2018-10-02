@@ -262,7 +262,10 @@ parse_datum(const struct vr_config *config,
         case VR_FORMAT_MODE_SFLOAT:
                 switch (bit_size) {
                 case 16: {
-                        unsigned short value = vr_hex_strtohf(*text, &endptr);
+                        unsigned short value =
+                                vr_hex_strtohf(&config->strtof_data,
+                                               *text,
+                                               &endptr);
                         if (errno == ERANGE) {
                                 vr_error_message(config,
                                                  "Could not parse as "
@@ -273,7 +276,9 @@ parse_datum(const struct vr_config *config,
                         goto handled;
                 }
                 case 32: {
-                        float value = vr_hex_strtof(*text, &endptr);
+                        float value = vr_hex_strtof(&config->strtof_data,
+                                                    *text,
+                                                    &endptr);
                         if (errno == ERANGE) {
                                 vr_error_message(config,
                                                  "Could not parse as float");
@@ -283,7 +288,9 @@ parse_datum(const struct vr_config *config,
                         goto handled;
                 }
                 case 64: {
-                        double value = vr_hex_strtod(*text, &endptr);
+                        double value = vr_hex_strtod(&config->strtof_data,
+                                                     *text,
+                                                     &endptr);
                         if (errno == ERANGE) {
                                 vr_error_message(config,
                                                  "Could not parse as double");

@@ -37,7 +37,9 @@
  * pattern to generate a float value.
  */
 float
-vr_hex_strtof(const char *nptr, char **endptr)
+vr_hex_strtof(const struct vr_strtof_data *data,
+              const char *nptr,
+              char **endptr)
 {
         /* skip spaces and tabs */
         while (*nptr == ' ' || *nptr == '\t')
@@ -52,7 +54,7 @@ vr_hex_strtof(const char *nptr, char **endptr)
                 x.u = strtoul(nptr, endptr, 16);
                 return x.f;
         } else {
-                return strtod(nptr, endptr);
+                return vr_strtod(data, nptr, endptr);
         }
 }
 
@@ -61,7 +63,9 @@ vr_hex_strtof(const char *nptr, char **endptr)
  * pattern to generate a double value.
  */
 double
-vr_hex_strtod(const char *nptr, char **endptr)
+vr_hex_strtod(const struct vr_strtof_data *data,
+              const char *nptr,
+              char **endptr)
 {
         /* skip spaces and tabs */
         while (*nptr == ' ' || *nptr == '\t')
@@ -76,7 +80,7 @@ vr_hex_strtod(const char *nptr, char **endptr)
                 x.u64 = strtoull(nptr, endptr, 16);
                 return x.d;
         } else {
-                return strtod(nptr, endptr);
+                return vr_strtod(data, nptr, endptr);
         }
 }
 
@@ -85,7 +89,9 @@ vr_hex_strtod(const char *nptr, char **endptr)
  * generate a signed int value.
  */
 int
-vr_hex_strtol(const char *nptr, char **endptr)
+vr_hex_strtol(const struct vr_strtof_data *data,
+              const char *nptr,
+              char **endptr)
 {
         /* skip spaces and tabs */
         while (*nptr == ' ' || *nptr == '\t')
@@ -109,7 +115,9 @@ vr_hex_strtol(const char *nptr, char **endptr)
  * hex bit pattern to generate a half float value.
  */
 uint16_t
-vr_hex_strtohf(const char *nptr, char **endptr)
+vr_hex_strtohf(const struct vr_strtof_data *data,
+               const char *nptr,
+               char **endptr)
 {
         /* skip spaces and tabs */
         while (*nptr == ' ' || *nptr == '\t')
@@ -124,6 +132,6 @@ vr_hex_strtohf(const char *nptr, char **endptr)
                         return u;
                 }
         } else {
-                return vr_half_float_from_float(strtod(nptr, endptr));
+                return vr_half_float_from_float(vr_strtod(data, nptr, endptr));
         }
 }

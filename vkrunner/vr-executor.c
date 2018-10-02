@@ -169,6 +169,8 @@ vr_executor_new(void)
 {
         struct vr_executor *executor = vr_calloc(sizeof *executor);
 
+        vr_strtof_init(&executor->config.strtof_data);
+
         return executor;
 }
 
@@ -317,6 +319,8 @@ void
 vr_executor_free(struct vr_executor *executor)
 {
         free_context(executor);
+
+        vr_strtof_destroy(&executor->config.strtof_data);
 
         vr_free(executor);
 }

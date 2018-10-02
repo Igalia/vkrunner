@@ -216,7 +216,8 @@ is_end(const char *p)
 }
 
 static bool
-parse_floats(const char **p,
+parse_floats(struct load_state *data,
+             const char **p,
              float *out,
              int n_floats,
              const char *sep)
@@ -228,7 +229,7 @@ parse_floats(const char **p,
                         (*p)++;
 
                 errno = 0;
-                *(out++) = strtof(*p, &tail);
+                *(out++) = vr_strtof(&data->config->strtof_data, *p, &tail);
                 if (errno != 0 || tail == *p)
                         return false;
                 *p = tail;
@@ -245,7 +246,8 @@ parse_floats(const char **p,
 }
 
 static bool
-parse_doubles(const char **p,
+parse_doubles(struct load_state *data,
+              const char **p,
               double *out,
               int n_doubles,
               const char *sep)
@@ -257,7 +259,7 @@ parse_doubles(const char **p,
                         (*p)++;
 
                 errno = 0;
-                *(out++) = strtod(*p, &tail);
+                *(out++) = vr_strtod(&data->config->strtof_data, *p, &tail);
                 if (errno != 0 || tail == *p)
                         return false;
                 *p = tail;
@@ -641,7 +643,8 @@ parse_value_type(const char **p,
 }
 
 static bool
-parse_value(const char **p,
+parse_value(struct load_state *data,
+            const char **p,
             enum vr_box_type type,
             void *value)
 {
@@ -708,14 +711,16 @@ parse_value(const char **p,
                                 return false;
                         break;
                 case VR_BOX_BASE_TYPE_FLOAT:
-                        if (!parse_floats(p,
+                        if (!parse_floats(data,
+                                          p,
                                           (float *) value + col * stride,
                                           info->rows,
                                           NULL))
                                 return false;
                         break;
                 case VR_BOX_BASE_TYPE_DOUBLE:
-                        if (!parse_doubles(p,
+                        if (!parse_doubles(data,
+                                           p,
                                            (double *) value + col * stride,
                                            info->rows,
                                            NULL))
@@ -728,7 +733,8 @@ parse_value(const char **p,
 }
 
 static bool
-parse_box_values(const char **p,
+parse_box_values(struct load_state *data,
+                 const char **p,
                  enum vr_box_type type,
                  size_t alignment,
                  size_t *size_out,
@@ -742,7 +748,8 @@ parse_box_values(const char **p,
                                      vr_align(buffer.length, alignment) +
                                      type_size);
 
-                if (!parse_value(p,
+                if (!parse_value(data,
+                                 p,
                                  type,
                                  buffer.data + buffer.length - type_size)) {
                         vr_buffer_destroy(&buffer);
@@ -757,14 +764,20 @@ parse_box_values(const char **p,
 }
 
 static bool
-parse_buffer_subdata(const char **p,
+parse_buffer_subdata(struct load_state *data,
+                     const char **p,
                      enum vr_box_type type,
                      size_t *size_out,
                      void **buffer_out)
 {
         size_t alignment = vr_box_type_base_alignment(type);
 
-        return parse_box_values(p, type, alignment, size_out, buffer_out);
+        return parse_box_values(data,
+                                p,
+                                type,
+                                alignment,
+                                size_out,
+                                buffer_out);
 }
 
 static bool
@@ -813,7 +826,8 @@ parse_tolerance(struct load_state *data,
                 int n_tolerance,
                 bool parse_percent)
 {
-        if (parse_doubles(&p,
+        if (parse_doubles(data,
+                          &p,
                           data->tolerance.value,
                           n_tolerance,
                           parse_percent ? "%" : NULL)) {
@@ -994,7 +1008,7 @@ process_draw_rect_command(struct load_state *data,
 
         vr_pipeline_key_destroy(&key);
 
-        if (!parse_floats(&p, &command->draw_rect.x, 4, NULL) ||
+        if (!parse_floats(data, &p, &command->draw_rect.x, 4, NULL) ||
             !is_end(p))
                 return false;
 
@@ -1013,15 +1027,15 @@ process_draw_rect_command(struct load_state *data,
 }
 
 static bool
-process_probe_command(const char *p,
-                      struct vr_script_command *command,
-                      const struct vr_tolerance *tolerance)
+process_probe_command(struct load_state *data,
+                      const char *p,
+                      struct vr_script_command *command)
 {
         bool relative = false;
         enum { POINT, RECT, ALL } region_type = POINT;
         int n_components;
 
-        command->probe_rect.tolerance = *tolerance;
+        command->probe_rect.tolerance = data->tolerance;
 
         if (looking_at(&p, "relative "))
                 relative = true;
@@ -1047,7 +1061,8 @@ process_probe_command(const char *p,
         if (region_type == ALL) {
                 if (relative)
                         return false;
-                if (!parse_doubles(&p,
+                if (!parse_doubles(data,
+                                   &p,
                                    command->probe_rect.color,
                                    n_components,
                                    NULL))
@@ -1070,7 +1085,7 @@ process_probe_command(const char *p,
         if (region_type == POINT) {
                 if (relative) {
                         float rel_pos[2];
-                        if (!parse_floats(&p, rel_pos, 2, ","))
+                        if (!parse_floats(data, &p, rel_pos, 2, ","))
                                 return false;
                         command->probe_rect.x = rel_pos[0] * VR_WINDOW_WIDTH;
                         command->probe_rect.y = rel_pos[1] * VR_WINDOW_HEIGHT;
@@ -1084,7 +1099,7 @@ process_probe_command(const char *p,
 
                 if (relative) {
                         float rel_pos[4];
-                        if (!parse_floats(&p, rel_pos, 4, ","))
+                        if (!parse_floats(data, &p, rel_pos, 4, ","))
                                 return false;
                         command->probe_rect.x = rel_pos[0] * VR_WINDOW_WIDTH;
                         command->probe_rect.y = rel_pos[1] * VR_WINDOW_HEIGHT;
@@ -1107,7 +1122,11 @@ process_probe_command(const char *p,
                 return false;
         p++;
 
-        if (!parse_doubles(&p, command->probe_rect.color, n_components, ","))
+        if (!parse_doubles(data,
+                           &p,
+                           command->probe_rect.color,
+                           n_components,
+                           ","))
                 return false;
 
         while (isspace(*p))
@@ -1123,9 +1142,9 @@ process_probe_command(const char *p,
 }
 
 static bool
-process_probe_ssbo_command(const char *p,
-                           struct vr_script_command *command,
-                           const struct vr_tolerance *tolerance)
+process_probe_ssbo_command(struct load_state *data,
+                           const char *p,
+                           struct vr_script_command *command)
 {
         if (!looking_at(&p, "probe ssbo "))
                 return false;
@@ -1174,7 +1193,8 @@ found_comparison:
 
         size_t value_size;
 
-        if (!parse_box_values(&p,
+        if (!parse_box_values(data,
+                              &p,
                               command->probe_ssbo.type,
                               1, /* alignment */
                               &value_size,
@@ -1189,7 +1209,7 @@ found_comparison:
         size_t type_size = vr_box_type_size(command->probe_ssbo.type);
         command->probe_ssbo.n_values = value_size / type_size;
         command->op = VR_SCRIPT_OP_PROBE_SSBO;
-        command->probe_ssbo.tolerance = *tolerance;
+        command->probe_ssbo.tolerance = data->tolerance;
 
         return true;
 }
@@ -1439,7 +1459,7 @@ process_float_property(struct load_state *data,
         while (isspace(*p))
                 p++;
 
-        if (!parse_floats(&p, &value->f, 1, NULL) || !is_end(p)) {
+        if (!parse_floats(data, &p, &value->f, 1, NULL) || !is_end(p)) {
                 vr_error_message(data->config,
                                  "%s:%i: Invalid float value",
                                  data->filename,
@@ -1536,7 +1556,8 @@ process_set_buffer_subdata(struct load_state *data,
                 goto error;
         if (!parse_size_t(&p, &command->set_buffer_subdata.offset))
                 goto error;
-        if (!parse_buffer_subdata(&p,
+        if (!parse_buffer_subdata(data,
+                                  &p,
                                   value_type,
                                   &command->set_buffer_subdata.size,
                                   &command->set_buffer_subdata.data))
@@ -1637,7 +1658,7 @@ process_test_line(struct load_state *data)
         }
 
         if (looking_at(&p, "clear color ")) {
-                if (!parse_floats(&p, data->clear_color, 4, NULL))
+                if (!parse_floats(data, &p, data->clear_color, 4, NULL))
                         goto error;
                 if (!is_end(p))
                         goto error;
@@ -1645,7 +1666,7 @@ process_test_line(struct load_state *data)
         }
 
         if (looking_at(&p, "clear depth ")) {
-                if (!parse_floats(&p, &data->clear_depth, 1, NULL))
+                if (!parse_floats(data, &p, &data->clear_depth, 1, NULL))
                         goto error;
                 if (!is_end(p))
                         goto error;
@@ -1725,14 +1746,10 @@ process_test_line(struct load_state *data)
         if (process_draw_rect_command(data, p, command))
                 return true;
 
-        if (process_probe_command(p,
-                                  command,
-                                  &data->tolerance))
+        if (process_probe_command(data, p, command))
                 return true;
 
-        if (process_probe_ssbo_command(p,
-                                       command,
-                                       &data->tolerance))
+        if (process_probe_ssbo_command(data, p, command))
                 return true;
 
         if (looking_at(&p, "draw arrays "))
@@ -1781,7 +1798,8 @@ process_test_line(struct load_state *data)
                         goto error;
                 if (!parse_size_t(&p, &command->set_push_constant.offset))
                         goto error;
-                if (!parse_buffer_subdata(&p,
+                if (!parse_buffer_subdata(data,
+                                          &p,
                                           type,
                                           &command->set_push_constant.size,
                                           &command->set_push_constant.data))
