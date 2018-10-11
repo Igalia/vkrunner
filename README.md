@@ -312,6 +312,11 @@ test scripts to binary. It can be run for example as below:
     ./precompile-script.py -o compiled-examples examples/*.shader_test
     ./src/vkrunner compiled-examples/*.shader_test
 
+If glslangValidator and spirv-as are not in the path, you can indicate
+where the binaries are with the following command line arguments:
+
+    ./precompile-script.py -o compiled-examples examples/*.shader_test -g PATH_GLSLANG/glslangValidator -s PATH_SPIRV_AS/spirv-as
+
 ## Library
 
 VkRunner can alternatively be used as a library to integrate it into

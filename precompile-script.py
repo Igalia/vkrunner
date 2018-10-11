@@ -46,11 +46,12 @@ STAGE_MAP = {
 }
 
 class Converter:
-    def __init__(self, type, stage, fout):
+    def __init__(self, type, stage, fout, binary):
         self._type = type
         self._stage = stage
         self._fout = fout
         self._tempfile = tempfile.NamedTemporaryFile('w+')
+        self._binary = binary
 
     def add_line(self, line):
         self._tempfile.write(line)
@@ -60,7 +61,7 @@ class Converter:
 
         with tempfile.NamedTemporaryFile() as temp_outfile:
             if self._type == 'glsl':
-                subprocess.check_call(["glslangValidator",
+                subprocess.check_call([self._binary,
                                        "-S", self._stage,
                                        "-G",
                                        "-V",
@@ -68,7 +69,7 @@ class Converter:
                                        "-o", temp_outfile.name,
                                        self._tempfile.name])
             else:
-                subprocess.check_call(["spirv-as",
+                subprocess.check_call([self._binary,
                                        "--target-env", TARGET_ENV,
                                        "-o", temp_outfile.name,
                                        self._tempfile.name])
@@ -111,7 +112,7 @@ class Converter:
         print(file=self._fout)
 
 
-def convert_stream(fin, fout):
+def convert_stream(fin, fout, glslang, spirv_as):
     converter = None
 
     for line in fin:
@@ -127,12 +128,13 @@ def convert_stream(fin, fout):
                 stage_name = section_name[:-6]
                 converter = Converter('spirv',
                                       STAGE_MAP[stage_name],
-                                      fout)
+                                      fout,
+                                      spirv_as)
                 print("[{} binary]".format(stage_name), file=fout)
             elif section_name in STAGE_MAP:
                 converter = Converter('glsl',
                                       STAGE_MAP[section_name],
-                                      fout)
+                                      fout, glslang)
                 print("[{} binary]".format(section_name), file=fout)
             else:
                 fout.write(line)
@@ -145,12 +147,17 @@ def convert_stream(fin, fout):
         converter.finish()
 
 
-
 parser = argparse.ArgumentParser(description='Precompile VkRunner scripts.')
 parser.add_argument('inputs', metavar='INPUT', type=str, nargs='+',
                     help='an input file process')
 parser.add_argument('-o', dest='output', metavar='OUTPUT',
                     help='an output file or directory', required=True)
+
+parser.add_argument('-g', dest='glslang', metavar='GLSLANG',
+                    help='glslangValidator binary path', required=False, default="glslangValidator")
+
+parser.add_argument('-s', dest='spirv_as', metavar='SPIRV_AS',
+                    help='spirv-as binary path', required=False, default="spirv-as")
 
 args = parser.parse_args()
 output_is_directory = len(args.inputs) >= 2 or os.path.isdir(args.output)
@@ -169,4 +176,4 @@ for input in args.inputs:
 
     with open(input, 'r') as fin:
         with open(output, 'w') as fout:
-            convert_stream(fin, fout)
+            convert_stream(fin, fout, args.glslang, args.spirv_as)
