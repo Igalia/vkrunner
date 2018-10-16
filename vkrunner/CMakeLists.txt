@@ -26,6 +26,7 @@ set(VKRUNNER_SOURCE_FILES
         vr-error-message.c
         vr-error-message.h
         vr-executor.c
+        vr-executor-private.h
         vr-feature-offsets.c
         vr-feature-offsets.h
         vr-flush-memory.c

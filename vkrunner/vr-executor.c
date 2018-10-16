@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#include "vr-executor.h"
+#include "vr-executor-private.h"
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -323,4 +323,10 @@ vr_executor_free(struct vr_executor *executor)
         vr_strtof_destroy(&executor->config.strtof_data);
 
         vr_free(executor);
+}
+
+const struct vr_config *
+vr_executor_get_config(struct vr_executor *executor)
+{
+        return &executor->config;
 }
