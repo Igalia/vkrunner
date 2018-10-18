@@ -756,7 +756,7 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
                 &bindings[n_buffers] - info[n_desc_sets].bindings;
         ++n_desc_sets;
 
-        VkDescriptorPoolSize pool_sizes[2] = {0};
+        VkDescriptorPoolSize pool_sizes[2];
         uint32_t n_pool_sizes = 0;
         if (n_ubo) {
                 pool_sizes[n_pool_sizes].type =
