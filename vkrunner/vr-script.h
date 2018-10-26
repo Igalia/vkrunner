@@ -26,6 +26,8 @@
 #ifndef VR_SCRIPT_H
 #define VR_SCRIPT_H
 
+#include <stddef.h>
+#include <vkrunner/vr-shader-stage.h>
 #include <vkrunner/vr-source.h>
 
 #ifdef  __cplusplus
@@ -37,6 +39,25 @@ enum vr_script_source_type {
         VR_SCRIPT_SOURCE_TYPE_SPIRV,
         VR_SCRIPT_SOURCE_TYPE_BINARY
 };
+
+struct vr_script;
+
+struct vr_script_shader_code {
+	enum vr_script_source_type source_type;
+	enum vr_shader_stage stage;
+	size_t source_length;
+	char *source;
+};
+
+/* Writes the source code of the GLSL shaders in shaders parameter.
+ * The returned integer value said how many of them there are.
+ *
+ * NOTE: Callers should free shaders[i].source memory manually.
+ */
+int
+vr_script_get_shaders(const struct vr_script *script,
+                      const struct vr_source *source,
+                      struct vr_script_shader_code *shaders);
 
 #ifdef  __cplusplus
 }

@@ -2413,3 +2413,30 @@ vr_script_free(struct vr_script *script)
 
         vr_free(script);
 }
+
+int
+vr_script_get_shaders(const struct vr_script *script,
+                      const struct vr_source *source,
+                      struct vr_script_shader_code *shaders)
+{
+        int shaders_number = 0;
+        int stage;
+        struct vr_script_shader *shader, *tmp;
+
+        for (stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++) {
+                vr_list_for_each_safe(shader,
+                                      tmp,
+                                      &script->stages[stage],
+                                      link) {
+                        shaders[shaders_number].source_type = shader->source_type;
+                        shaders[shaders_number].source_length = shader->length;
+                        shaders[shaders_number].stage = stage;
+                        shaders[shaders_number].source = (char*) malloc(shader->length + 1);
+                        memcpy(shaders[shaders_number].source, shader->source, shader->length);
+                        shaders[shaders_number].source[shader->length] = '\0';
+                        shaders_number++;
+                }
+        }
+
+        return shaders_number;
+}
