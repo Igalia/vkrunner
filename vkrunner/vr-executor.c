@@ -213,19 +213,11 @@ vr_executor_set_inspect_cb(struct vr_executor *executor,
 }
 
 enum vr_result
-vr_executor_execute(struct vr_executor *executor,
-                    const struct vr_source *source)
+vr_executor_execute_script(struct vr_executor *executor,
+                           const struct vr_script *script)
 {
         enum vr_result res = VR_RESULT_PASS;
-        struct vr_script *script = NULL;
         struct vr_pipeline *pipeline = NULL;
-
-        script = vr_script_load(&executor->config, source);
-
-        if (script == NULL) {
-                res = VR_RESULT_FAIL;
-                goto out;
-        }
 
         /* Recreate the context if the required features or extensions
          * have changed */
@@ -300,9 +292,28 @@ vr_executor_execute(struct vr_executor *executor,
 out:
         if (pipeline)
                 vr_pipeline_free(pipeline);
+
+        return res;
+}
+
+enum vr_result
+vr_executor_execute(struct vr_executor *executor,
+                    const struct vr_source *source)
+{
+        enum vr_result res = VR_RESULT_PASS;
+        struct vr_script *script = NULL;
+        script = vr_script_load(&executor->config, source);
+
+        if (script == NULL) {
+                res = VR_RESULT_FAIL;
+                goto out;
+        }
+
+        res = vr_executor_execute_script(executor, script);
+
+out:
         if (script)
                 vr_script_free(script);
-
         return res;
 }
 

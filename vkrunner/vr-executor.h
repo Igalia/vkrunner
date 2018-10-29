@@ -102,6 +102,10 @@ enum vr_result
 vr_executor_execute(struct vr_executor *executor,
                     const struct vr_source *source);
 
+enum vr_result
+vr_executor_execute_script(struct vr_executor *executor,
+                           const struct vr_script *script);
+
 void
 vr_executor_free(struct vr_executor *executor);
 
