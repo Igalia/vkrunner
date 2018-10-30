@@ -28,6 +28,8 @@
 #include "vr-stream.h"
 #include "vr-util.h"
 
+#include <string.h>
+
 void
 vr_stream_init_string(struct vr_stream *stream,
                       const char *string)
