@@ -133,6 +133,19 @@ load_ufloat(uint32_t part,
 }
 
 static double
+load_sfloat(uint32_t part,
+            int e_bits,
+            int m_bits)
+{
+        double res = load_ufloat(part, e_bits, m_bits);
+
+        if (res != NAN && (part & (1 << (e_bits + m_bits))))
+                res = -res;
+
+        return res;
+}
+
+static double
 load_packed_part(uint32_t part,
                  int bits,
                  enum vr_format_mode mode)
@@ -260,7 +273,7 @@ load_part(int bits,
         case VR_FORMAT_MODE_SFLOAT:
                 switch (bits) {
                 case 16:
-                        vr_fatal("FIXME: load pixel from half-float format");
+                        return load_sfloat(*(uint16_t *) fb, 5, 10);
                 case 32:
                         return *(float *) fb;
                 case 64:
