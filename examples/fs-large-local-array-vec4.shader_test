@@ -1,0 +1,37 @@
+# vkrunner equivalent to piglit tests/spec/glsl-1.30/execution/fs-large-local-array-vec4.shader_tes
+
+[require]
+
+[vertex shader passthrough]
+
+[fragment shader]
+#version 450
+
+layout (binding = 5) uniform block {
+       uint i;
+};
+
+layout (location = 0) out vec4 compat_fragcolor;
+
+void main()
+{
+	vec4 A[130];
+	A[20].g = 0;
+	A[i].g = 37;
+	A[i].r = 1;
+        compat_fragcolor.rba = vec3(0.0, 0.0, 1.0);
+	compat_fragcolor.g = float(A[20].g == 37);
+}
+
+[test]
+clear color 1.0 0.0 0.0 1.0
+clear
+
+uniform ubo 5 uint 0 19
+draw rect -1 -1 2 2
+probe all rgba 0.0 0.0 0.0 1.0
+
+clear
+uniform ubo 5 uint 0 20
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
