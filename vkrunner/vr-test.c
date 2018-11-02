@@ -712,7 +712,8 @@ probe_rect(struct test_data *data,
            const struct vr_script_command *command)
 {
         int n_components = command->probe_rect.n_components;
-        const struct vr_format *format = data->window->framebuffer_format;
+        const struct vr_format *format =
+                data->window->format.color_format;
         int format_size = vr_format_get_size(format);
 
         /* End the paint to copy the framebuffer into the linear buffer */
@@ -1052,9 +1053,9 @@ clear(struct test_data *data,
 
         VkImageAspectFlags depth_stencil_flags = 0;
         const struct vr_format *depth_stencil_format =
-                data->window->depth_stencil_format;
+                data->window->format.depth_stencil_format;
 
-        if (data->window->depth_stencil_format) {
+        if (depth_stencil_format) {
                 for (int i = 0; i < depth_stencil_format->n_parts; i++) {
                         switch (depth_stencil_format->parts[i].component) {
                         case VR_FORMAT_COMPONENT_D:
@@ -1186,7 +1187,7 @@ call_inspect(struct test_data *data)
         color_buffer->width = VR_WINDOW_WIDTH;
         color_buffer->height = VR_WINDOW_HEIGHT;
         color_buffer->stride = data->window->linear_memory_stride;
-        color_buffer->format = data->window->framebuffer_format;
+        color_buffer->format = data->window->format.color_format;
         color_buffer->data = data->window->linear_memory_map;
 
         data->window->config->inspect_cb(&inspect_data,

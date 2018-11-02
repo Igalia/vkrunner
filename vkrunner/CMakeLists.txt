@@ -72,6 +72,8 @@ set(VKRUNNER_SOURCE_FILES
         vr-vbo.h
         vr-window.c
         vr-window.h
+        vr-window-format.c
+        vr-window-format.h
         ${VKRUNNER_PUBLIC_HEADERS}
         )
 

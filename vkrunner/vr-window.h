@@ -32,6 +32,7 @@
 #include "vr-result.h"
 #include "vr-config.h"
 #include "vr-context.h"
+#include "vr-window-format.h"
 
 #define VR_WINDOW_WIDTH 250
 #define VR_WINDOW_HEIGHT 250
@@ -62,14 +63,12 @@ struct vr_window {
         VkDeviceMemory depth_image_memory;
         VkImageView depth_image_view;
         VkFramebuffer framebuffer;
-        const struct vr_format *framebuffer_format;
-        const struct vr_format *depth_stencil_format;
+        struct vr_window_format format;
 };
 
 enum vr_result
 vr_window_new(struct vr_context *context,
-              const struct vr_format *framebuffer_format,
-              const struct vr_format *depth_stencil_format,
+              const struct vr_window_format *format,
               struct vr_window **window_out);
 
 void

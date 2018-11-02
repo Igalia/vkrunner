@@ -51,7 +51,8 @@ VKRUNNER_SRC_FILES := vkrunner/vr-allocate-store.c \
 	vkrunner/vr-util.c \
 	vkrunner/vr-vbo.c \
 	vkrunner/vr-vk.c \
-	vkrunner/vr-window.c
+	vkrunner/vr-window.c \
+	vkrunner/vr-window-format.c
 
 define gen_config_h
 $(call generate-file-dir,$(LOCAL_PATH)/config.h)

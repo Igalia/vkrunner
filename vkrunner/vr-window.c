@@ -119,7 +119,7 @@ init_depth_stencil_resources(struct vr_window *window)
         VkImageCreateInfo image_create_info = {
                 .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                 .imageType = VK_IMAGE_TYPE_2D,
-                .format = window->depth_stencil_format->vk_format,
+                .format = window->format.depth_stencil_format->vk_format,
                 .extent = {
                         .width = VR_WINDOW_WIDTH,
                         .height = VR_WINDOW_HEIGHT,
@@ -160,7 +160,7 @@ init_depth_stencil_resources(struct vr_window *window)
                 .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                 .image = window->depth_image,
                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                .format = window->depth_stencil_format->vk_format,
+                .format = window->format.depth_stencil_format->vk_format,
                 .components = {
                         .r = VK_COMPONENT_SWIZZLE_R,
                         .g = VK_COMPONENT_SWIZZLE_G,
@@ -213,19 +213,20 @@ create_render_pass(struct vr_window *window,
         struct vr_vk *vkfn = &window->vkfn;
         VkResult res;
         bool has_stencil = false;
+        const struct vr_format *depth_stencil_format =
+                window->format.depth_stencil_format;
 
-        if (window->depth_stencil_format) {
-                const struct vr_format *format = window->depth_stencil_format;
-
-                for (int i = 0; i < format->n_parts; i++) {
-                        if (format->parts[i].component == VR_FORMAT_COMPONENT_S)
+        if (depth_stencil_format) {
+                for (int i = 0; i < depth_stencil_format->n_parts; i++) {
+                        if (depth_stencil_format->parts[i].component ==
+                            VR_FORMAT_COMPONENT_S)
                                 has_stencil = true;
                 }
         }
 
         VkAttachmentDescription attachment_descriptions[] = {
                 {
-                        .format = window->framebuffer_format->vk_format,
+                        .format = window->format.color_format->vk_format,
                         .samples = VK_SAMPLE_COUNT_1_BIT,
                         .loadOp = (first_render ?
                                    VK_ATTACHMENT_LOAD_OP_DONT_CARE :
@@ -239,8 +240,8 @@ create_render_pass(struct vr_window *window,
                         .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                 },
                 {
-                        .format = (window->depth_stencil_format ?
-                                   window->depth_stencil_format->vk_format :
+                        .format = (depth_stencil_format ?
+                                   depth_stencil_format->vk_format :
                                    0),
                         .samples = VK_SAMPLE_COUNT_1_BIT,
                         .loadOp = (first_render ?
@@ -284,7 +285,7 @@ create_render_pass(struct vr_window *window,
                 .subpassCount = VR_N_ELEMENTS(subpass_descriptions),
                 .pSubpasses = subpass_descriptions
         };
-        if (window->depth_stencil_format == NULL) {
+        if (depth_stencil_format == NULL) {
                 render_pass_create_info.attachmentCount--;
                 subpass_descriptions[0].pDepthStencilAttachment = NULL;
         }
@@ -320,7 +321,7 @@ init_framebuffer_resources(struct vr_window *window)
         VkImageCreateInfo image_create_info = {
                 .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                 .imageType = VK_IMAGE_TYPE_2D,
-                .format = window->framebuffer_format->vk_format,
+                .format = window->format.color_format->vk_format,
                 .extent = {
                         .width = VR_WINDOW_WIDTH,
                         .height = VR_WINDOW_HEIGHT,
@@ -351,7 +352,7 @@ init_framebuffer_resources(struct vr_window *window)
                                       &window->memory,
                                       NULL /* memory_type_index */);
 
-        int format_size = vr_format_get_size(window->framebuffer_format);
+        int format_size = vr_format_get_size(window->format.color_format);
         window->linear_memory_stride = format_size * VR_WINDOW_WIDTH;
 
         struct VkBufferCreateInfo buffer_create_info = {
@@ -405,7 +406,7 @@ init_framebuffer_resources(struct vr_window *window)
                 .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                 .image = window->color_image,
                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                .format = window->framebuffer_format->vk_format,
+                .format = window->format.color_format->vk_format,
                 .components = {
                         .r = VK_COMPONENT_SWIZZLE_R,
                         .g = VK_COMPONENT_SWIZZLE_G,
@@ -430,7 +431,7 @@ init_framebuffer_resources(struct vr_window *window)
                 return false;
         }
 
-        if (window->depth_stencil_format &&
+        if (window->format.depth_stencil_format &&
             !init_depth_stencil_resources(window))
                 return false;
 
@@ -465,8 +466,7 @@ init_framebuffer_resources(struct vr_window *window)
 
 enum vr_result
 vr_window_new(struct vr_context *context,
-              const struct vr_format *framebuffer_format,
-              const struct vr_format *depth_stencil_format,
+              const struct vr_window_format *format,
               struct vr_window **window_out)
 {
         struct vr_window *window = vr_calloc(sizeof *window);
@@ -478,29 +478,28 @@ vr_window_new(struct vr_context *context,
         window->device = context->device;
         *vkfn = context->vkfn;
 
-        window->framebuffer_format = framebuffer_format;
-        window->depth_stencil_format = depth_stencil_format;
+        window->format = *format;
 
         if (!check_format(window,
-                          framebuffer_format,
+                          format->color_format,
                           VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
                           VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
                 vr_error_message(window->config,
                                  "Format %s is not supported as a color "
                                  "attachment and blit source",
-                                 window->framebuffer_format->name);
+                                 format->color_format->name);
                 vres = VR_RESULT_SKIP;
                 goto error;
         }
 
-        if (window->depth_stencil_format &&
+        if (format->depth_stencil_format &&
             !check_format(window,
-                          depth_stencil_format,
+                          format->depth_stencil_format,
                           VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
                 vr_error_message(window->config,
                                  "Format %s is not supported as a "
                                  "depth/stencil attachment",
-                                 window->depth_stencil_format->name);
+                                 format->depth_stencil_format->name);
                 vres = VR_RESULT_SKIP;
                 goto error;
         }

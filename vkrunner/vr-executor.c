@@ -121,16 +121,6 @@ context_is_compatible(struct vr_executor *executor,
         return true;
 }
 
-static bool
-window_is_compatible(struct vr_executor *executor,
-                     const struct vr_script *script)
-{
-        struct vr_window *window = executor->window;
-
-        return (script->framebuffer_format == window->framebuffer_format &&
-                script->depth_stencil_format == window->depth_stencil_format);
-}
-
 static void
 copy_extensions(struct vr_executor *executor,
                 const char * const *extensions)
@@ -243,7 +233,9 @@ vr_executor_execute(struct vr_executor *executor,
                 free_context(executor);
 
         /* Recreate the window if the framebuffer format is different */
-        if (executor->window && !window_is_compatible(executor, script))
+        if (executor->window &&
+            !vr_window_format_equal(&executor->window->format,
+                                    &script->window_format))
                 free_window(executor);
 
         if (executor->context == NULL) {
@@ -287,8 +279,7 @@ vr_executor_execute(struct vr_executor *executor,
 
         if (executor->window == NULL) {
                 res = vr_window_new(executor->context,
-                                    script->framebuffer_format,
-                                    script->depth_stencil_format,
+                                    &script->window_format,
                                     &executor->window);
                 if (res != VR_RESULT_PASS)
                         goto out;

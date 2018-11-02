@@ -912,15 +912,15 @@ process_require_line(struct load_state *data)
         }
 
         if (looking_at(&p, "framebuffer ")) {
-                return parse_format(data,
-                                    p,
-                                    &data->script->framebuffer_format);
+                struct vr_window_format *format =
+                        &data->script->window_format;
+                return parse_format(data, p, &format->color_format);
         }
 
         if (looking_at(&p, "depthstencil ")) {
-                return parse_format(data,
-                                    p,
-                                    &data->script->depth_stencil_format);
+                struct vr_window_format *format =
+                        &data->script->window_format;
+                return parse_format(data, p, &format->depth_stencil_format);
         }
 
         int extension_len = 0;
@@ -2251,9 +2251,9 @@ vr_script_load(const struct vr_config *config,
 
         vr_pipeline_key_init(&data.current_key);
 
-        script->framebuffer_format =
+        script->window_format.color_format =
                 vr_format_lookup_by_vk_format(VK_FORMAT_B8G8R8A8_UNORM);
-        assert(script->framebuffer_format != NULL);
+        assert(script->window_format.color_format != NULL);
 
         vr_buffer_set_length(&data.extensions, sizeof (const char *));
         memset(data.extensions.data, 0, data.extensions.length);
