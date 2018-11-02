@@ -28,10 +28,12 @@
 
 #include "vr-format.h"
 #include <stdbool.h>
+#include <stdlib.h>
 
 struct vr_window_format {
         const struct vr_format *color_format;
         const struct vr_format *depth_stencil_format;
+        size_t width, height;
 };
 
 bool

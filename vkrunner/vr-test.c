@@ -291,7 +291,8 @@ begin_render_pass(struct test_data *data)
                 .renderArea = {
                         .offset = { 0, 0 },
                         .extent = {
-                                VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT
+                                data->window->format.width,
+                                data->window->format.height
                         }
                 },
         };
@@ -316,8 +317,8 @@ end_render_pass(struct test_data *data)
 
         VkBufferImageCopy copy_region = {
                 .bufferOffset = 0,
-                .bufferRowLength = VR_WINDOW_WIDTH,
-                .bufferImageHeight = VR_WINDOW_HEIGHT,
+                .bufferRowLength = data->window->format.width,
+                .bufferImageHeight = data->window->format.height,
                 .imageSubresource = {
                         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                         .mipLevel = 0,
@@ -325,7 +326,10 @@ end_render_pass(struct test_data *data)
                         .layerCount = 1
                 },
                 .imageOffset = { 0, 0, 0 },
-                .imageExtent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT, 1 }
+                .imageExtent = {
+                        data->window->format.width,
+                        data->window->format.height
+                }
         };
         vkfn->vkCmdCopyImageToBuffer(window->context->command_buffer,
                                      window->color_image,
@@ -1087,7 +1091,10 @@ clear(struct test_data *data,
         VkClearRect clear_rect = {
                 .rect = {
                         .offset = { 0, 0 },
-                        .extent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT }
+                        .extent = {
+                                data->window->format.width,
+                                data->window->format.height
+                        }
                 },
                 .baseArrayLayer = 0,
                 .layerCount = 1
@@ -1184,8 +1191,8 @@ call_inspect(struct test_data *data)
 
         struct vr_inspect_image *color_buffer = &inspect_data.color_buffer;
 
-        color_buffer->width = VR_WINDOW_WIDTH;
-        color_buffer->height = VR_WINDOW_HEIGHT;
+        color_buffer->width = data->window->format.width;
+        color_buffer->height = data->window->format.height;
         color_buffer->stride = data->window->linear_memory_stride;
         color_buffer->format = data->window->format.color_format;
         color_buffer->data = data->window->linear_memory_map;

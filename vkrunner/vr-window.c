@@ -121,8 +121,8 @@ init_depth_stencil_resources(struct vr_window *window)
                 .imageType = VK_IMAGE_TYPE_2D,
                 .format = window->format.depth_stencil_format->vk_format,
                 .extent = {
-                        .width = VR_WINDOW_WIDTH,
-                        .height = VR_WINDOW_HEIGHT,
+                        .width = window->format.width,
+                        .height = window->format.height,
                         .depth = 1
                 },
                 .mipLevels = 1,
@@ -323,8 +323,8 @@ init_framebuffer_resources(struct vr_window *window)
                 .imageType = VK_IMAGE_TYPE_2D,
                 .format = window->format.color_format->vk_format,
                 .extent = {
-                        .width = VR_WINDOW_WIDTH,
-                        .height = VR_WINDOW_HEIGHT,
+                        .width = window->format.width,
+                        .height = window->format.height,
                         .depth = 1
                 },
                 .mipLevels = 1,
@@ -353,11 +353,11 @@ init_framebuffer_resources(struct vr_window *window)
                                       NULL /* memory_type_index */);
 
         int format_size = vr_format_get_size(window->format.color_format);
-        window->linear_memory_stride = format_size * VR_WINDOW_WIDTH;
+        window->linear_memory_stride = format_size * window->format.width;
 
         struct VkBufferCreateInfo buffer_create_info = {
                 .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-                .size = window->linear_memory_stride * VR_WINDOW_HEIGHT,
+                .size = window->linear_memory_stride * window->format.height,
                 .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         };
@@ -446,8 +446,8 @@ init_framebuffer_resources(struct vr_window *window)
                                     VR_N_ELEMENTS(attachments) :
                                     VR_N_ELEMENTS(attachments) - 1),
                 .pAttachments = attachments,
-                .width = VR_WINDOW_WIDTH,
-                .height = VR_WINDOW_HEIGHT,
+                .width = window->format.width,
+                .height = window->format.height,
                 .layers = 1
         };
         res = vkfn->vkCreateFramebuffer(window->device,

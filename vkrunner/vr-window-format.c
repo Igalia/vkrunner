@@ -32,5 +32,7 @@ vr_window_format_equal(const struct vr_window_format *a,
                        const struct vr_window_format *b)
 {
         return (a->color_format == b->color_format &&
-                a->depth_stencil_format == b->depth_stencil_format);
+                a->depth_stencil_format == b->depth_stencil_format &&
+                a->width == b->width &&
+                a->height == b->height);
 }

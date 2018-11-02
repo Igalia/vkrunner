@@ -59,32 +59,6 @@ stage_names[VR_SHADER_STAGE_N_STAGES] = {
         [VR_SHADER_STAGE_COMPUTE] = "comp",
 };
 
-static const VkViewport
-base_viewports[] = {
-        {
-                .width = VR_WINDOW_WIDTH,
-                .height = VR_WINDOW_HEIGHT,
-                .minDepth = 0.0f,
-                .maxDepth = 1.0f
-        }
-};
-
-static const VkRect2D
-base_scissors[] = {
-        {
-                .extent = { VR_WINDOW_WIDTH, VR_WINDOW_HEIGHT }
-        }
-};
-
-static const VkPipelineViewportStateCreateInfo
-base_viewport_state = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .viewportCount = VR_N_ELEMENTS(base_viewports),
-        .pViewports = base_viewports,
-        .scissorCount = VR_N_ELEMENTS(base_scissors),
-        .pScissors = base_scissors
-};
-
 static const VkPipelineMultisampleStateCreateInfo
 base_multisample_state = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -497,6 +471,28 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                 VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
         };
 
+        VkViewport viewports[] = {
+                {
+                        .width = window->format.width,
+                        .height = window->format.height,
+                        .minDepth = 0.0f,
+                        .maxDepth = 1.0f
+                }
+        };
+        VkRect2D scissors[] = {
+                {
+                        .extent = { window->format.width,
+                                    window->format.height }
+                }
+        };
+        VkPipelineViewportStateCreateInfo viewport_state = {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+                .viewportCount = VR_N_ELEMENTS(viewports),
+                .pViewports = viewports,
+                .scissorCount = VR_N_ELEMENTS(scissors),
+                .pScissors = scissors
+        };
+
         VkPipelineRasterizationStateCreateInfo rasterization_state = {
                 .sType =
                 VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
@@ -530,7 +526,7 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
 
         VkGraphicsPipelineCreateInfo info = {
                 .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-                .pViewportState = &base_viewport_state,
+                .pViewportState = &viewport_state,
                 .pRasterizationState = &rasterization_state,
                 .pMultisampleState = &base_multisample_state,
                 .pDepthStencilState = &depth_stencil_state,

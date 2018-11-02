@@ -34,9 +34,6 @@
 #include "vr-context.h"
 #include "vr-window-format.h"
 
-#define VR_WINDOW_WIDTH 250
-#define VR_WINDOW_HEIGHT 250
-
 struct vr_window {
         struct vr_context *context;
 

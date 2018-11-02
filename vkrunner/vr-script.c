@@ -1015,12 +1015,14 @@ process_draw_rect_command(struct load_state *data,
         command->op = VR_SCRIPT_OP_DRAW_RECT;
 
         if (ortho) {
+                float width = data->script->window_format.width;
+                float height = data->script->window_format.height;
                 command->draw_rect.x = (command->draw_rect.x * 2.0f /
-                                        VR_WINDOW_WIDTH) - 1.0f;
+                                        width) - 1.0f;
                 command->draw_rect.y = (command->draw_rect.y * 2.0f /
-                                        VR_WINDOW_HEIGHT) - 1.0f;
-                command->draw_rect.w *= 2.0f / VR_WINDOW_WIDTH;
-                command->draw_rect.h *= 2.0f / VR_WINDOW_HEIGHT;
+                                        height) - 1.0f;
+                command->draw_rect.w *= 2.0f / width;
+                command->draw_rect.h *= 2.0f / height;
         }
 
         return true;
@@ -1058,6 +1060,9 @@ process_probe_command(struct load_state *data,
         command->op = VR_SCRIPT_OP_PROBE_RECT;
         command->probe_rect.n_components = n_components;
 
+        size_t window_width = data->script->window_format.width;
+        size_t window_height = data->script->window_format.height;
+
         if (region_type == ALL) {
                 if (relative)
                         return false;
@@ -1071,8 +1076,8 @@ process_probe_command(struct load_state *data,
                         return false;
                 command->probe_rect.x = 0;
                 command->probe_rect.y = 0;
-                command->probe_rect.w = VR_WINDOW_WIDTH;
-                command->probe_rect.h = VR_WINDOW_HEIGHT;
+                command->probe_rect.w = window_width;
+                command->probe_rect.h = window_height;
                 return true;
         }
 
@@ -1087,8 +1092,8 @@ process_probe_command(struct load_state *data,
                         float rel_pos[2];
                         if (!parse_floats(data, &p, rel_pos, 2, ","))
                                 return false;
-                        command->probe_rect.x = rel_pos[0] * VR_WINDOW_WIDTH;
-                        command->probe_rect.y = rel_pos[1] * VR_WINDOW_HEIGHT;
+                        command->probe_rect.x = rel_pos[0] * window_width;
+                        command->probe_rect.y = rel_pos[1] * window_height;
                 } else if (!parse_ints(&p, &command->probe_rect.x, 2, ",")) {
                         return false;
                 }
@@ -1101,10 +1106,10 @@ process_probe_command(struct load_state *data,
                         float rel_pos[4];
                         if (!parse_floats(data, &p, rel_pos, 4, ","))
                                 return false;
-                        command->probe_rect.x = rel_pos[0] * VR_WINDOW_WIDTH;
-                        command->probe_rect.y = rel_pos[1] * VR_WINDOW_HEIGHT;
-                        command->probe_rect.w = rel_pos[2] * VR_WINDOW_WIDTH;
-                        command->probe_rect.h = rel_pos[3] * VR_WINDOW_HEIGHT;
+                        command->probe_rect.x = rel_pos[0] * window_width;
+                        command->probe_rect.y = rel_pos[1] * window_height;
+                        command->probe_rect.w = rel_pos[2] * window_width;
+                        command->probe_rect.h = rel_pos[3] * window_height;
                 } else if (!parse_ints(&p, &command->probe_rect.x, 4, ",")) {
                         return false;
                 }
@@ -2251,6 +2256,8 @@ vr_script_load(const struct vr_config *config,
 
         vr_pipeline_key_init(&data.current_key);
 
+        script->window_format.width = 250;
+        script->window_format.height = 250;
         script->window_format.color_format =
                 vr_format_lookup_by_vk_format(VK_FORMAT_B8G8R8A8_UNORM);
         assert(script->window_format.color_format != NULL);
