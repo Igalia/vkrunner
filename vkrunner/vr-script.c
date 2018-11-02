@@ -822,6 +822,29 @@ parse_format(struct load_state *data,
 }
 
 static bool
+parse_fbsize(struct load_state *data,
+             const char *p,
+             struct vr_window_format *format)
+{
+        unsigned parts[2];
+
+        if (!parse_uints(&p, parts, 2, NULL) ||
+            parts[0] == 0 || parts[1] == 0 ||
+            !is_end(p)) {
+                vr_error_message(data->config,
+                                 "%s:%i: Invalid fbsize",
+                                 data->filename,
+                                 data->line_num);
+                return false;
+        }
+
+        format->width = parts[0];
+        format->height = parts[1];
+
+        return true;
+}
+
+static bool
 parse_tolerance(struct load_state *data,
                 const char *p,
                 int n_tolerance,
@@ -923,6 +946,9 @@ process_require_line(struct load_state *data)
                         &data->script->window_format;
                 return parse_format(data, p, &format->depth_stencil_format);
         }
+
+        if (looking_at(&p, "fbsize "))
+                return parse_fbsize(data, p, &data->script->window_format);
 
         int extension_len = 0;
 

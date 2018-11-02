@@ -229,6 +229,11 @@ If this is specified VkRunner will try to add a depth-stencil
 attachment to the framebuffer with the given format. Without it no
 depth-stencil buffer will be created.
 
+> fbsize _width_ _height_
+
+Specify the size of the framebuffer. If not specified it defaults to
+250x250.
+
 ## Shader sections
 
 Shaders can be stored in sections like `[vertex shader]` just like in
