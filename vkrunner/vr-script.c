@@ -79,6 +79,7 @@ struct load_state {
         float clear_depth;
         unsigned clear_stencil;
         struct vr_tolerance tolerance;
+        int had_sections;
 };
 
 static const char *
@@ -1835,6 +1836,14 @@ error:
         return false;
 }
 
+static void
+set_current_section(struct load_state *data,
+                    enum section section)
+{
+        data->current_section = section;
+        data->had_sections |= (1 << section);
+}
+
 static bool
 is_stage_section(struct load_state *data,
                  const char *start,
@@ -1867,7 +1876,7 @@ found_stage:
         else
                 return false;
 
-        data->current_section = SECTION_SHADER;
+        set_current_section(data, SECTION_SHADER);
         data->current_stage = stage;
         data->buffer.length = 0;
         return true;
@@ -1931,7 +1940,7 @@ process_section_header(struct load_state *data)
         if (is_string("vertex shader passthrough", start, end)) {
                 if (!start_spirv_shader(data, VR_SHADER_STAGE_VERTEX))
                         return false;
-                data->current_section = SECTION_NONE;
+                set_current_section(data, SECTION_NONE);
                 add_shader(data,
                            VR_SHADER_STAGE_VERTEX,
                            VR_SCRIPT_SOURCE_TYPE_BINARY,
@@ -1941,22 +1950,34 @@ process_section_header(struct load_state *data)
         }
 
         if (is_string("comment", start, end)) {
-                data->current_section = SECTION_COMMENT;
+                set_current_section(data, SECTION_COMMENT);
                 return true;
         }
 
         if (is_string("require", start, end)) {
-                data->current_section = SECTION_REQUIRE;
+                /* The “require” section must come first because the
+                 * “test” section uses the window size while parsing
+                 * the commands.
+                 */
+                if ((data->had_sections & ~(1 << SECTION_COMMENT)) != 0) {
+                        vr_error_message(data->config,
+                                         "%s:%i: [require] must be the first "
+                                         "section",
+                                         data->filename,
+                                         data->line_num);
+                        return false;
+                }
+                set_current_section(data, SECTION_REQUIRE);
                 return true;
         }
 
         if (is_string("test", start, end)) {
-                data->current_section = SECTION_TEST;
+                set_current_section(data, SECTION_TEST);
                 return true;
         }
 
         if (is_string("indices", start, end)) {
-                data->current_section = SECTION_INDICES;
+                set_current_section(data, SECTION_INDICES);
                 return true;
         }
 
@@ -1968,7 +1989,7 @@ process_section_header(struct load_state *data)
                                          data->line_num);
                         return false;
                 }
-                data->current_section = SECTION_VERTEX_DATA;
+                set_current_section(data, SECTION_VERTEX_DATA);
                 data->buffer.length = 0;
                 return true;
         }
