@@ -26,13 +26,14 @@
 LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
-LOCAL_CPP_EXTENSION := .cc .cpp .cxx
-LOCAL_SRC_FILES:=test.cpp
-LOCAL_MODULE:=vkrunner_test
-LOCAL_LDLIBS:=-landroid -llog
-LOCAL_CXXFLAGS:=-std=c++11 -fno-exceptions -fno-rtti -Werror
-LOCAL_STATIC_LIBRARIES=vkrunner
+
+LOCAL_MODULE    := vkrunnerbin
+LOCAL_MODULE_FILENAME := vkrunner
+LOCAL_STATIC_LIBRARIES := vkrunner
+LOCAL_SRC_FILES := ../src/main.c
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../
-include $(BUILD_SHARED_LIBRARY)
+LOCAL_CFLAGS     := $(VKRUNNER_CFLAGS)
+
+include $(BUILD_EXECUTABLE)
 
 include $(LOCAL_PATH)/../Android.mk
