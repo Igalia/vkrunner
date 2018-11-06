@@ -63,13 +63,15 @@ $(foreach F,$(VKRUNNER_SRC_FILES),$(LOCAL_PATH)/$F ) : $(LOCAL_PATH)/config.h
 endef
 $(eval $(call gen_config_h))
 
+VKRUNNER_CFLAGS := -Wall -Wuninitialized -Wempty-body -Wformat \
+        -Wformat-security -Winit-self -Wundef \
+        -Wvla -Wpointer-arith -Wmissing-declarations
+
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := vkrunner
 LOCAL_SRC_FILES := $(VKRUNNER_SRC_FILES)
 LOCAL_C_INCLUDES := $(LOCAL_PATH) $(LOCAL_PATH)/vkrunner
-LOCAL_CFLAGS	 := -Wall -Wuninitialized -Wempty-body -Wformat \
-	-Wformat-security -Winit-self -Wundef \
-	-Wvla -Wpointer-arith -Wmissing-declarations
+LOCAL_CFLAGS	 := $(VKRUNNER_CFLAGS)
 
 include $(BUILD_STATIC_LIBRARY)
