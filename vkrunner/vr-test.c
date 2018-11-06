@@ -328,7 +328,8 @@ end_render_pass(struct test_data *data)
                 .imageOffset = { 0, 0, 0 },
                 .imageExtent = {
                         data->window->format.width,
-                        data->window->format.height
+                        data->window->format.height,
+                        1
                 }
         };
         vkfn->vkCmdCopyImageToBuffer(window->context->command_buffer,
