@@ -59,6 +59,10 @@ vr_script_get_shaders(const struct vr_script *script,
                       const struct vr_source *source,
                       struct vr_script_shader_code *shaders);
 
+/* Returns the total number of shaders present in the provided shader_test */
+int
+vr_script_get_num_shaders(const struct vr_script *script);
+
 void
 vr_script_free(struct vr_script *script);
 

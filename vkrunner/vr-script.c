@@ -2440,3 +2440,14 @@ vr_script_get_shaders(const struct vr_script *script,
 
         return shaders_number;
 }
+
+int
+vr_script_get_num_shaders(const struct vr_script* script)
+{
+        int stage, num_shaders = 0;
+
+        for (stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++) {
+                num_shaders += vr_list_length(&script->stages[stage]);
+        }
+        return num_shaders;
+}
