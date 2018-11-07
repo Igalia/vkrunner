@@ -23,15 +23,22 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VKRUNNER_H
-#define VKRUNNER_H
+#ifndef VR_SCRIPT_H
+#define VR_SCRIPT_H
 
-#include <vkrunner/vr-callback.h>
-#include <vkrunner/vr-script.h>
-#include <vkrunner/vr-executor.h>
-#include <vkrunner/vr-format.h>
-#include <vkrunner/vr-inspect.h>
-#include <vkrunner/vr-result.h>
 #include <vkrunner/vr-source.h>
 
-#endif /* VKRUNNER_H */
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
+enum vr_script_source_type {
+        VR_SCRIPT_SOURCE_TYPE_GLSL,
+        VR_SCRIPT_SOURCE_TYPE_SPIRV,
+        VR_SCRIPT_SOURCE_TYPE_BINARY
+};
+
+#ifdef  __cplusplus
+}
+#endif
+#endif /* VR_SCRIPT_H */

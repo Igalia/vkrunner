@@ -30,6 +30,7 @@
 #include <vkrunner/vr-result.h>
 #include <vkrunner/vr-source.h>
 #include <vkrunner/vr-callback.h>
+#include <vkrunner/vr-script.h>
 
 struct vr_executor;
 

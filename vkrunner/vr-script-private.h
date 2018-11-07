@@ -26,7 +26,7 @@
 #ifndef VR_SCRIPT_PRIVATE_H
 #define VR_SCRIPT_PRIVATE_H
 
-#include "vr-script-private.h"
+#include "vr-script.h"
 #include "vr-list.h"
 #include "vr-vk.h"
 #include "vr-vbo.h"
@@ -48,12 +48,6 @@ enum vr_script_op {
         VR_SCRIPT_OP_SET_PUSH_CONSTANT,
         VR_SCRIPT_OP_SET_BUFFER_SUBDATA,
         VR_SCRIPT_OP_CLEAR
-};
-
-enum vr_script_source_type {
-        VR_SCRIPT_SOURCE_TYPE_GLSL,
-        VR_SCRIPT_SOURCE_TYPE_SPIRV,
-        VR_SCRIPT_SOURCE_TYPE_BINARY
 };
 
 struct vr_script_shader {
