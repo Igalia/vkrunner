@@ -59,6 +59,9 @@ vr_script_get_shaders(const struct vr_script *script,
                       const struct vr_source *source,
                       struct vr_script_shader_code *shaders);
 
+void
+vr_script_free(struct vr_script *script);
+
 #ifdef  __cplusplus
 }
 #endif

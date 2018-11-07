@@ -155,7 +155,4 @@ struct vr_script *
 vr_script_load(const struct vr_config *config,
                const struct vr_source *source);
 
-void
-vr_script_free(struct vr_script *script);
-
 #endif /* VR_SCRIPT_PRIVATE_H */
