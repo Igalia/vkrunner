@@ -27,6 +27,7 @@
 #define VR_SCRIPT_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include <vkrunner/vr-shader-stage.h>
 #include <vkrunner/vr-source.h>
 
@@ -62,6 +63,13 @@ vr_script_get_shaders(const struct vr_script *script,
 /* Returns the total number of shaders present in the provided shader_test */
 int
 vr_script_get_num_shaders(const struct vr_script *script);
+
+/* Replaces the non-binary shaders by the binary version compiled by the caller */
+void
+vr_script_replace_shaders_stage_binary(struct vr_script *script,
+                                       enum vr_shader_stage stage,
+                                       size_t source_length,
+                                       const uint32_t *source);
 
 void
 vr_script_free(struct vr_script *script);

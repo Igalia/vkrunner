@@ -2451,3 +2451,27 @@ vr_script_get_num_shaders(const struct vr_script* script)
         }
         return num_shaders;
 }
+
+void
+vr_script_replace_shaders_stage_binary(struct vr_script *script,
+                                       enum vr_shader_stage stage,
+                                       size_t source_length,
+                                       const uint32_t *source)
+{
+        struct vr_script_shader *shader, *tmp;
+
+        /* Remove all the shaders of the stage */
+        vr_list_for_each_safe(shader,
+                              tmp,
+                              &script->stages[stage],
+                              link) {
+                vr_list_remove(&shader->link);
+                vr_free(shader);
+        }
+        /* Add the new shader for the stage */
+        add_shader(script,
+                   stage,
+                   VR_SCRIPT_SOURCE_TYPE_BINARY,
+                   source_length,
+                   (const char *) source);
+}
