@@ -115,7 +115,7 @@ vertex_shader_passthrough[] = {
 };
 
 static void
-add_shader(struct load_state *data,
+add_shader(struct vr_script *script,
            enum vr_shader_stage stage,
            enum vr_script_source_type source_type,
            size_t length,
@@ -128,13 +128,13 @@ add_shader(struct load_state *data,
         shader->source_type = source_type;
         memcpy(shader->source, source, length);
 
-        vr_list_insert(data->script->stages[stage].prev, &shader->link);
+        vr_list_insert(script->stages[stage].prev, &shader->link);
 }
 
 static bool
 end_shader(struct load_state *data)
 {
-        add_shader(data,
+        add_shader(data->script,
                    data->current_stage,
                    data->current_source_type,
                    data->buffer.length,
@@ -1967,7 +1967,7 @@ process_section_header(struct load_state *data)
                 if (!start_spirv_shader(data, VR_SHADER_STAGE_VERTEX))
                         return false;
                 set_current_section(data, SECTION_NONE);
-                add_shader(data,
+                add_shader(data->script,
                            VR_SHADER_STAGE_VERTEX,
                            VR_SCRIPT_SOURCE_TYPE_BINARY,
                            sizeof vertex_shader_passthrough,
