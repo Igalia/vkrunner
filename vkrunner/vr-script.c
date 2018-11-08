@@ -34,7 +34,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "vr-script.h"
+#include "vr-script-private.h"
 #include "vr-list.h"
 #include "vr-util.h"
 #include "vr-buffer.h"

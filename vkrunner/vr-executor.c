@@ -34,7 +34,7 @@
 
 #include "vr-vk.h"
 #include "vr-window.h"
-#include "vr-script.h"
+#include "vr-script-private.h"
 #include "vr-pipeline.h"
 #include "vr-test.h"
 #include "vr-config.h"

@@ -43,7 +43,7 @@ set(VKRUNNER_SOURCE_FILES
         vr-pipeline-key.h
         vr-result.c
         vr-script.c
-        vr-script.h
+        vr-script-private.h
         vr-shader-stage.h
         vr-source-private.h
         vr-source.c

@@ -29,7 +29,7 @@
 #include <stdbool.h>
 
 #include "vr-pipeline.h"
-#include "vr-script.h"
+#include "vr-script-private.h"
 #include "vr-window.h"
 
 bool

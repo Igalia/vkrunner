@@ -23,9 +23,10 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_SCRIPT_H
-#define VR_SCRIPT_H
+#ifndef VR_SCRIPT_PRIVATE_H
+#define VR_SCRIPT_PRIVATE_H
 
+#include "vr-script-private.h"
 #include "vr-list.h"
 #include "vr-vk.h"
 #include "vr-vbo.h"
@@ -163,4 +164,4 @@ vr_script_load(const struct vr_config *config,
 void
 vr_script_free(struct vr_script *script);
 
-#endif /* VR_SCRIPT_H */
+#endif /* VR_SCRIPT_PRIVATE_H */

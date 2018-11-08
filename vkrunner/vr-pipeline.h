@@ -26,7 +26,7 @@
 #ifndef VR_PIPELINE_H
 #define VR_PIPELINE_H
 
-#include "vr-script.h"
+#include "vr-script-private.h"
 #include "vr-window.h"
 #include "vr-config.h"
 #include "vr-pipeline-key.h"

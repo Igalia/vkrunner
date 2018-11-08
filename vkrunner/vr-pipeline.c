@@ -28,7 +28,7 @@
 #include "vr-pipeline.h"
 #include "vr-subprocess.h"
 #include "vr-util.h"
-#include "vr-script.h"
+#include "vr-script-private.h"
 #include "vr-error-message.h"
 #include "vr-buffer.h"
 #include "vr-temp-file.h"
