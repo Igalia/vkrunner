@@ -59,11 +59,11 @@
 #include "vr-hex.h"
 #include "vr-buffer.h"
 #include "vr-format-private.h"
+#include "vr-char.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
-#include <ctype.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -488,14 +488,14 @@ parse_header_line(const struct vr_config *config,
         int max_alignment = 1;
 
         while (pos < line_size) {
-                if (isspace(line[pos])) {
+                if (vr_char_is_space(line[pos])) {
                         ++pos;
                         continue;
                 }
 
                 size_t column_header_end = pos;
                 while (column_header_end < line_size &&
-                       !isspace(line[column_header_end]))
+                       !vr_char_is_space(line[column_header_end]))
                         ++column_header_end;
 
                 char *column_header =
@@ -602,7 +602,7 @@ parse_line(const struct vr_config *config,
            const char *line,
            const char *text_end)
 {
-        while (line < text_end && *line != '\n' && isspace(*line))
+        while (line < text_end && *line != '\n' && vr_char_is_space(*line))
                 line++;
 
         const char *line_end;

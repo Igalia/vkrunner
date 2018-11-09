@@ -29,7 +29,6 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <ctype.h>
 
 static void
 print_lines_in_buffer(const struct vr_config *config,
@@ -80,7 +79,7 @@ needs_quotes(const char *arg)
                 return true;
 
         while (*arg) {
-                if (!isalnum(*arg) && *arg != '-' && *arg != '.')
+                if (!vr_char_is_alnum(*arg) && *arg != '-' && *arg != '.')
                         return true;
                 arg++;
         }

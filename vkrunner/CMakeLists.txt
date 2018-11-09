@@ -22,6 +22,8 @@ set(VKRUNNER_SOURCE_FILES
         vr-box.h
         vr-buffer.c
         vr-buffer.h
+        vr-char.c
+        vr-char.h
         vr-config.c
         vr-config-private.h
         vr-context.c

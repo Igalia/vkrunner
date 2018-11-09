@@ -28,6 +28,7 @@ LOCAL_PATH := $(call my-dir)
 VKRUNNER_SRC_FILES := vkrunner/vr-allocate-store.c \
 	vkrunner/vr-box.c \
 	vkrunner/vr-buffer.c \
+	vkrunner/vr-char.c \
 	vkrunner/vr-context.c \
 	vkrunner/vr-error-message.c \
 	vkrunner/vr-executor.c \

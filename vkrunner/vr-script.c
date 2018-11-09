@@ -29,7 +29,6 @@
 #include <string.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <ctype.h>
 #include <limits.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -45,6 +44,7 @@
 #include "vr-source-private.h"
 #include "vr-tolerance.h"
 #include "vr-stream.h"
+#include "vr-char.h"
 
 #define DEFAULT_TOLERANCE 0.01
 
@@ -210,7 +210,7 @@ looking_at(const char **p,
 static bool
 is_end(const char *p)
 {
-        while (*p && isspace(*p))
+        while (*p && vr_char_is_space(*p))
                 p++;
 
         return *p == '\0';
@@ -226,7 +226,7 @@ parse_floats(struct load_state *data,
         char *tail;
 
         for (int i = 0; i < n_floats; i++) {
-                while (isspace(**p))
+                while (vr_char_is_space(**p))
                         (*p)++;
 
                 errno = 0;
@@ -236,7 +236,7 @@ parse_floats(struct load_state *data,
                 *p = tail;
 
                 if (sep && i < n_floats - 1) {
-                        while (isspace(**p))
+                        while (vr_char_is_space(**p))
                                 (*p)++;
                         if (!looking_at(p, sep))
                                 return false;
@@ -256,7 +256,7 @@ parse_doubles(struct load_state *data,
         char *tail;
 
         for (int i = 0; i < n_doubles; i++) {
-                while (isspace(**p))
+                while (vr_char_is_space(**p))
                         (*p)++;
 
                 errno = 0;
@@ -266,7 +266,7 @@ parse_doubles(struct load_state *data,
                 *p = tail;
 
                 if (sep && i < n_doubles - 1) {
-                        while (isspace(**p))
+                        while (vr_char_is_space(**p))
                                 (*p)++;
                         if (!looking_at(p, sep))
                                 return false;
@@ -286,7 +286,7 @@ parse_ints(const char **p,
         char *tail;
 
         for (int i = 0; i < n_ints; i++) {
-                while (isspace(**p))
+                while (vr_char_is_space(**p))
                         (*p)++;
 
                 errno = 0;
@@ -298,7 +298,7 @@ parse_ints(const char **p,
                 *p = tail;
 
                 if (sep && i < n_ints - 1) {
-                        while (isspace(**p))
+                        while (vr_char_is_space(**p))
                                 (*p)++;
                         if (!looking_at(p, sep))
                                 return false;
@@ -318,7 +318,7 @@ parse_uints(const char **p,
         char *tail;
 
         for (int i = 0; i < n_ints; i++) {
-                while (isspace(**p))
+                while (vr_char_is_space(**p))
                         (*p)++;
 
                 errno = 0;
@@ -329,7 +329,7 @@ parse_uints(const char **p,
                 *p = tail;
 
                 if (sep && i < n_ints - 1) {
-                        while (isspace(**p))
+                        while (vr_char_is_space(**p))
                                 (*p)++;
                         if (!looking_at(p, sep))
                                 return false;
@@ -349,7 +349,7 @@ parse_int8s(const char **p,
         char *tail;
 
         for (int i = 0; i < n_ints; i++) {
-                while (isspace(**p))
+                while (vr_char_is_space(**p))
                         (*p)++;
 
                 errno = 0;
@@ -361,7 +361,7 @@ parse_int8s(const char **p,
                 *p = tail;
 
                 if (sep && i < n_ints - 1) {
-                        while (isspace(**p))
+                        while (vr_char_is_space(**p))
                                 (*p)++;
                         if (!looking_at(p, sep))
                                 return false;
@@ -381,7 +381,7 @@ parse_uint8s(const char **p,
         char *tail;
 
         for (int i = 0; i < n_ints; i++) {
-                while (isspace(**p))
+                while (vr_char_is_space(**p))
                         (*p)++;
 
                 errno = 0;
@@ -392,7 +392,7 @@ parse_uint8s(const char **p,
                 *p = tail;
 
                 if (sep && i < n_ints - 1) {
-                        while (isspace(**p))
+                        while (vr_char_is_space(**p))
                                 (*p)++;
                         if (!looking_at(p, sep))
                                 return false;
@@ -412,7 +412,7 @@ parse_int16s(const char **p,
         char *tail;
 
         for (int i = 0; i < n_ints; i++) {
-                while (isspace(**p))
+                while (vr_char_is_space(**p))
                         (*p)++;
 
                 errno = 0;
@@ -424,7 +424,7 @@ parse_int16s(const char **p,
                 *p = tail;
 
                 if (sep && i < n_ints - 1) {
-                        while (isspace(**p))
+                        while (vr_char_is_space(**p))
                                 (*p)++;
                         if (!looking_at(p, sep))
                                 return false;
@@ -444,7 +444,7 @@ parse_uint16s(const char **p,
         char *tail;
 
         for (int i = 0; i < n_ints; i++) {
-                while (isspace(**p))
+                while (vr_char_is_space(**p))
                         (*p)++;
 
                 errno = 0;
@@ -455,7 +455,7 @@ parse_uint16s(const char **p,
                 *p = tail;
 
                 if (sep && i < n_ints - 1) {
-                        while (isspace(**p))
+                        while (vr_char_is_space(**p))
                                 (*p)++;
                         if (!looking_at(p, sep))
                                 return false;
@@ -475,7 +475,7 @@ parse_int64s(const char **p,
         char *tail;
 
         for (int i = 0; i < n_ints; i++) {
-                while (isspace(**p))
+                while (vr_char_is_space(**p))
                         (*p)++;
 
                 errno = 0;
@@ -487,7 +487,7 @@ parse_int64s(const char **p,
                 *p = tail;
 
                 if (sep && i < n_ints - 1) {
-                        while (isspace(**p))
+                        while (vr_char_is_space(**p))
                                 (*p)++;
                         if (!looking_at(p, sep))
                                 return false;
@@ -507,7 +507,7 @@ parse_uint64s(const char **p,
         char *tail;
 
         for (int i = 0; i < n_ints; i++) {
-                while (isspace(**p))
+                while (vr_char_is_space(**p))
                         (*p)++;
 
                 errno = 0;
@@ -518,7 +518,7 @@ parse_uint64s(const char **p,
                 *p = tail;
 
                 if (sep && i < n_ints - 1) {
-                        while (isspace(**p))
+                        while (vr_char_is_space(**p))
                                 (*p)++;
                         if (!looking_at(p, sep))
                                 return false;
@@ -786,10 +786,10 @@ parse_format(struct load_state *data,
              const char *p,
              const struct vr_format **format_out)
 {
-        while (isspace(*p))
+        while (vr_char_is_space(*p))
                 p++;
         const char *end = p;
-        while (*end && !isspace(*end))
+        while (*end && !vr_char_is_space(*end))
                 end++;
 
         if (!is_end(end)) {
@@ -901,7 +901,7 @@ process_none_line(struct load_state *data)
 {
         const char *start = (char *) data->line.data;
 
-        while (*start && isspace(*start))
+        while (*start && vr_char_is_space(*start))
                 start++;
 
         if (*start != '#' && *start != '\0') {
@@ -920,7 +920,7 @@ process_require_line(struct load_state *data)
 {
         const char *start = (char *) data->line.data, *p = start;
 
-        while (*start && isspace(*start))
+        while (*start && vr_char_is_space(*start))
                 start++;
 
         if (*start == '#' || *start == '\0')
@@ -1108,7 +1108,7 @@ process_probe_command(struct load_state *data,
                 return true;
         }
 
-        while (isspace(*p))
+        while (vr_char_is_space(*p))
                 p++;
         if (*p != '(')
                 return false;
@@ -1142,13 +1142,13 @@ process_probe_command(struct load_state *data,
                 }
         }
 
-        while (isspace(*p))
+        while (vr_char_is_space(*p))
                 p++;
         if (*p != ')')
                 return false;
         p++;
 
-        while (isspace(*p))
+        while (vr_char_is_space(*p))
                 p++;
         if (*p != '(')
                 return false;
@@ -1161,7 +1161,7 @@ process_probe_command(struct load_state *data,
                            ","))
                 return false;
 
-        while (isspace(*p))
+        while (vr_char_is_space(*p))
                 p++;
         if (*p != ')')
                 return false;
@@ -1184,7 +1184,7 @@ process_probe_ssbo_command(struct load_state *data,
         if (!parse_value_type(&p, &command->probe_ssbo.type))
                 return false;
 
-        while (isspace(*p))
+        while (vr_char_is_space(*p))
                 p++;
 
         unsigned values[3];
@@ -1197,7 +1197,7 @@ process_probe_ssbo_command(struct load_state *data,
         command->probe_ssbo.binding = values[1];
         command->probe_ssbo.offset = values[2];
 
-        while (isspace(*p))
+        while (vr_char_is_space(*p))
                 p++;
 
         static const char *comparison_names[] =
@@ -1220,7 +1220,7 @@ process_probe_ssbo_command(struct load_state *data,
         return false;
 found_comparison:
 
-        while (isspace(*p))
+        while (vr_char_is_space(*p))
                 p++;
 
         size_t value_size;
@@ -1375,7 +1375,7 @@ process_indices_line(struct load_state *data)
         const char *p = (char *) data->line.data;
 
         while (true) {
-                while (*p && isspace(*p))
+                while (*p && vr_char_is_space(*p))
                         p++;
 
                 if (*p == '\0' || *p == '#')
@@ -1439,14 +1439,14 @@ process_int_property(struct load_state *data,
         while (true) {
                 int this_int;
 
-                while (isspace(*p))
+                while (vr_char_is_space(*p))
                         p++;
 
                 if (parse_ints(&p, &this_int, 1, NULL)) {
                         value->i |= this_int;
-                } else if (isalnum(*p)) {
+                } else if (vr_char_is_alnum(*p)) {
                         const char *end = p + 1;
-                        while (isalnum(*end) || *end == '_')
+                        while (vr_char_is_alnum(*end) || *end == '_')
                                 end++;
                         char *enum_name = vr_strndup(p, end - p);
                         bool is_enum = vr_pipeline_key_lookup_enum(enum_name,
@@ -1465,7 +1465,7 @@ process_int_property(struct load_state *data,
                 if (is_end(p))
                         break;
 
-                while (isspace(*p))
+                while (vr_char_is_space(*p))
                         p++;
 
                 if (*p != '|')
@@ -1488,7 +1488,7 @@ process_float_property(struct load_state *data,
                        union vr_pipeline_key_value *value,
                        const char *p)
 {
-        while (isspace(*p))
+        while (vr_char_is_space(*p))
                 p++;
 
         if (!parse_floats(data, &p, &value->f, 1, NULL) || !is_end(p)) {
@@ -1508,7 +1508,7 @@ process_pipeline_property(struct load_state *data,
                           enum vr_pipeline_key_value_type type,
                           const char *p)
 {
-        while (*p && isspace(*p))
+        while (*p && vr_char_is_space(*p))
                 p++;
 
         switch (type) {
@@ -1581,7 +1581,7 @@ process_set_buffer_subdata(struct load_state *data,
         if (buffer == NULL)
                 return false;
 
-        while (isspace(*p))
+        while (vr_char_is_space(*p))
                 p++;
         enum vr_box_type value_type;
         if (!parse_value_type(&p, &value_type))
@@ -1649,12 +1649,12 @@ found_stage:
         if (!looking_at(&p, " entrypoint "))
                 return false;
 
-        while (*p && isspace(*p))
+        while (*p && vr_char_is_space(*p))
                 p++;
 
         const char *end = p + strlen(p);
 
-        while (end > p && isspace(end[-1]))
+        while (end > p && vr_char_is_space(end[-1]))
                 end--;
 
         if (end <= p)
@@ -1672,7 +1672,7 @@ process_test_line(struct load_state *data)
 {
         const char *p = (char *) data->line.data;
 
-        while (*p && isspace(*p))
+        while (*p && vr_char_is_space(*p))
                 p++;
 
         if (*p == '#' || *p == '\0')
@@ -1740,9 +1740,9 @@ process_test_line(struct load_state *data)
         if (process_entrypoint(data, p))
                 return true;
 
-        if (isalnum(*p)) {
+        if (vr_char_is_alnum(*p)) {
                 const char *end = p + 1;
-                while (isalnum(*end) || *end == '.')
+                while (vr_char_is_alnum(*end) || *end == '.')
                         end++;
                 char *prop_name = vr_strndup(p, end - p);
 
@@ -1808,7 +1808,7 @@ process_test_line(struct load_state *data)
                 if (!parse_desc_set_and_binding(&p, values))
                         goto error;
 
-                while (isspace(*p))
+                while (vr_char_is_space(*p))
                         p++;
                 if (!looking_at(&p, "subdata "))
                         goto error;
@@ -1822,7 +1822,7 @@ process_test_line(struct load_state *data)
         }
 
         if (looking_at(&p, "uniform ")) {
-                while (isspace(*p))
+                while (vr_char_is_space(*p))
                         p++;
                 enum vr_box_type type;
                 if (!parse_value_type(&p,
@@ -2060,7 +2060,7 @@ decode_binary(struct load_state *data,
                 while (true) {
                         if (line >= end)
                                 return true;
-                        if (!isspace(*line))
+                        if (!vr_char_is_space(*line))
                                 break;
                         line++;
                 }
