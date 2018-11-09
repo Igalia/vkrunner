@@ -43,7 +43,7 @@ extern "C" {
 #endif
 
 struct vr_executor *
-vr_executor_new(void);
+vr_executor_new(struct vr_config *config);
 
 /* Sets an externally created device to use for the execution. Note
  * that it is the callers responsibility to ensure that the device has
@@ -69,34 +69,6 @@ vr_executor_set_device(struct vr_executor *executor,
                        int queue_family,
                        /* VkDevice */
                        void *device);
-
-void
-vr_executor_set_show_disassembly(struct vr_executor *executor,
-                                 bool show_disassembly);
-
-/* Sets a pointer to be passed back to the caller in all of the
- * callback fuctions below.
- */
-void
-vr_executor_set_user_data(struct vr_executor *executor,
-                          void *user_data);
-
-/* Sets a callback that will be invoked whenever a test error is
- * invoked such as a compilation error or a probed value was
- * incorrect.
- */
-void
-vr_executor_set_error_cb(struct vr_executor *executor,
-                         vr_callback_error error_cb);
-
-/* Sets a callback to invoke after the commands in the test section
- * have run. It is not invoked if the test fails before the test
- * section is reached. The application can use the inspect struct to
- * query the buffers used by the test.
- */
-void
-vr_executor_set_inspect_cb(struct vr_executor *executor,
-                           vr_callback_inspect inspect_cb);
 
 enum vr_result
 vr_executor_execute(struct vr_executor *executor,

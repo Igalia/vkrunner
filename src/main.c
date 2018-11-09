@@ -42,6 +42,7 @@ struct string_array {
 
 struct main_data {
         struct vr_executor *executor;
+        struct vr_config *config;
         const char *image_filename;
         const char *buffer_filename;
         struct string_array filenames;
@@ -127,7 +128,7 @@ static bool
 opt_disassembly(struct main_data *data,
                 const char *arg)
 {
-        vr_executor_set_show_disassembly(data->executor, true);
+        vr_config_set_show_disassembly(data->config, true);
         return true;
 }
 
@@ -455,17 +456,18 @@ int
 main(int argc, char **argv)
 {
         int return_value = EXIT_SUCCESS;
-
+        struct vr_config *config = vr_config_new();
         struct main_data data = {
-                .executor = vr_executor_new(),
+                .executor = vr_executor_new(config),
+                .config = config,
                 .filenames = { .data = NULL },
                 .token_replacements = { .data = NULL },
                 .binding = -1,
                 .quiet = false
         };
 
-        vr_executor_set_user_data(data.executor, &data);
-        vr_executor_set_inspect_cb(data.executor, inspect_cb);
+        vr_config_set_user_data(config, &data);
+        vr_config_set_inspect_cb(config, inspect_cb);
 
         if (process_argv(&data, argc, argv)) {
                 enum vr_result result = run_scripts(&data);
@@ -484,6 +486,7 @@ main(int argc, char **argv)
                 return_value = EXIT_FAILURE;
         }
 
+        vr_config_free(config);
         vr_executor_free(data.executor);
         string_array_destroy(&data.filenames);
         string_array_destroy(&data.token_replacements);

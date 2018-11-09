@@ -25,6 +25,7 @@
 
 #include "config.h"
 
+#include "vr-config.h"
 #include "vr-executor.h"
 
 #include <stdlib.h>
@@ -37,12 +38,11 @@
 #include "vr-script-private.h"
 #include "vr-pipeline.h"
 #include "vr-test.h"
-#include "vr-config-private.h"
 #include "vr-error-message.h"
 #include "vr-source-private.h"
 
 struct vr_executor {
-        struct vr_config config;
+        struct vr_config *config;
         struct vr_window *window;
         struct vr_context *context;
         char **extensions;
@@ -145,7 +145,7 @@ create_external_context(struct vr_executor *executor)
         vr_executor_get_instance_proc_cb get_instance_proc_cb =
                 executor->external.get_instance_proc_cb;
 
-        return vr_context_new_with_device(&executor->config,
+        return vr_context_new_with_device(executor->config,
                                           get_instance_proc_cb,
                                           executor->external.user_data,
                                           executor->external.physical_device,
@@ -155,12 +155,10 @@ create_external_context(struct vr_executor *executor)
 }
 
 struct vr_executor *
-vr_executor_new(void)
+vr_executor_new(struct vr_config *config)
 {
         struct vr_executor *executor = vr_calloc(sizeof *executor);
-
-        vr_strtof_init(&executor->config.strtof_data);
-
+        executor->config = config;
         return executor;
 }
 
@@ -182,34 +180,6 @@ vr_executor_set_device(struct vr_executor *executor,
         executor->external.queue_family = queue_family;
         executor->external.device = device;
         executor->use_external = true;
-}
-
-void
-vr_executor_set_show_disassembly(struct vr_executor *executor,
-                                 bool show_disassembly)
-{
-        executor->config.show_disassembly = show_disassembly;
-}
-
-void
-vr_executor_set_user_data(struct vr_executor *executor,
-                          void *user_data)
-{
-        executor->config.user_data = user_data;
-}
-
-void
-vr_executor_set_error_cb(struct vr_executor *executor,
-                         vr_callback_error error_cb)
-{
-        executor->config.error_cb = error_cb;
-}
-
-void
-vr_executor_set_inspect_cb(struct vr_executor *executor,
-                           vr_callback_inspect inspect_cb)
-{
-        executor->config.inspect_cb = inspect_cb;
 }
 
 enum vr_result
@@ -236,7 +206,7 @@ vr_executor_execute_script(struct vr_executor *executor,
                         if (res != VR_RESULT_PASS)
                                 goto out;
                 } else {
-                        res = vr_context_new(&executor->config,
+                        res = vr_context_new(executor->config,
                                              &script->required_features,
                                              script->extensions,
                                              &executor->context);
@@ -252,7 +222,7 @@ vr_executor_execute_script(struct vr_executor *executor,
         if (executor->use_external) {
                 if (!vr_context_check_features(executor->context,
                                                &script->required_features)) {
-                        vr_error_message(&executor->config,
+                        vr_error_message(executor->config,
                                          "%s: A required feature is missing",
                                          script->filename);
                         res = VR_RESULT_SKIP;
@@ -261,7 +231,7 @@ vr_executor_execute_script(struct vr_executor *executor,
 
                 if (!vr_context_check_extensions(executor->context,
                                                  script->extensions)) {
-                        vr_error_message(&executor->config,
+                        vr_error_message(executor->config,
                                          "%s: A required extension is missing",
                                          script->filename);
                         res = VR_RESULT_SKIP;
@@ -277,7 +247,7 @@ vr_executor_execute_script(struct vr_executor *executor,
                         goto out;
         }
 
-        pipeline = vr_pipeline_create(&executor->config,
+        pipeline = vr_pipeline_create(executor->config,
                                       executor->window,
                                       script);
 
@@ -302,7 +272,7 @@ vr_executor_execute(struct vr_executor *executor,
 {
         enum vr_result res = VR_RESULT_PASS;
         struct vr_script *script = NULL;
-        script = vr_script_load(&executor->config, source);
+        script = vr_script_load(executor->config, source);
 
         if (script == NULL) {
                 res = VR_RESULT_FAIL;
@@ -321,8 +291,5 @@ void
 vr_executor_free(struct vr_executor *executor)
 {
         free_context(executor);
-
-        vr_strtof_destroy(&executor->config.strtof_data);
-
         vr_free(executor);
 }
