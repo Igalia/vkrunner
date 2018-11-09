@@ -29,6 +29,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <vkrunner/vr-shader-stage.h>
+#include <vkrunner/vr-config.h>
 #include <vkrunner/vr-source.h>
 
 #ifdef  __cplusplus
@@ -73,6 +74,10 @@ vr_script_replace_shaders_stage_binary(struct vr_script *script,
 
 void
 vr_script_free(struct vr_script *script);
+
+struct vr_script *
+vr_script_load(const struct vr_config *config,
+               const struct vr_source *source);
 
 #ifdef  __cplusplus
 }

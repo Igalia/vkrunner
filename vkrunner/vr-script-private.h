@@ -151,8 +151,4 @@ struct vr_script {
         size_t n_buffers;
 };
 
-struct vr_script *
-vr_script_load(const struct vr_config *config,
-               const struct vr_source *source);
-
 #endif /* VR_SCRIPT_PRIVATE_H */
