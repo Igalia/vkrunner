@@ -9,6 +9,7 @@ set(VKRUNNER_PUBLIC_HEADERS
         vr-inspect.h
         vr-result.h
         vr-script.h
+        vr-shader-stage.h
         vr-source.h
         vkrunner.h
         )
@@ -45,7 +46,6 @@ set(VKRUNNER_SOURCE_FILES
         vr-result.c
         vr-script.c
         vr-script-private.h
-        vr-shader-stage.h
         vr-source-private.h
         vr-source.c
         vr-stream.c
