@@ -1,5 +1,7 @@
 /*
- * Copyright © 2011, 2016, 2018 Intel Corporation
+ * vkrunner
+ *
+ * Copyright (C) 2018 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,60 +23,22 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_VBO_H
-#define VR_VBO_H
+#ifndef VR_CONFIG_PRIVATE_H
+#define VR_CONFIG_PRIVATE_H
 
-#include <stdlib.h>
 #include <stdbool.h>
+#include "vr-config.h"
+#include "vr-callback.h"
+#include "vr-strtof.h"
 
-#include "vr-list.h"
-#include "vr-format.h"
-#include "vr-config-private.h"
+struct vr_config {
+        bool show_disassembly;
 
-struct vr_vbo_attrib {
-        struct vr_list link;
+        vr_callback_error error_cb;
+        vr_callback_inspect inspect_cb;
+        void *user_data;
 
-        const struct vr_format *format;
-
-        /**
-         * Vertex location
-         */
-        unsigned location;
-
-        /**
-         * Byte offset into the vertex data of this attribute.
-         */
-        size_t offset;
+        struct vr_strtof_data strtof_data;
 };
 
-struct vr_vbo {
-        /**
-         * Description of each attribute.
-         */
-        struct vr_list attribs;
-
-        /**
-         * Raw data buffer containing parsed numbers.
-         */
-        uint8_t *raw_data;
-
-        /**
-         * Number of bytes in each row of raw_data.
-         */
-        size_t stride;
-
-        /**
-         * Number of rows in raw_data.
-         */
-        size_t num_rows;
-};
-
-struct vr_vbo *
-vr_vbo_parse(const struct vr_config *config,
-             const char *text,
-             size_t text_length);
-
-void
-vr_vbo_free(struct vr_vbo *vbo);
-
-#endif /* VR_VBO_H */
+#endif /* VR_CONFIG_PRIVATE_H */

@@ -27,6 +27,7 @@
 #define VKRUNNER_H
 
 #include <vkrunner/vr-callback.h>
+#include <vkrunner/vr-config.h>
 #include <vkrunner/vr-script.h>
 #include <vkrunner/vr-executor.h>
 #include <vkrunner/vr-format.h>

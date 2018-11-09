@@ -27,18 +27,51 @@
 #define VR_CONFIG_H
 
 #include <stdbool.h>
-#include "vr-result.h"
-#include "vr-callback.h"
-#include "vr-strtof.h"
+#include <vkrunner/vr-callback.h>
 
-struct vr_config {
-        bool show_disassembly;
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
-        vr_callback_error error_cb;
-        vr_callback_inspect inspect_cb;
-        void *user_data;
+struct vr_config;
 
-        struct vr_strtof_data strtof_data;
-};
+/* Create a new vr_config object */
+struct vr_config *
+vr_config_new(void);
 
+/* Free a vr_config object */
+void
+vr_config_free(struct vr_config *config);
+
+void
+vr_config_set_show_disassembly(struct vr_config *config,
+                               bool show_disassembly);
+
+/* Sets a pointer to be passed back to the caller in all of the
+ * callback fuctions below.
+ */
+void
+vr_config_set_user_data(struct vr_config *config,
+                        void *user_data);
+
+/* Sets a callback that will be invoked whenever a test error is
+ * invoked such as a compilation error or a probed value was
+ * incorrect.
+ */
+void
+vr_config_set_error_cb(struct vr_config *config,
+                       vr_callback_error error_cb);
+
+/* Sets a callback to invoke after the commands in the test section
+ * have run. It is not invoked if the test fails before the test
+ * section is reached. The application can use the inspect struct to
+ * query the buffers used by the test.
+ */
+void
+vr_config_set_inspect_cb(struct vr_config *config,
+                         vr_callback_inspect inspect_cb);
+
+#ifdef  __cplusplus
+}
+#endif
 #endif /* VR_CONFIG_H */

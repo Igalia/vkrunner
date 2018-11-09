@@ -1,5 +1,7 @@
 /*
- * Copyright © 2011, 2016, 2018 Intel Corporation
+ * vkrunner
+ *
+ * Copyright (C) 2018 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,60 +23,50 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VR_VBO_H
-#define VR_VBO_H
-
-#include <stdlib.h>
-#include <stdbool.h>
-
-#include "vr-list.h"
-#include "vr-format.h"
+#include "config.h"
 #include "vr-config-private.h"
+#include "vr-util.h"
 
-struct vr_vbo_attrib {
-        struct vr_list link;
+struct vr_config *
+vr_config_new(void)
+{
+        struct vr_config *config = vr_calloc(sizeof(struct vr_config));
+        vr_strtof_init(&config->strtof_data);
+        return config;
+}
 
-        const struct vr_format *format;
-
-        /**
-         * Vertex location
-         */
-        unsigned location;
-
-        /**
-         * Byte offset into the vertex data of this attribute.
-         */
-        size_t offset;
-};
-
-struct vr_vbo {
-        /**
-         * Description of each attribute.
-         */
-        struct vr_list attribs;
-
-        /**
-         * Raw data buffer containing parsed numbers.
-         */
-        uint8_t *raw_data;
-
-        /**
-         * Number of bytes in each row of raw_data.
-         */
-        size_t stride;
-
-        /**
-         * Number of rows in raw_data.
-         */
-        size_t num_rows;
-};
-
-struct vr_vbo *
-vr_vbo_parse(const struct vr_config *config,
-             const char *text,
-             size_t text_length);
 
 void
-vr_vbo_free(struct vr_vbo *vbo);
+vr_config_free(struct vr_config *config)
+{
+        vr_strtof_destroy(&config->strtof_data);
+        vr_free(config);
+}
 
-#endif /* VR_VBO_H */
+void
+vr_config_set_show_disassembly(struct vr_config *config,
+                               bool show_disassembly)
+{
+        config->show_disassembly = show_disassembly;
+}
+
+void
+vr_config_set_user_data(struct vr_config *config,
+                        void *user_data)
+{
+        config->user_data = user_data;
+}
+
+void
+vr_config_set_error_cb(struct vr_config *config,
+                       vr_callback_error error_cb)
+{
+        config->error_cb = error_cb;
+}
+
+void
+vr_config_set_inspect_cb(struct vr_config *config,
+                         vr_callback_inspect inspect_cb)
+{
+        config->inspect_cb = inspect_cb;
+}
