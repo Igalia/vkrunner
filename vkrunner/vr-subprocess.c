@@ -25,6 +25,7 @@
 #include "vr-subprocess.h"
 #include "vr-error-message.h"
 #include "vr-buffer.h"
+#include "vr-char.h"
 
 #include <stdio.h>
 #include <errno.h>
