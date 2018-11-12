@@ -50,5 +50,24 @@ for script in "$src_dir/examples/"*.shader_test; do
     "$example_dir/myrunner" "$script"
 done
 
+if test -z "${var+x}"; then
+    export ANDROID_NDK="$HOME/Android/Sdk/ndk-bundle"
+fi
+
+if test -d "$ANDROID_NDK"; then
+    and_build_dir="$src_dir/tmp-build-and"
+    rm -fr -- "$and_build_dir"
+    mkdir -p "$and_build_dir"/libs
+    mkdir -p "$and_build_dir"/app
+    cd "$and_build_dir"
+    "$ANDROID_NDK"/ndk-build -C "$src_dir"/android_test \
+                  NDK_PROJECT_PATH="." \
+                  NDK_LIBS_OUT="$and_build_dir"/libs \
+                  NDK_APP_OUT="$and_build_dir"/app
+else
+    echo "NOTE: Not testing Android build because \$ANDROID_NDK is not set "
+    echo "and the NDK was not found in $ANDROID_NDK"
+fi
+
 echo
 echo "Test build succeeded."
