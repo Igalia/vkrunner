@@ -32,7 +32,7 @@
 struct vr_inspect_image {
         /* Dimensions of the buffer */
         int width, height;
-        /* The stride in pixels from one row of the image to the next */
+        /* The stride in bytes from one row of the image to the next */
         size_t stride;
         /* An opaque pointer describing the format of each pixel in
          * the buffer
