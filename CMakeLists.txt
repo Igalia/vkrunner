@@ -45,18 +45,26 @@ if(HAVE_FFSL)
   add_definitions(-DHAVE_FFSL)
 endif()
 
-pkg_check_modules(VULKAN vulkan)
-if(NOT VULKAN_FOUND)
-  CHECK_INCLUDE_FILE(vulkan/vulkan.h HAVE_VULKAN_HEADER)
-  if(NOT HAVE_VULKAN_HEADER)
-    message(FATAL_ERROR
-      "No vulkan pkg-config package nor vulkan header was found")
+if (NOT VULKAN_HEADER)
+  pkg_check_modules(VULKAN vulkan)
+  if(NOT VULKAN_FOUND)
+    CHECK_INCLUDE_FILE(vulkan/vulkan.h HAVE_VULKAN_HEADER)
+    if(NOT HAVE_VULKAN_HEADER)
+      message(FATAL_ERROR
+	"No vulkan pkg-config package nor vulkan header was found")
+    endif()
   endif()
+  set(VULKAN_HEADER "<vulkan/vulkan.h>")
 endif()
 
 configure_file(
   "${PROJECT_SOURCE_DIR}/config.h.in"
   "${PROJECT_BINARY_DIR}/config.h"
+  )
+
+configure_file(
+  "${PROJECT_SOURCE_DIR}/vk-vulkan-header.h.in"
+  "${PROJECT_BINARY_DIR}/vk-vulkan-header.h"
   )
 
 add_subdirectory(vkrunner)
