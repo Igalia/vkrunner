@@ -480,8 +480,14 @@ main(int argc, char **argv)
                                vr_result_to_string(result));
                 }
 
-                if (result != VR_RESULT_PASS)
+                switch (result) {
+                case VR_RESULT_PASS:
+                case VR_RESULT_SKIP:
+                        break;
+                default:
                         return_value = EXIT_FAILURE;
+                        break;
+                }
         } else {
                 return_value = EXIT_FAILURE;
         }
