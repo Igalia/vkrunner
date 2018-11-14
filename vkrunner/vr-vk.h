@@ -26,8 +26,8 @@
 #ifndef VR_VK_H
 #define VR_VK_H
 
-#include <vulkan/vulkan.h>
 #include <stdbool.h>
+#include "vk-vulkan-header.h"
 #include "vr-config.h"
 
 struct vr_vk {
