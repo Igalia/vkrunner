@@ -56,15 +56,6 @@ VKRUNNER_SRC_FILES := vkrunner/vr-allocate-store.c \
 	vkrunner/vr-window.c \
 	vkrunner/vr-window-format.c
 
-define gen_config_h
-$(call generate-file-dir,$(LOCAL_PATH)/config.h)
-$(LOCAL_PATH)/config.h: $(LOCAL_PATH)/config.h.android
-	@cp $(LOCAL_PATH)/config.h.android $(LOCAL_PATH)/config.h
-	@echo "$(LOCAL_PATH)/config.h <= $(LOCAL_PATH)/config.h.android"
-$(foreach F,$(VKRUNNER_SRC_FILES),$(LOCAL_PATH)/$F ) : $(LOCAL_PATH)/config.h
-endef
-$(eval $(call gen_config_h))
-
 VKRUNNER_CFLAGS := -Wall -Wuninitialized -Wempty-body -Wformat \
         -Wformat-security -Winit-self -Wundef \
         -Wvla -Wpointer-arith -Wmissing-declarations
@@ -73,7 +64,8 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE    := vkrunner
 LOCAL_SRC_FILES := $(VKRUNNER_SRC_FILES)
-LOCAL_C_INCLUDES := $(LOCAL_PATH) $(LOCAL_PATH)/vkrunner
+LOCAL_C_INCLUDES := $(LOCAL_PATH) $(LOCAL_PATH)/vkrunner \
+	$(LOCAL_PATH)/android-headers
 LOCAL_CFLAGS	 := $(VKRUNNER_CFLAGS)
 
 include $(BUILD_STATIC_LIBRARY)

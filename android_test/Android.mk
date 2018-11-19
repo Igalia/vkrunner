@@ -31,7 +31,7 @@ LOCAL_MODULE    := vkrunnerbin
 LOCAL_MODULE_FILENAME := vkrunner
 LOCAL_STATIC_LIBRARIES := vkrunner
 LOCAL_SRC_FILES := ../src/main.c
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/../
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/../ $(LOCAL_PATH)/../android-headers
 LOCAL_CFLAGS     := $(VKRUNNER_CFLAGS)
 
 include $(BUILD_EXECUTABLE)
