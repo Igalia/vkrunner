@@ -26,6 +26,7 @@
 #ifndef VR_ALLOCATE_STORE_H
 #define VR_ALLOCATE_STORE_H
 
+#include <stdint.h>
 #include "vr-context.h"
 
 VkResult
