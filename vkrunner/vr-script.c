@@ -1035,11 +1035,17 @@ process_draw_rect_command(struct load_state *data,
 
         vr_pipeline_key_destroy(&key);
 
-        if (!parse_floats(data, &p, &command->draw_rect.x, 4, NULL) ||
+        float parts[4];
+
+        if (!parse_floats(data, &p, parts, 4, NULL) ||
             !is_end(p))
                 return false;
 
         command->op = VR_SCRIPT_OP_DRAW_RECT;
+        command->draw_rect.x = parts[0];
+        command->draw_rect.y = parts[1];
+        command->draw_rect.w = parts[2];
+        command->draw_rect.h = parts[3];
 
         if (ortho) {
                 float width = data->script->window_format.width;
@@ -1121,8 +1127,12 @@ process_probe_command(struct load_state *data,
                                 return false;
                         command->probe_rect.x = rel_pos[0] * window_width;
                         command->probe_rect.y = rel_pos[1] * window_height;
-                } else if (!parse_ints(&p, &command->probe_rect.x, 2, ",")) {
-                        return false;
+                } else {
+                        int parts[2];
+                        if (!parse_ints(&p, parts, 2, ","))
+                                return false;
+                        command->probe_rect.x = parts[0];
+                        command->probe_rect.y = parts[1];
                 }
                 command->probe_rect.w = 1;
                 command->probe_rect.h = 1;
@@ -1137,8 +1147,14 @@ process_probe_command(struct load_state *data,
                         command->probe_rect.y = rel_pos[1] * window_height;
                         command->probe_rect.w = rel_pos[2] * window_width;
                         command->probe_rect.h = rel_pos[3] * window_height;
-                } else if (!parse_ints(&p, &command->probe_rect.x, 4, ",")) {
-                        return false;
+                } else {
+                        int parts[4];
+                        if (!parse_ints(&p, parts, 4, ","))
+                                return false;
+                        command->probe_rect.x = parts[0];
+                        command->probe_rect.y = parts[1];
+                        command->probe_rect.w = parts[2];
+                        command->probe_rect.h = parts[3];
                 }
         }
 
@@ -1352,7 +1368,9 @@ process_compute_command(struct load_state *data,
                         const char *p,
                         struct vr_script_command *command)
 {
-        if (!parse_uints(&p, &command->dispatch_compute.x, 3, NULL) ||
+        unsigned parts[3];
+
+        if (!parse_uints(&p, parts, 3, NULL) ||
             !is_end(p)) {
                 vr_error_message(data->config,
                                  "%s:%i: Invalid compute command",
@@ -1360,6 +1378,10 @@ process_compute_command(struct load_state *data,
                                  data->line_num);
                 return false;
         }
+
+        command->dispatch_compute.x = parts[0];
+        command->dispatch_compute.y = parts[1];
+        command->dispatch_compute.z = parts[2];
 
         data->current_key.type = VR_PIPELINE_KEY_TYPE_COMPUTE;
         command->op = VR_SCRIPT_OP_DISPATCH_COMPUTE;
