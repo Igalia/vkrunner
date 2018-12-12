@@ -178,6 +178,9 @@ begin_command_buffer(struct test_data *data)
                 return false;
         }
 
+        data->bound_pipeline = UINT_MAX;
+        data->ubo_descriptor_set_bound = false;
+
         return true;
 }
 
@@ -300,8 +303,6 @@ begin_render_pass(struct test_data *data)
                                    &render_pass_begin_info,
                                    VK_SUBPASS_CONTENTS_INLINE);
 
-        data->bound_pipeline = UINT_MAX;
-        data->ubo_descriptor_set_bound = false;
         data->first_render = false;
 
         return true;
