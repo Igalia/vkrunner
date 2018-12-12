@@ -710,7 +710,7 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
                 vr_calloc(sizeof (*bindings) * n_buffers);
         struct desc_set_bindings_info *info =
                 vr_alloc(sizeof *info * n_buffers);
-        size_t n_desc_sets = 0;
+        size_t n_used_desc_sets = 0;
         unsigned prev_desc_set = UINT_MAX;
 
         unsigned n_ubo = 0;
@@ -738,19 +738,21 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
 
                 if (prev_desc_set != buffer->desc_set) {
                         if (prev_desc_set != UINT_MAX) {
-                                info[n_desc_sets].n_bindings =
+                                info[n_used_desc_sets].n_bindings =
                                         &bindings[i] -
-                                        info[n_desc_sets].bindings;
-                                ++n_desc_sets;
+                                        info[n_used_desc_sets].bindings;
+                                ++n_used_desc_sets;
                         }
-                        info[n_desc_sets].desc_set = buffer->desc_set;
-                        info[n_desc_sets].bindings = &bindings[i];
+                        info[n_used_desc_sets].desc_set = buffer->desc_set;
+                        info[n_used_desc_sets].bindings = &bindings[i];
                         prev_desc_set = buffer->desc_set;
                 }
         }
-        info[n_desc_sets].n_bindings =
-                &bindings[n_buffers] - info[n_desc_sets].bindings;
-        ++n_desc_sets;
+        info[n_used_desc_sets].n_bindings =
+                &bindings[n_buffers] - info[n_used_desc_sets].bindings;
+        ++n_used_desc_sets;
+
+        size_t n_desc_sets = info[n_used_desc_sets - 1].desc_set + 1;
 
         VkDescriptorPoolSize pool_sizes[2];
         uint32_t n_pool_sizes = 0;
@@ -787,16 +789,23 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
 
         pipeline->descriptor_set_layout =
                 vr_calloc(sizeof(VkDescriptorSetLayout) * n_desc_sets);
-        pipeline->desc_sets = vr_alloc(sizeof(unsigned) * n_desc_sets);
         pipeline->n_desc_sets = n_desc_sets;
 
+        const struct desc_set_bindings_info *info_p = info;
+
         for (unsigned i = 0; i < n_desc_sets; i++) {
+                while (info_p->desc_set < i)
+                        info_p++;
+
                 VkDescriptorSetLayoutCreateInfo create_info = {
                         .sType =
-                         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-                        .bindingCount = info[i].n_bindings,
-                        .pBindings = info[i].bindings
+                         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
                 };
+
+                if (info_p->desc_set == i) {
+                        create_info.bindingCount = info_p->n_bindings;
+                        create_info.pBindings = info_p->bindings;
+                }
 
                 res = vkfn->vkCreateDescriptorSetLayout(
                                 pipeline->window->device,
@@ -810,7 +819,6 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
                                          "layout");
                         goto error;
                 }
-                pipeline->desc_sets[i] = info[i].desc_set;
         }
 
         ret = true;
@@ -946,7 +954,6 @@ vr_pipeline_free(struct vr_pipeline *pipeline)
                         }
                 }
                 vr_free(pipeline->descriptor_set_layout);
-                vr_free(pipeline->desc_sets);
         }
 
         if (pipeline->descriptor_pool) {

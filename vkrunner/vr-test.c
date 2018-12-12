@@ -396,8 +396,7 @@ bind_ubo_descriptor_set(struct test_data *data)
                                         context->command_buffer,
                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
                                         data->pipeline->layout,
-                                        /* firstSet */
-                                        data->pipeline->desc_sets[i],
+                                        i, /* firstSet */
                                         1, /* descriptorSetCount */
                                         &data->ubo_descriptor_set[i],
                                         0, /* dynamicOffsetCount */
@@ -411,8 +410,7 @@ bind_ubo_descriptor_set(struct test_data *data)
                                         context->command_buffer,
                                         VK_PIPELINE_BIND_POINT_COMPUTE,
                                         data->pipeline->layout,
-                                        /* firstSet */
-                                        data->pipeline->desc_sets[i],
+                                        i, /* firstSet */
                                         1, /* descriptorSetCount */
                                         &data->ubo_descriptor_set[i],
                                         0, /* dynamicOffsetCount */
@@ -937,8 +935,6 @@ static bool
 allocate_ubo_buffers(struct test_data *data)
 {
         struct vr_vk *vkfn = &data->window->vkfn;
-        unsigned desc_set;
-        unsigned desc_set_index;
 
         VkResult res;
         data->ubo_descriptor_set = vr_alloc(data->pipeline->n_desc_sets *
@@ -965,16 +961,11 @@ allocate_ubo_buffers(struct test_data *data)
         data->ubo_buffers = vr_alloc(sizeof *data->ubo_buffers *
                                      data->script->n_buffers);
 
-        desc_set = data->script->buffers[0].desc_set;
-        desc_set_index = 0;
         for (unsigned i = 0; i < data->script->n_buffers; i++) {
                 const struct vr_script_buffer *script_buffer =
                         data->script->buffers + i;
 
-                if (script_buffer->desc_set != desc_set) {
-                        desc_set = script_buffer->desc_set;
-                        ++desc_set_index;
-                }
+                unsigned desc_set = script_buffer->desc_set;
 
                 enum VkBufferUsageFlagBits usage;
                 VkDescriptorType descriptor_type;
@@ -1007,7 +998,7 @@ allocate_ubo_buffers(struct test_data *data)
                 };
                 VkWriteDescriptorSet write = {
                         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                        .dstSet = data->ubo_descriptor_set[desc_set_index],
+                        .dstSet = data->ubo_descriptor_set[desc_set],
                         .dstBinding = script_buffer->binding,
                         .dstArrayElement = 0,
                         .descriptorCount = 1,

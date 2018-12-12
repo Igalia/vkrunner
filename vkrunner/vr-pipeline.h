@@ -36,7 +36,6 @@ struct vr_pipeline {
         VkPipelineLayout layout;
         VkDescriptorPool descriptor_pool;
         VkDescriptorSetLayout *descriptor_set_layout;
-        unsigned *desc_sets;
         unsigned n_desc_sets;
         int n_pipelines;
         VkPipeline *pipelines;
