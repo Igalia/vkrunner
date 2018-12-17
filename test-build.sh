@@ -30,6 +30,12 @@ if grep -q --invert-match '^/tmp' "$build_dir/output.txt"; then
     exit 1;
 fi
 
+# Try again with precompiled scripts
+"$src_dir"/precompile-script.py -o "$build_dir/precompiled-examples" \
+          "$src_dir/examples"/*.shader_test
+"$install_dir/bin/vkrunner" \
+    "$build_dir/precompiled-examples/"*.shader_test
+
 # Extract the example from the README. This will test both that the
 # example is still correct and that all of the necessary public
 # headers are properly installed.
