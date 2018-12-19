@@ -821,6 +821,7 @@ append_box_cb(enum vr_box_base_type base_type,
 static void
 append_box(struct vr_buffer *buf,
            enum vr_box_type type,
+           const struct vr_box_layout *layout,
            size_t n_values,
            size_t stride,
            const uint8_t *value)
@@ -832,6 +833,7 @@ append_box(struct vr_buffer *buf,
                 };
 
                 vr_box_for_each_component(type,
+                                          layout,
                                           append_box_cb,
                                           &data);
         }
@@ -857,9 +859,11 @@ probe_ssbo(struct test_data *data,
         }
 
         const uint8_t *expected = command->probe_ssbo.value;
-        size_t type_size = vr_box_type_size(command->probe_ssbo.type);
+        size_t type_size = vr_box_type_size(command->probe_ssbo.type,
+                                            &command->probe_ssbo.layout);
         size_t base_alignment =
-                vr_box_type_base_alignment(command->probe_ssbo.type);
+                vr_box_type_base_alignment(command->probe_ssbo.type,
+                                           &command->probe_ssbo.layout);
         size_t observed_stride = vr_align(type_size, base_alignment);
 
         if (command->probe_ssbo.offset +
@@ -878,6 +882,7 @@ probe_ssbo(struct test_data *data,
                 if (vr_box_compare(command->probe_ssbo.comparison,
                                    &command->probe_ssbo.tolerance,
                                    command->probe_ssbo.type,
+                                   &command->probe_ssbo.layout,
                                    observed + observed_stride * i,
                                    expected + type_size * i))
                         continue;
@@ -890,6 +895,7 @@ probe_ssbo(struct test_data *data,
                                         "  Reference:");
                 append_box(&buf,
                            command->probe_ssbo.type,
+                           &command->probe_ssbo.layout,
                            command->probe_ssbo.n_values,
                            type_size,
                            expected);
@@ -898,6 +904,7 @@ probe_ssbo(struct test_data *data,
                                         "  Observed: ");
                 append_box(&buf,
                            command->probe_ssbo.type,
+                           &command->probe_ssbo.layout,
                            command->probe_ssbo.n_values,
                            observed_stride,
                            observed);

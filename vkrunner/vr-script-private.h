@@ -85,6 +85,7 @@ struct vr_script_command {
                         enum vr_box_comparison comparison;
                         size_t offset;
                         enum vr_box_type type;
+                        struct vr_box_layout layout;
                         size_t n_values;
                         void *value;
                         struct vr_tolerance tolerance;

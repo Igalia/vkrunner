@@ -32,6 +32,19 @@
 
 #include "vr-tolerance.h"
 
+enum vr_box_layout_std {
+        VR_BOX_LAYOUT_STD_140,
+        VR_BOX_LAYOUT_STD_430
+};
+
+struct vr_box_layout {
+        enum vr_box_layout_std std;
+        /* This is maintained as a struct so it could eventually
+         * contain other properties such as the matrix major axis and
+         * strides.
+         */
+};
+
 enum vr_box_type {
         VR_BOX_TYPE_INT,
         VR_BOX_TYPE_UINT,
@@ -127,11 +140,9 @@ typedef bool
                                    size_t offset,
                                    void *user_data);
 
-size_t
-vr_box_type_size(enum vr_box_type type);
-
 void
 vr_box_for_each_component(enum vr_box_type type,
+                          const struct vr_box_layout *layout,
                           vr_box_for_each_component_cb_t cb,
                           void *user_data);
 
@@ -139,6 +150,7 @@ bool
 vr_box_compare(enum vr_box_comparison comparison,
                const struct vr_tolerance *tolerance,
                enum vr_box_type type,
+               const struct vr_box_layout *layout,
                const void *a,
                const void *b);
 
@@ -146,13 +158,16 @@ size_t
 vr_box_base_type_size(enum vr_box_base_type type);
 
 size_t
-vr_box_type_base_alignment(enum vr_box_type type);
+vr_box_type_base_alignment(enum vr_box_type type,
+                           const struct vr_box_layout *layout);
 
 size_t
-vr_box_type_matrix_stride(enum vr_box_type type);
+vr_box_type_matrix_stride(enum vr_box_type type,
+                          const struct vr_box_layout *layout);
 
 size_t
-vr_box_type_size(enum vr_box_type type);
+vr_box_type_size(enum vr_box_type type,
+                 const struct vr_box_layout *layout);
 
 const struct vr_box_type_info *
 vr_box_type_get_info(enum vr_box_type type);

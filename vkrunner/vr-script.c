@@ -79,6 +79,9 @@ struct load_state {
         float clear_depth;
         unsigned clear_stencil;
         struct vr_tolerance tolerance;
+        struct vr_box_layout push_layout;
+        struct vr_box_layout ubo_layout;
+        struct vr_box_layout ssbo_layout;
         int had_sections;
 };
 
@@ -647,10 +650,11 @@ static bool
 parse_value(struct load_state *data,
             const char **p,
             enum vr_box_type type,
+            const struct vr_box_layout *layout,
             void *value)
 {
         const struct vr_box_type_info *info = vr_box_type_get_info(type);
-        size_t stride = (vr_box_type_matrix_stride(type) /
+        size_t stride = (vr_box_type_matrix_stride(type, layout) /
                          vr_box_base_type_size(info->base_type));
 
         for (int col = 0; col < info->columns; col++) {
@@ -737,12 +741,13 @@ static bool
 parse_box_values(struct load_state *data,
                  const char **p,
                  enum vr_box_type type,
+                 const struct vr_box_layout *layout,
                  size_t alignment,
                  size_t *size_out,
                  void **buffer_out)
 {
         struct vr_buffer buffer = VR_BUFFER_STATIC_INIT;
-        size_t type_size = vr_box_type_size(type);
+        size_t type_size = vr_box_type_size(type, layout);
 
         do {
                 vr_buffer_set_length(&buffer,
@@ -752,6 +757,7 @@ parse_box_values(struct load_state *data,
                 if (!parse_value(data,
                                  p,
                                  type,
+                                 layout,
                                  buffer.data + buffer.length - type_size)) {
                         vr_buffer_destroy(&buffer);
                         return false;
@@ -768,14 +774,16 @@ static bool
 parse_buffer_subdata(struct load_state *data,
                      const char **p,
                      enum vr_box_type type,
+                     const struct vr_box_layout *layout,
                      size_t *size_out,
                      void **buffer_out)
 {
-        size_t alignment = vr_box_type_base_alignment(type);
+        size_t alignment = vr_box_type_base_alignment(type, layout);
 
         return parse_box_values(data,
                                 p,
                                 type,
+                                layout,
                                 alignment,
                                 size_out,
                                 buffer_out);
@@ -1200,6 +1208,8 @@ process_probe_ssbo_command(struct load_state *data,
         if (!parse_value_type(&p, &command->probe_ssbo.type))
                 return false;
 
+        command->probe_ssbo.layout = data->ssbo_layout;
+
         while (vr_char_is_space(*p))
                 p++;
 
@@ -1244,6 +1254,7 @@ found_comparison:
         if (!parse_box_values(data,
                               &p,
                               command->probe_ssbo.type,
+                              &command->probe_ssbo.layout,
                               1, /* alignment */
                               &value_size,
                               &command->probe_ssbo.value))
@@ -1254,7 +1265,8 @@ found_comparison:
                 return false;
         }
 
-        size_t type_size = vr_box_type_size(command->probe_ssbo.type);
+        size_t type_size = vr_box_type_size(command->probe_ssbo.type,
+                                            &command->probe_ssbo.layout);
         command->probe_ssbo.n_values = value_size / type_size;
         command->op = VR_SCRIPT_OP_PROBE_SSBO;
         command->probe_ssbo.tolerance = data->tolerance;
@@ -1587,6 +1599,20 @@ get_buffer(struct load_state *data,
         return buffer;
 }
 
+static const struct vr_box_layout *
+get_layout_for_buffer_type(struct load_state *data,
+                           enum vr_script_buffer_type type)
+{
+        switch (type) {
+        case VR_SCRIPT_BUFFER_TYPE_UBO:
+                return &data->ubo_layout;
+        case VR_SCRIPT_BUFFER_TYPE_SSBO:
+                return &data->ssbo_layout;
+        }
+
+        vr_fatal("Unknown buffer type");
+}
+
 static bool
 process_set_buffer_subdata(struct load_state *data,
                            unsigned desc_set,
@@ -1610,9 +1636,12 @@ process_set_buffer_subdata(struct load_state *data,
                 goto error;
         if (!parse_size_t(&p, &command->set_buffer_subdata.offset))
                 goto error;
+        const struct vr_box_layout *layout =
+                get_layout_for_buffer_type(data, type);
         if (!parse_buffer_subdata(data,
                                   &p,
                                   value_type,
+                                  layout,
                                   &command->set_buffer_subdata.size,
                                   &command->set_buffer_subdata.data))
                 goto error;
@@ -1855,6 +1884,7 @@ process_test_line(struct load_state *data)
                 if (!parse_buffer_subdata(data,
                                           &p,
                                           type,
+                                          &data->push_layout,
                                           &command->set_push_constant.size,
                                           &command->set_push_constant.data))
                         goto error;
@@ -2320,6 +2350,15 @@ vr_script_load(const struct vr_config *config,
                                 DEFAULT_TOLERANCE,
                         },
                         .is_percent = false,
+                },
+                .push_layout = {
+                        .std = VR_BOX_LAYOUT_STD_140
+                },
+                .ubo_layout = {
+                        .std = VR_BOX_LAYOUT_STD_140
+                },
+                .ssbo_layout = {
+                        .std = VR_BOX_LAYOUT_STD_140
                 },
         };
 

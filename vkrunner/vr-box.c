@@ -113,11 +113,9 @@ vr_box_base_type_size(enum vr_box_base_type type)
         vr_fatal("Unknown base type");
 }
 
-/**
- * Calculates the base alignment of a type assuming std140 rules.
- */
 size_t
-vr_box_type_base_alignment(enum vr_box_type type)
+vr_box_type_base_alignment(enum vr_box_type type,
+                           const struct vr_box_layout *layout)
 {
         const struct vr_box_type_info *info = type_infos + type;
         int component_size = vr_box_base_type_size(info->base_type);
@@ -128,38 +126,47 @@ vr_box_type_base_alignment(enum vr_box_type type)
         else
                 base_alignment = component_size * info->rows;
 
-        /* according to std140 the size is rounded up to a vec4 */
-        return vr_align(base_alignment, 16);
+        switch (layout->std) {
+        case VR_BOX_LAYOUT_STD_140:
+                /* according to std140 the size is rounded up to a vec4 */
+                return vr_align(base_alignment, 16);
+        case VR_BOX_LAYOUT_STD_430:
+                return base_alignment;
+        }
+
+        vr_fatal("Unknown layout std");
 }
 
-/**
- * Calculates the matrix stirde of a type assuming std140 rules.
- */
 size_t
-vr_box_type_matrix_stride(enum vr_box_type type)
+vr_box_type_matrix_stride(enum vr_box_type type,
+                          const struct vr_box_layout *layout)
 {
         /* The matrix stride is the same as the base alignment */
-        return vr_box_type_base_alignment(type);
+        return vr_box_type_base_alignment(type, layout);
 }
 
 size_t
-vr_box_type_size(enum vr_box_type type)
+vr_box_type_size(enum vr_box_type type,
+                 const struct vr_box_layout *layout)
 {
         const struct vr_box_type_info *info = type_infos + type;
 
-        if (info->columns > 1)
-                return vr_box_type_matrix_stride(type) * info->columns;
-        else
+        if (info->columns > 1) {
+                size_t stride = vr_box_type_matrix_stride(type, layout);
+                return stride * info->columns;
+        } else {
                 return vr_box_base_type_size(info->base_type) * info->rows;
+        }
 }
 
 void
 vr_box_for_each_component(enum vr_box_type type,
+                          const struct vr_box_layout *layout,
                           vr_box_for_each_component_cb_t cb,
                           void *user_data)
 {
         const struct vr_box_type_info *info = type_infos + type;
-        size_t stride = vr_box_type_matrix_stride(type);
+        size_t stride = vr_box_type_matrix_stride(type, layout);
         size_t base_size = vr_box_base_type_size(info->base_type);
         size_t offset = 0;
 
@@ -337,6 +344,7 @@ bool
 vr_box_compare(enum vr_box_comparison comparison,
                const struct vr_tolerance *tolerance,
                enum vr_box_type type,
+               const struct vr_box_layout *layout,
                const void *a,
                const void *b)
 {
@@ -350,7 +358,7 @@ vr_box_compare(enum vr_box_comparison comparison,
                 .result = true
         };
 
-        vr_box_for_each_component(type, compare_cb, &data);
+        vr_box_for_each_component(type, layout, compare_cb, &data);
         return data.result;
 }
 
