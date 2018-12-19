@@ -4,7 +4,7 @@
 layout(location = 0) out vec4 color_out;
 layout(location = 0) in vec4 pos;
 
-layout(binding = 3, std140) uniform block {
+layout(binding = 3) uniform block {
         vec4 color_in;
         mat2 transform;
         float offsets[4];

@@ -91,7 +91,7 @@ dvec[234], ivec[234], uvec[234], i8vec[234], u8vec[234], i16vec[234],
 u16vec[234], i64vec[234], u64vec[234], mat[234]x[234] or
 dmat[234]x[234]. Multiple values can be specified to upload values to
 an array of that type. If matrices or arrays are specified they are
-assumed to have a stride according to the std140 layout rules.
+assumed to have a stride according to the std430 layout rules.
 
 > uniform ubo _binding_ _type_ _offset_ _values_…
 
@@ -99,7 +99,8 @@ Sets a value within a uniform buffer. The first time a value is set
 within a buffer it will be created with the minimum size needed to
 contain all of the values set on it via test commands. It will then be
 bound to the descriptor set at the given binding point. The rest of
-the arguments are the same as for the `uniform` command. Note that the
+the arguments are the same as for the `uniform` command, except that
+it values are laid out according to the std140 rules. Note that the
 buffer is just updated by writing into a memory mapped view of it
 which means that if you do an update, draw call, update and then
 another draw call both draws will use the values from the second
@@ -109,7 +110,8 @@ command or the test completes.
 > ssbo _binding_ subdata _type_ _offset_ _values_…
 
 Sets a value within a storage buffer. The command is the same as
-`uniform ubo` except for the different buffer type.
+`uniform ubo` except for the different buffer type. The values will be
+laid out according to the std430 rules.
 
 > ssbo _binding_ _size_
 

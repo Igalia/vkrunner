@@ -2352,13 +2352,13 @@ vr_script_load(const struct vr_config *config,
                         .is_percent = false,
                 },
                 .push_layout = {
-                        .std = VR_BOX_LAYOUT_STD_140
+                        .std = VR_BOX_LAYOUT_STD_430
                 },
                 .ubo_layout = {
                         .std = VR_BOX_LAYOUT_STD_140
                 },
                 .ssbo_layout = {
-                        .std = VR_BOX_LAYOUT_STD_140
+                        .std = VR_BOX_LAYOUT_STD_430
                 },
         };
 

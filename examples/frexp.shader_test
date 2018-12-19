@@ -8,7 +8,7 @@ shaderFloat64
 
 layout(location = 0) out vec4 color;
 
-layout(std140, push_constant) uniform block {
+layout(push_constant) uniform block {
         dvec4 given_doub;
         dvec4 expected_mantissa;
         ivec4 expected_exponent;

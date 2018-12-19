@@ -8,7 +8,7 @@ fragmentStoresAndAtomics
 
 layout(location = 0) out vec4 color_out;
 
-layout(binding = 3, std140) buffer block {
+layout(binding = 3) buffer block {
         vec4 color_in;
         vec3 triangle;
         vec2 fib[2];
@@ -34,7 +34,7 @@ ssbo 3 subdata vec4 0 0.0 1.0 0.0 1.0
 # Clear other values
 ssbo 3 subdata vec3 16 0.0 0.0 0.0
 ssbo 3 subdata vec2 32 0.0 0.0 0.0 0.0
-ssbo 3 subdata uint 64 0
+ssbo 3 subdata uint 48 0
 
 draw rect -1 -1 2 2
 
@@ -43,8 +43,8 @@ probe all rgba 0.0 1.0 0.0 1.0
 
 # Probe the SSBO to check that writing worked
 probe ssbo vec3 3 16 == 3 4 5
-probe ssbo uint 3 64 < 4
-probe ssbo uint 3 64 == 3
+probe ssbo uint 3 48 < 4
+probe ssbo uint 3 48 == 3
 
 # Multiple values of an array can be compared with a single command
 probe ssbo vec2 3 32 == 1 1 2 3
