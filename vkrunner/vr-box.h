@@ -166,6 +166,10 @@ vr_box_type_matrix_stride(enum vr_box_type type,
                           const struct vr_box_layout *layout);
 
 size_t
+vr_box_type_array_stride(enum vr_box_type type,
+                         const struct vr_box_layout *layout);
+
+size_t
 vr_box_type_size(enum vr_box_type type,
                  const struct vr_box_layout *layout);
 

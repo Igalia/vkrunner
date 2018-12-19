@@ -742,17 +742,17 @@ parse_box_values(struct load_state *data,
                  const char **p,
                  enum vr_box_type type,
                  const struct vr_box_layout *layout,
-                 size_t alignment,
+                 size_t array_stride,
                  size_t *size_out,
                  void **buffer_out)
 {
         struct vr_buffer buffer = VR_BUFFER_STATIC_INIT;
         size_t type_size = vr_box_type_size(type, layout);
+        size_t n_values = 0;
 
         do {
                 vr_buffer_set_length(&buffer,
-                                     vr_align(buffer.length, alignment) +
-                                     type_size);
+                                     n_values * array_stride + type_size);
 
                 if (!parse_value(data,
                                  p,
@@ -762,6 +762,8 @@ parse_box_values(struct load_state *data,
                         vr_buffer_destroy(&buffer);
                         return false;
                 }
+
+                n_values++;
         } while (!is_end(*p));
 
         *buffer_out = buffer.data;
@@ -778,13 +780,13 @@ parse_buffer_subdata(struct load_state *data,
                      size_t *size_out,
                      void **buffer_out)
 {
-        size_t alignment = vr_box_type_base_alignment(type, layout);
+        size_t array_stride = vr_box_type_array_stride(type, layout);
 
         return parse_box_values(data,
                                 p,
                                 type,
                                 layout,
-                                alignment,
+                                array_stride,
                                 size_out,
                                 buffer_out);
 }
@@ -1251,11 +1253,13 @@ found_comparison:
 
         size_t value_size;
 
+        size_t type_size = vr_box_type_size(command->probe_ssbo.type,
+                                            &command->probe_ssbo.layout);
         if (!parse_box_values(data,
                               &p,
                               command->probe_ssbo.type,
                               &command->probe_ssbo.layout,
-                              1, /* alignment */
+                              type_size, /* array_stride (tightly packed) */
                               &value_size,
                               &command->probe_ssbo.value))
                 return false;
@@ -1265,8 +1269,6 @@ found_comparison:
                 return false;
         }
 
-        size_t type_size = vr_box_type_size(command->probe_ssbo.type,
-                                            &command->probe_ssbo.layout);
         command->probe_ssbo.n_values = value_size / type_size;
         command->op = VR_SCRIPT_OP_PROBE_SSBO;
         command->probe_ssbo.tolerance = data->tolerance;

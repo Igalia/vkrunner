@@ -861,10 +861,9 @@ probe_ssbo(struct test_data *data,
         const uint8_t *expected = command->probe_ssbo.value;
         size_t type_size = vr_box_type_size(command->probe_ssbo.type,
                                             &command->probe_ssbo.layout);
-        size_t base_alignment =
-                vr_box_type_base_alignment(command->probe_ssbo.type,
-                                           &command->probe_ssbo.layout);
-        size_t observed_stride = vr_align(type_size, base_alignment);
+        size_t observed_stride =
+                vr_box_type_array_stride(command->probe_ssbo.type,
+                                         &command->probe_ssbo.layout);
 
         if (command->probe_ssbo.offset +
             (command->probe_ssbo.n_values - 1) * observed_stride +

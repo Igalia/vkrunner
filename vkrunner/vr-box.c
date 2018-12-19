@@ -119,12 +119,18 @@ vr_box_type_base_alignment(enum vr_box_type type,
 {
         const struct vr_box_type_info *info = type_infos + type;
         int component_size = vr_box_base_type_size(info->base_type);
-        int base_alignment;
 
         if (info->rows == 3)
-                base_alignment = component_size * 4;
+                return component_size * 4;
         else
-                base_alignment = component_size * info->rows;
+                return component_size * info->rows;
+}
+
+size_t
+vr_box_type_matrix_stride(enum vr_box_type type,
+                          const struct vr_box_layout *layout)
+{
+        size_t base_alignment = vr_box_type_base_alignment(type, layout);
 
         switch (layout->std) {
         case VR_BOX_LAYOUT_STD_140:
@@ -138,11 +144,12 @@ vr_box_type_base_alignment(enum vr_box_type type,
 }
 
 size_t
-vr_box_type_matrix_stride(enum vr_box_type type,
-                          const struct vr_box_layout *layout)
+vr_box_type_array_stride(enum vr_box_type type,
+                         const struct vr_box_layout *layout)
 {
-        /* The matrix stride is the same as the base alignment */
-        return vr_box_type_base_alignment(type, layout);
+        const struct vr_box_type_info *info = type_infos + type;
+        size_t matrix_stride = vr_box_type_matrix_stride(type, layout);
+        return matrix_stride * info->columns;
 }
 
 size_t
@@ -150,13 +157,10 @@ vr_box_type_size(enum vr_box_type type,
                  const struct vr_box_layout *layout)
 {
         const struct vr_box_type_info *info = type_infos + type;
+        size_t matrix_stride = vr_box_type_matrix_stride(type, layout);
+        size_t base_size = vr_box_base_type_size(info->base_type);
 
-        if (info->columns > 1) {
-                size_t stride = vr_box_type_matrix_stride(type, layout);
-                return stride * info->columns;
-        } else {
-                return vr_box_base_type_size(info->base_type) * info->rows;
-        }
+        return (info->columns - 1) * matrix_stride + base_size * info->rows;
 }
 
 void
