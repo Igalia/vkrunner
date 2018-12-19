@@ -646,6 +646,71 @@ parse_value_type(const char **p,
         return false;
 }
 
+struct parse_value_closure {
+        struct load_state *data;
+        bool had_error;
+        void *values;
+        const char *p;
+};
+
+static bool
+parse_value_cb(enum vr_box_base_type base_type,
+               size_t offset,
+               void *user_data)
+{
+        struct parse_value_closure *data = user_data;
+        void *value = (uint8_t *) data->values + offset;
+
+        switch (base_type) {
+        case VR_BOX_BASE_TYPE_INT:
+                if (!parse_ints(&data->p, value, 1, NULL))
+                        goto error;
+                break;
+        case VR_BOX_BASE_TYPE_UINT:
+                if (!parse_uints(&data->p, value, 1, NULL))
+                        goto error;
+                break;
+        case VR_BOX_BASE_TYPE_INT8:
+                if (!parse_int8s(&data->p, value, 1, NULL))
+                        goto error;
+                break;
+        case VR_BOX_BASE_TYPE_UINT8:
+                if (!parse_uint8s(&data->p, value, 1, NULL))
+                        goto error;
+                break;
+        case VR_BOX_BASE_TYPE_INT16:
+                if (!parse_int16s(&data->p, value, 1, NULL))
+                        goto error;
+                break;
+        case VR_BOX_BASE_TYPE_UINT16:
+                if (!parse_uint16s(&data->p, value, 1, NULL))
+                        goto error;
+                break;
+        case VR_BOX_BASE_TYPE_INT64:
+                if (!parse_int64s(&data->p, value, 1, NULL))
+                        goto error;
+                break;
+        case VR_BOX_BASE_TYPE_UINT64:
+                if (!parse_uint64s(&data->p, value, 1, NULL))
+                        goto error;
+                break;
+        case VR_BOX_BASE_TYPE_FLOAT:
+                if (!parse_floats(data->data, &data->p, value, 1, NULL))
+                        goto error;
+                break;
+        case VR_BOX_BASE_TYPE_DOUBLE:
+                if (!parse_doubles(data->data, &data->p, value, 1, NULL))
+                        goto error;
+                break;
+        }
+
+        return true;
+
+error:
+        data->had_error = true;
+        return false;
+}
+
 static bool
 parse_value(struct load_state *data,
             const char **p,
@@ -653,88 +718,18 @@ parse_value(struct load_state *data,
             const struct vr_box_layout *layout,
             void *value)
 {
-        const struct vr_box_type_info *info = vr_box_type_get_info(type);
-        size_t stride = (vr_box_type_matrix_stride(type, layout) /
-                         vr_box_base_type_size(info->base_type));
+        struct parse_value_closure closure = {
+                .data = data,
+                .values = value,
+                .had_error = false,
+                .p = *p
+        };
 
-        for (int col = 0; col < info->columns; col++) {
-                switch (info->base_type) {
-                case VR_BOX_BASE_TYPE_INT:
-                        if (!parse_ints(p,
-                                        (int *) value + col * stride,
-                                        info->rows,
-                                        NULL))
-                                return false;
-                        break;
-                case VR_BOX_BASE_TYPE_UINT:
-                        if (!parse_uints(p,
-                                         (unsigned *) value + col * stride,
-                                         info->rows,
-                                         NULL))
-                                return false;
-                        break;
-                case VR_BOX_BASE_TYPE_INT8:
-                        if (!parse_int8s(p,
-                                         (int8_t *) value + col * stride,
-                                         info->rows,
-                                         NULL))
-                                return false;
-                        break;
-                case VR_BOX_BASE_TYPE_UINT8:
-                        if (!parse_uint8s(p,
-                                          (uint8_t *) value + col * stride,
-                                          info->rows,
-                                          NULL))
-                                return false;
-                        break;
-                case VR_BOX_BASE_TYPE_INT16:
-                        if (!parse_int16s(p,
-                                          (int16_t *) value + col * stride,
-                                          info->rows,
-                                          NULL))
-                                return false;
-                        break;
-                case VR_BOX_BASE_TYPE_UINT16:
-                        if (!parse_uint16s(p,
-                                           (uint16_t *) value + col * stride,
-                                           info->rows,
-                                           NULL))
-                                return false;
-                        break;
-                case VR_BOX_BASE_TYPE_INT64:
-                        if (!parse_int64s(p,
-                                          (int64_t *) value + col * stride,
-                                          info->rows,
-                                          NULL))
-                                return false;
-                        break;
-                case VR_BOX_BASE_TYPE_UINT64:
-                        if (!parse_uint64s(p,
-                                           (uint64_t *) value + col * stride,
-                                           info->rows,
-                                           NULL))
-                                return false;
-                        break;
-                case VR_BOX_BASE_TYPE_FLOAT:
-                        if (!parse_floats(data,
-                                          p,
-                                          (float *) value + col * stride,
-                                          info->rows,
-                                          NULL))
-                                return false;
-                        break;
-                case VR_BOX_BASE_TYPE_DOUBLE:
-                        if (!parse_doubles(data,
-                                           p,
-                                           (double *) value + col * stride,
-                                           info->rows,
-                                           NULL))
-                                return false;
-                        break;
-                }
-        }
+        vr_box_for_each_component(type, layout, parse_value_cb, &closure);
 
-        return true;
+        *p = closure.p;
+
+        return !closure.had_error;
 }
 
 static bool
