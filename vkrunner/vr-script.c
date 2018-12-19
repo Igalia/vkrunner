@@ -902,6 +902,40 @@ parse_fbsize(struct load_state *data,
         return true;
 }
 
+static enum parse_result
+process_layout(struct load_state *data,
+               const char *p)
+{
+        struct vr_box_layout *layout;
+
+        if (looking_at(&p, "push layout "))
+                layout = &data->push_layout;
+        else if (looking_at(&p, "ubo layout "))
+                layout = &data->ubo_layout;
+        else if (looking_at(&p, "ssbo layout "))
+                layout = &data->ssbo_layout;
+        else
+                return PARSE_RESULT_NON_MATCHED;
+
+        if (looking_at(&p, "std140")) {
+                layout->std = VR_BOX_LAYOUT_STD_140;
+        } else if (looking_at(&p, "std430")) {
+                layout->std = VR_BOX_LAYOUT_STD_430;
+        } else {
+                error_at_line(data,
+                              "Expected std140 or std430 "
+                              "in layout command");
+                return PARSE_RESULT_ERROR;
+        }
+
+        if (!is_end(p)) {
+                error_at_line(data, "Trailing data in layout command");
+                return PARSE_RESULT_ERROR;
+        }
+
+        return PARSE_RESULT_OK;
+}
+
 static bool
 process_none_line(struct load_state *data)
 {
@@ -2002,6 +2036,7 @@ process_test_line(struct load_state *data)
         static const process_test_line_func funcs[] = {
                 process_patch_parameter_vertices,
                 process_clear_values,
+                process_layout,
                 process_ssbo_command,
                 process_tolerance,
                 process_entrypoint,
