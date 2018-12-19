@@ -4,27 +4,57 @@
 #version 430
 
 layout (location = 0) out vec4 color_out;
+
 layout (binding = 5) uniform block {
-  layout(row_major) mat3x4 m;
+        layout(column_major) mat3x4 m1;
+        layout(row_major) mat3x4 m2;
+
+        layout(column_major) mat4x3 m3;
+        layout(row_major) mat4x3 m4;
 };
 
 void main()
 {
-   color_out = m[0] + m[1] + m[2];
+        color_out = vec4(0.0, 1.0, 0.0, 1.0);
+
+        /* Check that m1 and m2 have the same value */
+        for (int col = 0; col < 3; col++) {
+                for (int row = 0; row < 4; row++) {
+                        if (m1[col][row] != m2[col][row])
+                                color_out.rg = vec2(1.0, 0.0);
+                }
+        }
+
+        /* Check that m3 and m4 have the same value */
+        for (int col = 0; col < 4; col++) {
+                for (int row = 0; row < 3; row++) {
+                        if (m3[col][row] != m4[col][row])
+                                color_out.rg = vec2(1.0, 0.0);
+                }
+        }
 }
 
 
 [test]
 clear
 
-# The shader uses a mat3x4 that it is specified on row_major
-# layout. So we need to manually re-sort it here when specify the
-# data.
-uniform ubo 5 vec3 0  0.11 0.21 0.31
-uniform ubo 5 vec3 16 0.12 0.22 0.32
-uniform ubo 5 vec3 32 0.13 0.23 0.33
-uniform ubo 5 vec3 48 0.14 0.24 0.34
+# Specify m1 in column major order. This is the default.
+uniform ubo 5 mat3x4 0   1 2 3 4 5 6 7 8 9 10 11 12
+
+# Specify m2 row major order. Note this doesn’t affect the order of
+# the values specified in the test command, only how they are stored
+# in memory.
+ubo layout row_major
+uniform ubo 5 mat3x4 48  1 2 3 4 5 6 7 8 9 10 11 12
+
+# Specify m3 in column major order
+ubo layout column_major
+uniform ubo 5 mat4x3 112 1 2 3 4 5 6 7 8 9 10 11 12
+
+# Specify m4 in row major order
+ubo layout row_major
+uniform ubo 5 mat4x3 176 1 2 3 4 5 6 7 8 9 10 11 12
 
 draw rect -1 -1 2 2
 
-probe all rgba 0.63 0.66 0.69 0.72
+probe all rgba 0.0 1.0 0.0 1.0
