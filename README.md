@@ -147,16 +147,21 @@ tolerance. Each tolerance value can be an `double` type real number or
 percentage e.g., `0.01%`. See [examples/tolerance.shader_test](
 examples/tolerance.shader_test) for the usage of `tolerance` command.
 
-> push layout (std140|std430)
+> push layout [std140|std430] [row_major|column_major]
 
-> ssbo layout (std140|std430)
+> ssbo layout [std140|std430] [row_major|column_major]
 
-> ubo layout (std140|std430)
+> ubo layout [std140|std430] [row_major|column_major]
 
 Sets the expected layout for subsequent commands that operate on push
 constants, SSBOs and UBOs respectively. All layouts default to std430
-except the UBO layout which defaults to std140. This matches the
-defaults in GLSL.
+and column_major except the UBO layout which defaults to std140. This
+matches the defaults in GLSL. If row_major or column_major is not
+specified then it will be set back to column_major (ie, it does not
+leave it at as row_major if a previous layout command set it to that).
+Note that setting the matrix major axis only affects the layout of the
+data in memory. The values are still specified in test commands in
+column-major order.
 
 > clear color _r_ _g_ _b_ _a_
 
