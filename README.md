@@ -91,8 +91,8 @@ f16vec[234], vec[234], dvec[234], ivec[234], uvec[234], i8vec[234],
 u8vec[234], i16vec[234], u16vec[234], i64vec[234], u64vec[234],
 mat[234]x[234] or dmat[234]x[234]. Multiple values can be specified to
 upload values to an array of that type. If matrices or arrays are
-specified they are assumed to have a stride according to the std430
-layout rules.
+specified they are assumed to have a stride according to layout
+specified with the `push layout` command.
 
 > (ubo|ssbo) _binding_ subdata _type_ _offset_ _values_…
 
@@ -100,13 +100,14 @@ Sets a value within a uniform or storage buffer. The first time a
 value is set within a buffer it will be created with the minimum size
 needed to contain all of the values set on it via test commands. It
 will then be bound to the descriptor set at the given binding point.
-The rest of the arguments are the same as for the `uniform` command,
-except that it values are laid out according to the std140 rules for
-UBOs and std430 for SSBOs. Note that the buffer is just updated by
-writing into a memory mapped view of it which means that if you do an
-update, draw call, update and then another draw call both draws will
-use the values from the second update. This is because the draws are
-not flushed until the next probe command or the test completes.
+The rest of the arguments are the same as for the `push` command,
+except that the values are laid out according to the last layout
+specified with `ubo layout` or `ssbo layout`. Note that the buffer is
+just updated by writing into a memory mapped view of it which means
+that if you do an update, draw call, update and then another draw call
+both draws will use the values from the second update. This is because
+the draws are not flushed until the next probe command or the test
+completes.
 
 > (ubo|ssbo) _binding_ _size_
 
@@ -124,8 +125,8 @@ allows errors for `double` or `float` type numbers while `==` does
 not. Allowed errors can be set by the following `tolerance` command.
 See [examples/tolerance.shader_test](examples/tolerance.shader_test)
 for the usage of `~=`. Multiple values can be listed to compare an
-array of values. In that case the buffer is assumed to have std140
-layout.
+array of values. In that case the buffer is assumed to have the layout
+specified with the last `ssbo layout` command.
 
 > tolerance _tolerance0 tolerance1 tolerance2 tolerance3_
 
@@ -145,6 +146,17 @@ components of `vecN` and `matMxN` type values will use the same
 tolerance. Each tolerance value can be an `double` type real number or
 percentage e.g., `0.01%`. See [examples/tolerance.shader_test](
 examples/tolerance.shader_test) for the usage of `tolerance` command.
+
+> push layout (std140|std430)
+
+> ssbo layout (std140|std430)
+
+> ubo layout (std140|std430)
+
+Sets the expected layout for subsequent commands that operate on push
+constants, SSBOs and UBOs respectively. All layouts default to std430
+except the UBO layout which defaults to std140. This matches the
+defaults in GLSL.
 
 > clear color _r_ _g_ _b_ _a_
 
