@@ -1,0 +1,75 @@
+[compute shader]
+#version 460
+
+/* Push constants using std140 layout */
+layout(push_constant, std140) uniform push140 {
+        /* input_a[0] will be at offset 0 and input_a[1] will be at 16 */
+        float input_a[2];
+};
+
+/* UBO using std140 (the default) */
+layout(binding = 0) uniform ubo140 {
+        /* input_b[0] will be at offset 0 and input_b[1] will be at 16 */
+        float input_b[2];
+        /* input_c[0] will be at offset 32 and input_c[1] will be at 48 */
+        float input_c[2];
+};
+
+/* SSBO using std430 (the default) */
+layout(binding = 1) buffer ssbo430 {
+        /* output_a[0] will be at offset 0 and output_a[1] will be at 4 */
+        float output_a[2];
+        /* output_b[0] will be at offset 8 and output_b[1] will be at 12 */
+        float output_b[2];
+        /* This will be offset 16 */
+        float constant_a[2];
+};
+
+/* SSBO using std140 */
+layout(binding = 2, std140) buffer ssbo140 {
+        /* output_c[0] will be at offset 0 and output_c[1] will be at 16 */
+        float output_c[2];
+        /* This will be at offset 32 */
+        float constant_b[2];
+};
+
+void
+main()
+{
+        for (int i = 0; i < 2; i++) {
+                output_a[i] = input_a[i];
+                output_b[i] = input_b[i];
+                output_c[i] = input_c[i];
+        }
+}
+
+[test]
+# Set input_a
+push layout std140
+push float 0  1.0 2.0
+
+# Set input_b. Layout defaults to std140 so we don’t need to set it,
+# but we set it here anyway as an example.
+ubo layout std140
+ubo 0 subdata float 0  3.0 4.0
+# Set input_c
+ubo 0 subdata float 32  5.0 6.0
+
+# Set constant_a. Layout defaults to std430 so we don’t need to set it
+ssbo 1 subdata float 16  7.0 8.0
+
+# Set constant_b
+ssbo layout std140
+ssbo 2 subdata float 32  9.0 10.0
+
+compute 1 1 1
+
+# Checkout the outputs
+ssbo layout std430
+probe ssbo float 1 0 ~= 1.0 2.0
+probe ssbo float 1 8 ~= 3.0 4.0
+probe ssbo float 1 16 ~= 7.0 8.0
+
+ssbo layout std140
+probe ssbo float 2 0 ~= 5.0 6.0
+probe ssbo float 2 32 ~= 9.0 10.0
