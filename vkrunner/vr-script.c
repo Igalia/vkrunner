@@ -117,6 +117,24 @@ vertex_shader_passthrough[] = {
         0x00010038
 };
 
+static const struct vr_box_layout
+default_push_layout = {
+        .std = VR_BOX_LAYOUT_STD_430,
+        .major = VR_BOX_MAJOR_AXIS_COLUMN
+};
+
+static const struct vr_box_layout
+default_ubo_layout = {
+        .std = VR_BOX_LAYOUT_STD_140,
+        .major = VR_BOX_MAJOR_AXIS_COLUMN
+};
+
+static const struct vr_box_layout
+default_ssbo_layout = {
+        .std = VR_BOX_LAYOUT_STD_430,
+        .major = VR_BOX_MAJOR_AXIS_COLUMN
+};
+
 static void
 add_shader(struct vr_script *script,
            enum vr_shader_stage stage,
@@ -2348,15 +2366,9 @@ vr_script_load(const struct vr_config *config,
                         },
                         .is_percent = false,
                 },
-                .push_layout = {
-                        .std = VR_BOX_LAYOUT_STD_430
-                },
-                .ubo_layout = {
-                        .std = VR_BOX_LAYOUT_STD_140
-                },
-                .ssbo_layout = {
-                        .std = VR_BOX_LAYOUT_STD_430
-                },
+                .push_layout = default_push_layout,
+                .ubo_layout = default_ubo_layout,
+                .ssbo_layout = default_ssbo_layout,
         };
 
         vr_pipeline_key_init(&data.current_key);

@@ -37,12 +37,14 @@ enum vr_box_layout_std {
         VR_BOX_LAYOUT_STD_430
 };
 
+enum vr_box_major_axis {
+        VR_BOX_MAJOR_AXIS_COLUMN,
+        VR_BOX_MAJOR_AXIS_ROW
+};
+
 struct vr_box_layout {
         enum vr_box_layout_std std;
-        /* This is maintained as a struct so it could eventually
-         * contain other properties such as the matrix major axis and
-         * strides.
-         */
+        enum vr_box_major_axis major;
 };
 
 enum vr_box_type {

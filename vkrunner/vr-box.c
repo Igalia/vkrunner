@@ -113,17 +113,42 @@ vr_box_base_type_size(enum vr_box_base_type type)
         vr_fatal("Unknown base type");
 }
 
+static void
+get_major_minor(enum vr_box_type type,
+                const struct vr_box_layout *layout,
+                int *major,
+                int *minor)
+{
+        const struct vr_box_type_info *info = type_infos + type;
+
+        switch (layout->major) {
+        case VR_BOX_MAJOR_AXIS_COLUMN:
+                *major = info->columns;
+                *minor = info->rows;
+                return;
+        case VR_BOX_MAJOR_AXIS_ROW:
+                *major = info->rows;
+                *minor = info->columns;
+                return;
+        }
+
+        vr_fatal("Unexpected matrix major axis");
+}
+
 size_t
 vr_box_type_base_alignment(enum vr_box_type type,
                            const struct vr_box_layout *layout)
 {
         const struct vr_box_type_info *info = type_infos + type;
         int component_size = vr_box_base_type_size(info->base_type);
+        int major, minor;
 
-        if (info->rows == 3)
+        get_major_minor(type, layout, &major, &minor);
+
+        if (minor == 3)
                 return component_size * 4;
         else
-                return component_size * info->rows;
+                return component_size * minor;
 }
 
 size_t
@@ -147,9 +172,12 @@ size_t
 vr_box_type_array_stride(enum vr_box_type type,
                          const struct vr_box_layout *layout)
 {
-        const struct vr_box_type_info *info = type_infos + type;
         size_t matrix_stride = vr_box_type_matrix_stride(type, layout);
-        return matrix_stride * info->columns;
+        int major, minor;
+
+        get_major_minor(type, layout, &major, &minor);
+
+        return matrix_stride * major;
 }
 
 size_t
@@ -159,8 +187,35 @@ vr_box_type_size(enum vr_box_type type,
         const struct vr_box_type_info *info = type_infos + type;
         size_t matrix_stride = vr_box_type_matrix_stride(type, layout);
         size_t base_size = vr_box_base_type_size(info->base_type);
+        int major, minor;
 
-        return (info->columns - 1) * matrix_stride + base_size * info->rows;
+        get_major_minor(type, layout, &major, &minor);
+
+        return (major - 1) * matrix_stride + base_size * minor;
+}
+
+static void
+get_axis_offsets(enum vr_box_type type,
+                 const struct vr_box_layout *layout,
+                 int *column_offset,
+                 int *row_offset)
+{
+        const struct vr_box_type_info *info = type_infos + type;
+        size_t stride = vr_box_type_matrix_stride(type, layout);
+        size_t base_size = vr_box_base_type_size(info->base_type);
+
+        switch (layout->major) {
+        case VR_BOX_MAJOR_AXIS_COLUMN:
+                *column_offset = stride - base_size * info->rows;
+                *row_offset = base_size;
+                return;
+        case VR_BOX_MAJOR_AXIS_ROW:
+                *column_offset = base_size - stride * info->rows;
+                *row_offset = stride;
+                return;
+        }
+
+        vr_fatal("Unexpected matrix major axis");
 }
 
 void
@@ -170,19 +225,21 @@ vr_box_for_each_component(enum vr_box_type type,
                           void *user_data)
 {
         const struct vr_box_type_info *info = type_infos + type;
-        size_t stride = vr_box_type_matrix_stride(type, layout);
-        size_t base_size = vr_box_base_type_size(info->base_type);
-        size_t offset = 0;
+        long offset = 0;
+        int column_offset, row_offset;
+
+        get_axis_offsets(type, layout, &column_offset, &row_offset);
 
         for (int col = 0; col < info->columns; col++) {
                 for (int row = 0; row < info->rows; row++) {
                         if (!cb(info->base_type,
-                                offset + row * base_size,
+                                offset,
                                 user_data)) {
                                 return;
                         }
+                        offset += row_offset;
                 }
-                offset += stride;
+                offset += column_offset;
         }
 }
 
