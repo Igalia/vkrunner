@@ -764,8 +764,15 @@ parse_box_values(struct load_state *data,
         size_t n_values = 0;
 
         do {
+                size_t old_length = buffer.length;
+
                 vr_buffer_set_length(&buffer,
                                      n_values * array_stride + type_size);
+
+                /* Clear the data first so that any bytes not filled
+                 * due to padding will have a consistent value
+                 */
+                memset(buffer.data + old_length, 0, buffer.length - old_length);
 
                 if (!parse_value(data,
                                  p,
