@@ -85,14 +85,8 @@ The same as above except that it probes the entire window.
 
 Sets a push constant at the given offset. Note that unlike Piglit, the
 offset is a byte offset into the push constant buffer rather than a
-uniform location. The type can be one of int, uint, int8_t, uint8_t,
-int16_t, uint16_t, int64_t, uint64_t, float16_t, float, double,
-f16vec[234], vec[234], dvec[234], ivec[234], uvec[234], i8vec[234],
-u8vec[234], i16vec[234], u16vec[234], i64vec[234], u64vec[234],
-mat[234]x[234] or dmat[234]x[234]. Multiple values can be specified to
-upload values to an array of that type. If matrices or arrays are
-specified they are assumed to have a stride according to layout
-specified with the `push layout` command.
+uniform location. For a description of how the arguments work see
+“Setting buffer subdata” below.
 
 > (ubo|ssbo) _binding_ subdata _type_ _offset_ _values_…
 
@@ -100,14 +94,14 @@ Sets a value within a uniform or storage buffer. The first time a
 value is set within a buffer it will be created with the minimum size
 needed to contain all of the values set on it via test commands. It
 will then be bound to the descriptor set at the given binding point.
-The rest of the arguments are the same as for the `push` command,
-except that the values are laid out according to the last layout
-specified with `ubo layout` or `ssbo layout`. Note that the buffer is
-just updated by writing into a memory mapped view of it which means
-that if you do an update, draw call, update and then another draw call
-both draws will use the values from the second update. This is because
-the draws are not flushed until the next probe command or the test
-completes.
+The rest of the arguments are used as described in “Setting buffer
+subdata” below.
+
+Note that the buffer is just updated by writing into a memory mapped
+view of it which means that if you do an update, draw call, update and
+then another draw call both draws will use the values from the second
+update. This is because the draws are not flushed until the next probe
+command or the test completes.
 
 > (ubo|ssbo) _binding_ _size_
 
@@ -223,6 +217,85 @@ This is equivalent to ubo _binding_ subdata _type_ _offset_ _values_.
 It is provided for compatibility with Piglit.
 
 Take a look in the examples directory for more examples.
+
+## Setting buffer subdata
+
+The commands to set push constants, ubo data and ssbo data all take
+the same three arguments `type`, `offset` and `values…`. These are
+used to describe a chunk of data to store at the given offset in the
+corresponding buffer. The commands can be used multiple times with
+different offsets to set data at different locations.
+
+The type can be one of int, uint, int8_t, uint8_t, int16_t, uint16_t,
+int64_t, uint64_t, float16_t, float, double, f16vec[234], vec[234],
+dvec[234], ivec[234], uvec[234], i8vec[234], u8vec[234], i16vec[234],
+u16vec[234], i64vec[234], u64vec[234], mat[234]x[234] or
+dmat[234]x[234].
+
+The values argument contains one integer or float for each component
+of the given type. Multiple values can be specified in a single
+command to set an array of values of the given type.
+
+Each buffer type (push constant, UBO and SSBO) has a corresponding
+current layout which is either std140 or std430. The current layout
+only matters for matrix types or for specifying array values with a
+single command. It is used to calculate the array stride and matrix
+stride for the given type. The default layouts for each buffer type
+correspond to the defaults for the corresponding buffer type in GLSL.
+Note that the layout is only used as a convenience to set values in
+memory. If you want to use a custom layout it is still always possible
+to set all the values using multiple commands and explicit offsets.
+
+Some examples:
+
+    ssbo 0 subdata float 12  42.0
+
+This will write the float value 42 twelve bytes into the buffer at
+binding 0.
+
+    ssbo layout std140
+    ssbo 0 subdata float 32  1 2 3
+
+This will write the float values 1, 2, 3 into the buffer starting at
+byte 32 arranged such so that it would be suitable for an array of floats
+declared as std140 such as this:
+
+```GLSL
+layout(binding = 0, std140) buffer block {
+   layout(offset = 32) float one_two_three[3];
+};
+```
+
+The rules of std140 force the array stride to be a multiple of a vec4
+so this will effectively write the following floats starting at byte
+32:
+
+```
+1 0 0 0 2 0 0 0 3
+```
+
+```
+ssbo layout std430
+ssbo 0 subdata mat3 12   1 2 3 4 5 6 7 8 9
+```
+
+This will write a mat3 starting at offset 12. std430 treats this like
+an array of 3 vec3s. The stride for vec3s is padded up to vec4 so it
+would write the floats like this:
+
+```
+1 2 3 0 4 5 6 0 7 8 9
+```
+
+```
+ssbo layout std430 row_major
+ssbo 0 subdata mat3 12   1 2 3 4 5 6 7 8 9
+```
+
+This will write the same matrix but laid out in a way suitable for a
+uniform declared as row_major. It will look like this:
+
+    1 4 7 0 2 5 8 0 3 6 9
 
 ## [require] section
 
