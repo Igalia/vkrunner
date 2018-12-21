@@ -58,6 +58,19 @@ enum section {
         SECTION_TEST
 };
 
+enum parse_result {
+        /* The line is definitely intended to be for this command but
+         * there was an error parsing it.
+         */
+        PARSE_RESULT_ERROR,
+        /* The command was successfully parsed */
+        PARSE_RESULT_OK,
+        /* The line does not match the command handled by this
+         * function, continue trying another command.
+         */
+        PARSE_RESULT_NON_MATCHED,
+};
+
 struct load_state {
         const struct vr_config *config;
         const struct vr_source *source;
@@ -84,6 +97,9 @@ struct load_state {
         struct vr_box_layout ssbo_layout;
         int had_sections;
 };
+
+typedef enum parse_result
+(* process_test_line_func)(struct load_state *data, const char *line);
 
 static const char *
 stage_names[VR_SHADER_STAGE_N_STAGES] = {
@@ -887,52 +903,6 @@ parse_fbsize(struct load_state *data,
 }
 
 static bool
-parse_tolerance(struct load_state *data,
-                const char *p,
-                int n_tolerance,
-                bool parse_percent)
-{
-        if (parse_doubles(data,
-                          &p,
-                          data->tolerance.value,
-                          n_tolerance,
-                          parse_percent ? "%" : NULL)) {
-                data->tolerance.is_percent = parse_percent;
-                for (unsigned t = 0; t < n_tolerance; ++t) {
-                        if (data->tolerance.value[t] < 0.0) {
-                                error_at_line(data,
-                                              "tolerance values "
-                                              "must be non-negative");
-                                return false;
-                        }
-                }
-
-                if (n_tolerance == 1) {
-                        data->tolerance.is_percent = looking_at(&p, "%");
-                } else if (parse_percent && !looking_at(&p, "%")) {
-                        error_at_line(data,
-                                      "only the last tolerance "
-                                      "value is not a percent");
-                        return false;
-                }
-
-                if (!is_end(p)) {
-                        error_at_line(data,
-                                      "tolerance command has extra "
-                                      "arguments \"%s\"",
-                                      p);
-                        return false;
-                }
-
-                for (unsigned t = n_tolerance; t < 4; ++t) {
-                        data->tolerance.value[t] = data->tolerance.value[0];
-                }
-                return true;
-        }
-        return false;
-}
-
-static bool
 process_none_line(struct load_state *data)
 {
         const char *start = (char *) data->line.data;
@@ -1037,13 +1007,33 @@ add_pipeline_key(struct load_state *data,
         return n_keys;
 }
 
-static bool
+static struct vr_script_command *
+add_command(struct load_state *data)
+{
+        vr_buffer_set_length(&data->commands,
+                             data->commands.length +
+                             sizeof (struct vr_script_command));
+        struct vr_script_command *command =
+                (struct vr_script_command *)
+                (data->commands.data +
+                 data->commands.length -
+                 sizeof (struct vr_script_command));
+
+        memset(command, 0, sizeof *command);
+
+        command->line_num = data->line_num;
+
+        return command;
+}
+
+static enum parse_result
 process_draw_rect_command(struct load_state *data,
-                          const char *p,
-                          struct vr_script_command *command)
+                          const char *p)
 {
         if (!looking_at(&p, "draw rect "))
-                return false;
+                return PARSE_RESULT_NON_MATCHED;
+
+        struct vr_script_command *command = add_command(data);
 
         bool ortho = false;
 
@@ -1068,8 +1058,10 @@ process_draw_rect_command(struct load_state *data,
         float parts[4];
 
         if (!parse_floats(data, &p, parts, 4, NULL) ||
-            !is_end(p))
-                return false;
+            !is_end(p)) {
+                error_at_line(data, "Invalid draw rect command");
+                return PARSE_RESULT_ERROR;
+        }
 
         command->op = VR_SCRIPT_OP_DRAW_RECT;
         command->draw_rect.x = parts[0];
@@ -1088,37 +1080,40 @@ process_draw_rect_command(struct load_state *data,
                 command->draw_rect.h *= 2.0f / height;
         }
 
-        return true;
+        return PARSE_RESULT_OK;
 }
 
-static bool
+static enum parse_result
 process_probe_command(struct load_state *data,
-                      const char *p,
-                      struct vr_script_command *command)
+                      const char *p)
 {
         bool relative = false;
         enum { POINT, RECT, ALL } region_type = POINT;
         int n_components;
 
-        command->probe_rect.tolerance = data->tolerance;
-
         if (looking_at(&p, "relative "))
                 relative = true;
 
         if (!looking_at(&p, "probe "))
-                return false;
+                return PARSE_RESULT_NON_MATCHED;
+
+        struct vr_script_command *command = add_command(data);
+
+        command->probe_rect.tolerance = data->tolerance;
 
         if (looking_at(&p, "rect "))
                 region_type = RECT;
         else if (looking_at(&p, "all "))
                 region_type = ALL;
 
-        if (looking_at(&p, "rgb "))
+        if (looking_at(&p, "rgb ")) {
                 n_components = 3;
-        else if (looking_at(&p, "rgba "))
+        } else if (looking_at(&p, "rgba ")) {
                 n_components = 4;
-        else
-                return false;
+        } else {
+                error_at_line(data, "Expected rgb or rgba in probe command");
+                return PARSE_RESULT_ERROR;
+        }
 
         command->op = VR_SCRIPT_OP_PROBE_RECT;
         command->probe_rect.n_components = n_components;
@@ -1127,40 +1122,43 @@ process_probe_command(struct load_state *data,
         size_t window_height = data->script->window_format.height;
 
         if (region_type == ALL) {
-                if (relative)
-                        return false;
+                if (relative) {
+                        error_at_line(data,
+                                      "‘all’ can not be used with "
+                                      "a relative probe");
+                        return PARSE_RESULT_ERROR;
+                }
                 if (!parse_doubles(data,
                                    &p,
                                    command->probe_rect.color,
                                    n_components,
-                                   NULL))
-                        return false;
-                if (!is_end(p))
-                        return false;
+                                   NULL) ||
+                    !is_end(p))
+                        goto error;
                 command->probe_rect.x = 0;
                 command->probe_rect.y = 0;
                 command->probe_rect.w = window_width;
                 command->probe_rect.h = window_height;
-                return true;
+                return PARSE_RESULT_OK;
         }
 
         while (vr_char_is_space(*p))
                 p++;
         if (*p != '(')
-                return false;
+                goto error;
         p++;
 
         if (region_type == POINT) {
                 if (relative) {
                         float rel_pos[2];
                         if (!parse_floats(data, &p, rel_pos, 2, ","))
-                                return false;
+                                goto error;
                         command->probe_rect.x = rel_pos[0] * window_width;
                         command->probe_rect.y = rel_pos[1] * window_height;
                 } else {
                         int parts[2];
                         if (!parse_ints(&p, parts, 2, ","))
-                                return false;
+                                goto error;
                         command->probe_rect.x = parts[0];
                         command->probe_rect.y = parts[1];
                 }
@@ -1172,7 +1170,7 @@ process_probe_command(struct load_state *data,
                 if (relative) {
                         float rel_pos[4];
                         if (!parse_floats(data, &p, rel_pos, 4, ","))
-                                return false;
+                                goto error;
                         command->probe_rect.x = rel_pos[0] * window_width;
                         command->probe_rect.y = rel_pos[1] * window_height;
                         command->probe_rect.w = rel_pos[2] * window_width;
@@ -1180,7 +1178,7 @@ process_probe_command(struct load_state *data,
                 } else {
                         int parts[4];
                         if (!parse_ints(&p, parts, 4, ","))
-                                return false;
+                                goto error;
                         command->probe_rect.x = parts[0];
                         command->probe_rect.y = parts[1];
                         command->probe_rect.w = parts[2];
@@ -1191,13 +1189,13 @@ process_probe_command(struct load_state *data,
         while (vr_char_is_space(*p))
                 p++;
         if (*p != ')')
-                return false;
+                goto error;
         p++;
 
         while (vr_char_is_space(*p))
                 p++;
         if (*p != '(')
-                return false;
+                goto error;
         p++;
 
         if (!parse_doubles(data,
@@ -1205,30 +1203,35 @@ process_probe_command(struct load_state *data,
                            command->probe_rect.color,
                            n_components,
                            ","))
-                return false;
+                goto error;
 
         while (vr_char_is_space(*p))
                 p++;
         if (*p != ')')
-                return false;
+                goto error;
         p++;
 
         if (!is_end(p))
-                return false;
+                goto error;
 
-        return true;
+        return PARSE_RESULT_OK;
+
+error:
+        error_at_line(data, "Invalid probe command");
+        return PARSE_RESULT_ERROR;
 }
 
-static bool
+static enum parse_result
 process_probe_ssbo_command(struct load_state *data,
-                           const char *p,
-                           struct vr_script_command *command)
+                           const char *p)
 {
         if (!looking_at(&p, "probe ssbo "))
-                return false;
+                return PARSE_RESULT_NON_MATCHED;
+
+        struct vr_script_command *command = add_command(data);
 
         if (!parse_value_type(&p, &command->probe_ssbo.type))
-                return false;
+                goto error;
 
         command->probe_ssbo.layout = data->ssbo_layout;
 
@@ -1238,7 +1241,7 @@ process_probe_ssbo_command(struct load_state *data,
         unsigned values[3];
         if (!parse_desc_set_and_binding(&p, values) ||
             !parse_uints(&p, &values[2], 1, NULL)) {
-                return false;
+                goto error;
         }
 
         command->probe_ssbo.desc_set = values[0];
@@ -1265,7 +1268,7 @@ process_probe_ssbo_command(struct load_state *data,
                         goto found_comparison;
                 }
         }
-        return false;
+        goto error;
 found_comparison:
 
         while (vr_char_is_space(*p))
@@ -1282,25 +1285,33 @@ found_comparison:
                               type_size, /* array_stride (tightly packed) */
                               &value_size,
                               &command->probe_ssbo.value))
-                return false;
+                goto error;
 
         if (!is_end(p)) {
                 vr_free(command->probe_ssbo.value);
-                return false;
+                goto error;
         }
 
         command->probe_ssbo.n_values = value_size / type_size;
         command->op = VR_SCRIPT_OP_PROBE_SSBO;
         command->probe_ssbo.tolerance = data->tolerance;
 
-        return true;
+        return PARSE_RESULT_OK;
+
+error:
+        error_at_line(data, "Invalid probe ssbo command");
+        return PARSE_RESULT_ERROR;
 }
 
-static bool
+static enum parse_result
 process_draw_arrays_command(struct load_state *data,
-                            const char *p,
-                            struct vr_script_command *command)
+                            const char *p)
 {
+        if (!looking_at(&p, "draw arrays "))
+                return PARSE_RESULT_NON_MATCHED;
+
+        struct vr_script_command *command = add_command(data);
+
         int args[3] = { [2] = 1 };
         int n_args = 2;
 
@@ -1364,13 +1375,13 @@ process_draw_arrays_command(struct load_state *data,
         }
 
         error_at_line(data, "Unknown topology in draw arrays command");
-        return false;
+        return PARSE_RESULT_ERROR;
 
 found_topology:
         if (!parse_ints(&p, args, n_args, NULL) ||
             !is_end(p)) {
                 error_at_line(data, "Invalid draw arrays command");
-                return false;
+                return PARSE_RESULT_ERROR;
         }
 
         struct vr_pipeline_key key;
@@ -1388,21 +1399,25 @@ found_topology:
 
         vr_pipeline_key_destroy(&key);
 
-        return true;
+        return PARSE_RESULT_OK;
 }
 
-static bool
+static enum parse_result
 process_compute_command(struct load_state *data,
-                        const char *p,
-                        struct vr_script_command *command)
+                        const char *p)
 {
+        if (!looking_at(&p, "compute "))
+                return PARSE_RESULT_NON_MATCHED;
+
         unsigned parts[3];
 
         if (!parse_uints(&p, parts, 3, NULL) ||
             !is_end(p)) {
                 error_at_line(data, "Invalid compute command");
-                return false;
+                return PARSE_RESULT_ERROR;
         }
+
+        struct vr_script_command *command = add_command(data);
 
         command->dispatch_compute.x = parts[0];
         command->dispatch_compute.y = parts[1];
@@ -1413,7 +1428,64 @@ process_compute_command(struct load_state *data,
         command->dispatch_compute.pipeline_key =
                 add_pipeline_key(data, &data->current_key);
 
-        return true;
+        return PARSE_RESULT_OK;
+}
+
+static enum parse_result
+process_uniform_command(struct load_state *data,
+                        const char *p)
+{
+        if (!looking_at(&p, "uniform "))
+                return PARSE_RESULT_NON_MATCHED;
+
+        struct vr_script_command *command = add_command(data);
+
+        while (vr_char_is_space(*p))
+                p++;
+
+        enum vr_box_type type;
+
+        if (!parse_value_type(&p, &type) ||
+            !parse_size_t(&p, &command->set_push_constant.offset) ||
+            !parse_buffer_subdata(data,
+                                  &p,
+                                  type,
+                                  &data->push_layout,
+                                  &command->set_push_constant.size,
+                                  &command->set_push_constant.data) ||
+            !is_end(p)) {
+                error_at_line(data, "Invalid uniform command");
+                return PARSE_RESULT_ERROR;
+        }
+
+        command->op = VR_SCRIPT_OP_SET_PUSH_CONSTANT;
+
+        return PARSE_RESULT_OK;
+}
+
+static enum parse_result
+process_clear_command(struct load_state *data,
+                      const char *p)
+{
+        if (!looking_at(&p, "clear"))
+                return PARSE_RESULT_NON_MATCHED;
+
+        if (!is_end(p)) {
+                error_at_line(data,
+                              "The clear command doesn’t take any arguments");
+                return PARSE_RESULT_ERROR;
+        }
+
+        struct vr_script_command *command = add_command(data);
+
+        command->op = VR_SCRIPT_OP_CLEAR;
+        memcpy(command->clear.color,
+               data->clear_color,
+               sizeof data->clear_color);
+        command->clear.depth = data->clear_depth;
+        command->clear.stencil = data->clear_stencil;
+
+        return PARSE_RESULT_OK;
 }
 
 static bool
@@ -1448,7 +1520,7 @@ process_indices_line(struct load_state *data)
         return true;
 }
 
-static bool
+static enum parse_result
 process_bool_property(struct load_state *data,
                       union vr_pipeline_key_value *value,
                       const char *p)
@@ -1463,14 +1535,14 @@ process_bool_property(struct load_state *data,
         if (!is_end(p))
                 goto error;
 
-        return true;
+        return PARSE_RESULT_OK;
 
 error:
         error_at_line(data, "Invalid boolean value");
-        return false;
+        return PARSE_RESULT_ERROR;
 }
 
-static bool
+static enum parse_result
 process_int_property(struct load_state *data,
                      union vr_pipeline_key_value *value,
                      const char *p)
@@ -1514,14 +1586,14 @@ process_int_property(struct load_state *data,
                 p++;
         }
 
-        return true;
+        return PARSE_RESULT_OK;
 
 error:
         error_at_line(data, "Invalid int value");
-        return false;
+        return PARSE_RESULT_ERROR;
 }
 
-static bool
+static enum parse_result
 process_float_property(struct load_state *data,
                        union vr_pipeline_key_value *value,
                        const char *p)
@@ -1531,28 +1603,47 @@ process_float_property(struct load_state *data,
 
         if (!parse_floats(data, &p, &value->f, 1, NULL) || !is_end(p)) {
                 error_at_line(data, "Invalid float value");
-                return false;
+                return PARSE_RESULT_ERROR;
         }
 
-        return true;
+        return PARSE_RESULT_OK;
 }
 
-static bool
+static enum parse_result
 process_pipeline_property(struct load_state *data,
-                          union vr_pipeline_key_value *value,
-                          enum vr_pipeline_key_value_type type,
                           const char *p)
 {
+        if (!vr_char_is_alnum(*p))
+                return PARSE_RESULT_NON_MATCHED;
+
+        const char *end = p + 1;
+        while (vr_char_is_alnum(*end) || *end == '.')
+                end++;
+        char *prop_name = vr_strndup(p, end - p);
+
+        enum vr_pipeline_key_value_type key_value_type;
+        union vr_pipeline_key_value *key_value =
+                vr_pipeline_key_lookup(&data->current_key,
+                                       prop_name,
+                                       &key_value_type);
+
+        vr_free(prop_name);
+
+        if (key_value == NULL)
+                return PARSE_RESULT_NON_MATCHED;
+
+        p = end;
+
         while (*p && vr_char_is_space(*p))
                 p++;
 
-        switch (type) {
+        switch (key_value_type) {
         case VR_PIPELINE_KEY_VALUE_TYPE_BOOL:
-                return process_bool_property(data, value, p);
+                return process_bool_property(data, key_value, p);
         case VR_PIPELINE_KEY_VALUE_TYPE_INT:
-                return process_int_property(data, value, p);
+                return process_int_property(data, key_value, p);
         case VR_PIPELINE_KEY_VALUE_TYPE_FLOAT:
-                return process_float_property(data, value, p);
+                return process_float_property(data, key_value, p);
         }
 
         vr_fatal("Unknown pipeline property type");
@@ -1678,7 +1769,7 @@ process_set_ssbo_size(struct load_state *data,
         return true;
 }
 
-static bool
+static enum parse_result
 process_entrypoint(struct load_state *data,
                    const char *p)
 {
@@ -1689,12 +1780,12 @@ process_entrypoint(struct load_state *data,
                         goto found_stage;
         }
 
-        return false;
+        return PARSE_RESULT_NON_MATCHED;
 
 found_stage:
 
         if (!looking_at(&p, " entrypoint "))
-                return false;
+                return PARSE_RESULT_NON_MATCHED;
 
         while (*p && vr_char_is_space(*p))
                 p++;
@@ -1704,14 +1795,197 @@ found_stage:
         while (end > p && vr_char_is_space(end[-1]))
                 end--;
 
-        if (end <= p)
-                return false;
+        if (end <= p) {
+                error_at_line(data, "Missing entrypoint name");
+                return PARSE_RESULT_ERROR;
+        }
 
         char *entrypoint = vr_strndup(p, end - p);
         vr_pipeline_key_set_entrypoint(&data->current_key, stage, entrypoint);
         vr_free(entrypoint);
 
-        return true;
+        return PARSE_RESULT_OK;
+}
+
+static enum parse_result
+process_patch_parameter_vertices(struct load_state *data,
+                                 const char *p)
+{
+        if (!looking_at(&p, "patch parameter vertices "))
+                return PARSE_RESULT_NON_MATCHED;
+
+        struct vr_pipeline_key *key = &data->current_key;
+        if (!parse_ints(&p, &key->patchControlPoints.i, 1, NULL) ||
+            !is_end(p)) {
+                error_at_line(data, "Invalid patch parameter vertices command");
+                return PARSE_RESULT_ERROR;
+        }
+
+        return PARSE_RESULT_OK;
+}
+
+static enum parse_result
+process_clear_values(struct load_state *data,
+                     const char *p)
+{
+        if (!looking_at(&p, "clear "))
+                return PARSE_RESULT_NON_MATCHED;
+
+        if (!looking_at(&p, "color ")) {
+                if (!parse_floats(data, &p, data->clear_color, 4, NULL) ||
+                    !is_end(p)) {
+                        error_at_line(data, "Invalid clear color command");
+                        return PARSE_RESULT_ERROR;
+                }
+        } else if (!looking_at(&p, "depth ")) {
+                if (!parse_floats(data, &p, &data->clear_depth, 1, NULL) ||
+                    !is_end(p)) {
+                        error_at_line(data, "Invalid clear depth command");
+                        return PARSE_RESULT_ERROR;
+                }
+        } else if (!looking_at(&p, "stencil ")) {
+                if (!parse_uints(&p, &data->clear_stencil, 1, NULL) ||
+                    !is_end(p)) {
+                        error_at_line(data, "Invalid clear stencil command");
+                        return PARSE_RESULT_ERROR;
+                }
+        } else {
+                return PARSE_RESULT_NON_MATCHED;
+        }
+
+        return PARSE_RESULT_OK;
+}
+
+static enum parse_result
+process_ssbo_command(struct load_state *data,
+                     const char *p)
+{
+        if (!looking_at(&p, "ssbo "))
+                return PARSE_RESULT_NON_MATCHED;
+
+        unsigned binding[2];
+
+        if (!parse_desc_set_and_binding(&p, binding)) {
+                error_at_line(data, "Invalid binding in ssbo command");
+                return PARSE_RESULT_ERROR;
+        }
+
+        while (vr_char_is_space(*p))
+                p++;
+
+        if (looking_at(&p, "subdata ")) {
+                struct vr_script_command *command = add_command(data);
+
+                if (!process_set_buffer_subdata(data,
+                                                binding[0],
+                                                binding[1],
+                                                VR_SCRIPT_BUFFER_TYPE_SSBO,
+                                                p,
+                                                command))
+                        return PARSE_RESULT_ERROR;
+        } else {
+                unsigned size;
+
+                if (!parse_uints(&p, &size, 1, NULL) || !is_end(p)) {
+                        error_at_line(data, "Invalid ssbo command");
+                        return PARSE_RESULT_ERROR;
+                }
+
+                if (!process_set_ssbo_size(data,
+                                           binding[0],
+                                           binding[1],
+                                           size))
+                        return PARSE_RESULT_ERROR;
+        }
+
+        return PARSE_RESULT_OK;
+}
+
+static enum parse_result
+process_uniform_ubo_command(struct load_state *data,
+                            const char *p)
+{
+        if (!looking_at(&p, "uniform ubo "))
+                return PARSE_RESULT_NON_MATCHED;
+
+        struct vr_script_command *command = add_command(data);
+
+        unsigned values[2];
+        if (!parse_desc_set_and_binding(&p, values)) {
+                error_at_line(data, "Invalid binding in uniform ubo command");
+                return PARSE_RESULT_ERROR;
+        }
+
+        if (!process_set_buffer_subdata(data,
+                                        values[0],
+                                        values[1],
+                                        VR_SCRIPT_BUFFER_TYPE_UBO,
+                                        p,
+                                        command))
+                return PARSE_RESULT_ERROR;
+
+        return PARSE_RESULT_OK;
+}
+
+static enum parse_result
+process_tolerance(struct load_state *data,
+                  const char *p)
+{
+        if (!looking_at(&p, "tolerance "))
+                return PARSE_RESULT_NON_MATCHED;
+
+        bool parse_percent = false;
+        int n_args;
+
+        for (n_args = 0; !is_end(p) && n_args < 4; n_args++) {
+                if (!parse_doubles(data,
+                                   &p,
+                                   data->tolerance.value + n_args,
+                                   1,
+                                   NULL) ||
+                    data->tolerance.value[n_args] < 0.0) {
+                        error_at_line(data, "invalid tolerance value");
+                        return PARSE_RESULT_ERROR;
+                }
+
+                while (vr_char_is_space(*p))
+                        p++;
+
+                if (n_args == 0) {
+                        if (*p == '%') {
+                                parse_percent = true;
+                                p++;
+                        }
+                } else if (parse_percent) {
+                        if (*p != '%') {
+                                error_at_line(data,
+                                              "either all tolerance "
+                                              "values must be a percentage "
+                                              "or none");
+                                return PARSE_RESULT_ERROR;
+                        }
+                        p++;
+                }
+        }
+
+        if (n_args == 1) {
+                for (unsigned i = 1; i < 4; i++)
+                        data->tolerance.value[i] = data->tolerance.value[0];
+        } else if (n_args != 4) {
+                error_at_line(data,
+                              "there must be either 1 or 4 "
+                              "tolerance values");
+                return PARSE_RESULT_ERROR;
+        }
+
+        if (!is_end(p)) {
+                error_at_line(data, "tolerance command has extra arguments");
+                return PARSE_RESULT_ERROR;
+        }
+
+        data->tolerance.is_percent = parse_percent;
+
+        return PARSE_RESULT_OK;
 }
 
 static bool
@@ -1725,185 +1999,37 @@ process_test_line(struct load_state *data)
         if (*p == '#' || *p == '\0')
                 return true;
 
-        const char *command_start = p;
+        static const process_test_line_func funcs[] = {
+                process_patch_parameter_vertices,
+                process_clear_values,
+                process_ssbo_command,
+                process_tolerance,
+                process_entrypoint,
+                process_probe_ssbo_command,
+                process_probe_command,
+                process_draw_arrays_command,
+                process_compute_command,
+                process_uniform_ubo_command,
+                process_uniform_command,
+                process_clear_command,
+                process_draw_rect_command,
+                /* This should be last because it is more expensive to check */
+                process_pipeline_property,
+        };
 
-        if (looking_at(&p, "patch parameter vertices ")) {
-                struct vr_pipeline_key *key = &data->current_key;
-                if (!parse_ints(&p, &key->patchControlPoints.i, 1, NULL))
-                        goto error;
-                if (!is_end(p))
-                        goto error;
-                return true;
-        }
-
-        if (looking_at(&p, "clear color ")) {
-                if (!parse_floats(data, &p, data->clear_color, 4, NULL))
-                        goto error;
-                if (!is_end(p))
-                        goto error;
-                return true;
-        }
-
-        if (looking_at(&p, "clear depth ")) {
-                if (!parse_floats(data, &p, &data->clear_depth, 1, NULL))
-                        goto error;
-                if (!is_end(p))
-                        goto error;
-                return true;
-        }
-
-        if (looking_at(&p, "clear stencil ")) {
-                if (!parse_uints(&p, &data->clear_stencil, 1, NULL))
-                        goto error;
-                if (!is_end(p))
-                        goto error;
-                return true;
-        }
-
-        if (looking_at(&p, "ssbo ")) {
-                unsigned values[3];
-                if (parse_desc_set_and_binding(&p, values) &&
-                    parse_uints(&p, &values[2], 1, NULL)) {
-                        if (!is_end(p))
-                                return false;
-                        return process_set_ssbo_size(data,
-                                                     values[0],
-                                                     values[1],
-                                                     values[2]);
-                }
-                p = command_start;
-        }
-
-        if (looking_at(&p, "tolerance ")) {
-                if (parse_tolerance(data, p, 4, false))
+        for (int i = 0; i < VR_N_ELEMENTS(funcs); i++) {
+                switch (funcs[i](data, p)) {
+                case PARSE_RESULT_NON_MATCHED:
+                        break;
+                case PARSE_RESULT_ERROR:
+                        return false;
+                case PARSE_RESULT_OK:
                         return true;
-                if (parse_tolerance(data, p, 4, true))
-                        return true;
-                if (parse_tolerance(data, p, 1, false))
-                        return true;
-                goto error;
-        }
-
-        if (process_entrypoint(data, p))
-                return true;
-
-        if (vr_char_is_alnum(*p)) {
-                const char *end = p + 1;
-                while (vr_char_is_alnum(*end) || *end == '.')
-                        end++;
-                char *prop_name = vr_strndup(p, end - p);
-
-                enum vr_pipeline_key_value_type key_value_type;
-                union vr_pipeline_key_value *key_value =
-                        vr_pipeline_key_lookup(&data->current_key,
-                                               prop_name,
-                                               &key_value_type);
-
-                vr_free(prop_name);
-
-                if (key_value) {
-                        return process_pipeline_property(data,
-                                                         key_value,
-                                                         key_value_type,
-                                                         end);
                 }
         }
 
-        vr_buffer_set_length(&data->commands,
-                             data->commands.length +
-                             sizeof (struct vr_script_command));
-        struct vr_script_command *command =
-                (struct vr_script_command *)
-                (data->commands.data +
-                 data->commands.length -
-                 sizeof (struct vr_script_command));
-
-        memset(command, 0, sizeof *command);
-
-        command->line_num = data->line_num;
-
-        if (process_draw_rect_command(data, p, command))
-                return true;
-
-        if (process_probe_command(data, p, command))
-                return true;
-
-        if (process_probe_ssbo_command(data, p, command))
-                return true;
-
-        if (looking_at(&p, "draw arrays "))
-                return process_draw_arrays_command(data, p, command);
-
-        if (looking_at(&p, "compute "))
-                return process_compute_command(data, p, command);
-
-        if (looking_at(&p, "uniform ubo ")) {
-                unsigned values[2];
-                if (!parse_desc_set_and_binding(&p, values))
-                        goto error;
-                return process_set_buffer_subdata(data,
-                                                  values[0],
-                                                  values[1],
-                                                  VR_SCRIPT_BUFFER_TYPE_UBO,
-                                                  p,
-                                                  command);
-        }
-
-        if (looking_at(&p, "ssbo ")) {
-                unsigned values[2];
-
-                if (!parse_desc_set_and_binding(&p, values))
-                        goto error;
-
-                while (vr_char_is_space(*p))
-                        p++;
-                if (!looking_at(&p, "subdata "))
-                        goto error;
-
-                return process_set_buffer_subdata(data,
-                                                  values[0],
-                                                  values[1],
-                                                  VR_SCRIPT_BUFFER_TYPE_SSBO,
-                                                  p,
-                                                  command);
-        }
-
-        if (looking_at(&p, "uniform ")) {
-                while (vr_char_is_space(*p))
-                        p++;
-                enum vr_box_type type;
-                if (!parse_value_type(&p,
-                                      &type))
-                        goto error;
-                if (!parse_size_t(&p, &command->set_push_constant.offset))
-                        goto error;
-                if (!parse_buffer_subdata(data,
-                                          &p,
-                                          type,
-                                          &data->push_layout,
-                                          &command->set_push_constant.size,
-                                          &command->set_push_constant.data))
-                        goto error;
-                if (!is_end(p))
-                        goto error;
-                command->op = VR_SCRIPT_OP_SET_PUSH_CONSTANT;
-                return true;
-        }
-
-        if (looking_at(&p, "clear")) {
-                if (!is_end(p))
-                        goto error;
-                command->op = VR_SCRIPT_OP_CLEAR;
-                memcpy(command->clear.color,
-                       data->clear_color,
-                       sizeof data->clear_color);
-                command->clear.depth = data->clear_depth;
-                command->clear.stencil = data->clear_stencil;
-                return true;
-        }
-
-error:
         error_at_line(data, "Invalid test command");
+
         return false;
 }
 
