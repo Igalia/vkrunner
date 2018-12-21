@@ -81,7 +81,7 @@ either `rgb` or `rgba`.
 
 The same as above except that it probes the entire window.
 
-> uniform _type_ _offset_ _values_…
+> push _type_ _offset_ _values_…
 
 Sets a push constant at the given offset. Note that unlike Piglit, the
 offset is a byte offset into the push constant buffer rather than a
@@ -93,31 +93,25 @@ dmat[234]x[234]. Multiple values can be specified to upload values to
 an array of that type. If matrices or arrays are specified they are
 assumed to have a stride according to the std430 layout rules.
 
-> uniform ubo _binding_ _type_ _offset_ _values_…
+> (ubo|ssbo) _binding_ subdata _type_ _offset_ _values_…
 
-Sets a value within a uniform buffer. The first time a value is set
-within a buffer it will be created with the minimum size needed to
-contain all of the values set on it via test commands. It will then be
-bound to the descriptor set at the given binding point. The rest of
-the arguments are the same as for the `uniform` command, except that
-it values are laid out according to the std140 rules. Note that the
-buffer is just updated by writing into a memory mapped view of it
-which means that if you do an update, draw call, update and then
-another draw call both draws will use the values from the second
-update. This is because the draws are not flushed until the next probe
-command or the test completes.
+Sets a value within a uniform or storage buffer. The first time a
+value is set within a buffer it will be created with the minimum size
+needed to contain all of the values set on it via test commands. It
+will then be bound to the descriptor set at the given binding point.
+The rest of the arguments are the same as for the `uniform` command,
+except that it values are laid out according to the std140 rules for
+UBOs and std430 for SSBOs. Note that the buffer is just updated by
+writing into a memory mapped view of it which means that if you do an
+update, draw call, update and then another draw call both draws will
+use the values from the second update. This is because the draws are
+not flushed until the next probe command or the test completes.
 
-> ssbo _binding_ subdata _type_ _offset_ _values_…
+> (ubo|ssbo) _binding_ _size_
 
-Sets a value within a storage buffer. The command is the same as
-`uniform ubo` except for the different buffer type. The values will be
-laid out according to the std430 rules.
-
-> ssbo _binding_ _size_
-
-Sets the size of a storage buffer. This is optional if there are ssbo
-subdata commands because in that case it will just take the size of
-the largest offset.
+Sets the size of a uniform or storage buffer. This is optional if
+there are buffer subdata commands because in that case it will just
+take the size of the largest offset.
 
 > probe ssbo _type_ _binding_ _offset_ _comparison_ _values_…
 
@@ -199,6 +193,16 @@ set of state. See the `properties.shader_test` example for details.
 
 Sets the entrypoint function to _name_ for the given stage. This will
 be used for subsequent draw calls or compute dispatches.
+
+> uniform _type_ _offset_ _values_…
+
+This is equivalent to push _type_ _offset_ _values_. It is provided
+for compatibility with Piglit.
+
+> uniform ubo _binding_ _type_ _offset_ _values_…
+
+This is equivalent to ubo _binding_ subdata _type_ _offset_ _values_.
+It is provided for compatibility with Piglit.
 
 Take a look in the examples directory for more examples.
 
