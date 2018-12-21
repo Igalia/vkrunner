@@ -1432,10 +1432,11 @@ process_compute_command(struct load_state *data,
 }
 
 static enum parse_result
-process_uniform_command(struct load_state *data,
-                        const char *p)
+process_push_command(struct load_state *data,
+                     const char *p)
 {
-        if (!looking_at(&p, "uniform "))
+        if (!looking_at(&p, "uniform ") &&
+            !looking_at(&p, "push "))
                 return PARSE_RESULT_NON_MATCHED;
 
         struct vr_script_command *command = add_command(data);
@@ -1753,13 +1754,14 @@ error:
 }
 
 static bool
-process_set_ssbo_size(struct load_state *data,
-                      unsigned desc_set,
-                      unsigned binding,
-                      unsigned size)
+process_set_buffer_size(struct load_state *data,
+                        unsigned desc_set,
+                        unsigned binding,
+                        enum vr_script_buffer_type buffer_type,
+                        unsigned size)
 {
         struct vr_script_buffer *buffer =
-                get_buffer(data, desc_set, binding, VR_SCRIPT_BUFFER_TYPE_SSBO);
+                get_buffer(data, desc_set, binding, buffer_type);
         if (buffer == NULL)
                 return false;
 
@@ -1857,16 +1859,22 @@ process_clear_values(struct load_state *data,
 }
 
 static enum parse_result
-process_ssbo_command(struct load_state *data,
-                     const char *p)
+process_buffer_command(struct load_state *data,
+                       const char *p)
 {
-        if (!looking_at(&p, "ssbo "))
+        enum vr_script_buffer_type buffer_type;
+
+        if (looking_at(&p, "ssbo "))
+                buffer_type = VR_SCRIPT_BUFFER_TYPE_SSBO;
+        else if (looking_at(&p, "ubo "))
+                buffer_type = VR_SCRIPT_BUFFER_TYPE_UBO;
+        else
                 return PARSE_RESULT_NON_MATCHED;
 
         unsigned binding[2];
 
         if (!parse_desc_set_and_binding(&p, binding)) {
-                error_at_line(data, "Invalid binding in ssbo command");
+                error_at_line(data, "Invalid binding in buffer command");
                 return PARSE_RESULT_ERROR;
         }
 
@@ -1879,7 +1887,7 @@ process_ssbo_command(struct load_state *data,
                 if (!process_set_buffer_subdata(data,
                                                 binding[0],
                                                 binding[1],
-                                                VR_SCRIPT_BUFFER_TYPE_SSBO,
+                                                buffer_type,
                                                 p,
                                                 command))
                         return PARSE_RESULT_ERROR;
@@ -1887,14 +1895,15 @@ process_ssbo_command(struct load_state *data,
                 unsigned size;
 
                 if (!parse_uints(&p, &size, 1, NULL) || !is_end(p)) {
-                        error_at_line(data, "Invalid ssbo command");
+                        error_at_line(data, "Invalid buffer command");
                         return PARSE_RESULT_ERROR;
                 }
 
-                if (!process_set_ssbo_size(data,
-                                           binding[0],
-                                           binding[1],
-                                           size))
+                if (!process_set_buffer_size(data,
+                                             binding[0],
+                                             binding[1],
+                                             buffer_type,
+                                             size))
                         return PARSE_RESULT_ERROR;
         }
 
@@ -2002,7 +2011,7 @@ process_test_line(struct load_state *data)
         static const process_test_line_func funcs[] = {
                 process_patch_parameter_vertices,
                 process_clear_values,
-                process_ssbo_command,
+                process_buffer_command,
                 process_tolerance,
                 process_entrypoint,
                 process_probe_ssbo_command,
@@ -2010,7 +2019,7 @@ process_test_line(struct load_state *data)
                 process_draw_arrays_command,
                 process_compute_command,
                 process_uniform_ubo_command,
-                process_uniform_command,
+                process_push_command,
                 process_clear_command,
                 process_draw_rect_command,
                 /* This should be last because it is more expensive to check */
