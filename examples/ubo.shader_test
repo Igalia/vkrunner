@@ -35,20 +35,20 @@ main()
 [test]
 clear
 
-uniform ubo 3 mat2 16 0.0 1.0 1.0 0.0
+ubo 3 subdata mat2 16 0.0 1.0 1.0 0.0
 
 # Sets the offset array. Arrays can be specified by listing multiple values
-uniform ubo 3 float 48 0.1 0.2 0.3 0.4
+ubo 3 subdata float 48 0.1 0.2 0.3 0.4
 
 # Note that we can’t update the ubo and then draw another square
 # without first probing because the command buffer isn’t flushed
 # until a probe. Otherwise it would end up just using the second
 # set of values in the ubo for both rectangles.
 
-uniform ubo 3 vec4 0 -0.1 0.8 -0.3 0.6
+ubo 3 subdata vec4 0 -0.1 0.8 -0.3 0.6
 draw rect -1 -1 1 2
 relative probe rect rgba (0.0, 0.0, 1.0, 0.5) (0.0, 1.0, 0.0, 1.0)
 
-uniform ubo 3 vec4 0 -0.1 0.6 -0.3 0.6
+ubo 3 subdata vec4 0 -0.1 0.6 -0.3 0.6
 draw rect 0 -1 1 2
 relative probe rect rgba (0.0, 0.5, 1.0, 0.5) (0.0, 0.8, 0.0, 1.0)

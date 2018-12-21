@@ -21,15 +21,15 @@ main()
 }
 
 [test]
-uniform float 16 2.0
-uniform vec4 0 0.4 0.45 0.35 0.3
+push float 16 2.0
+push vec4 0 0.4 0.45 0.35 0.3
 # Sets the offset array. Arrays can be specified by listing multiple values
-uniform float 20 0.2 0.1 0.3 0.4
+push float 20 0.2 0.1 0.3 0.4
 draw rect -1.0 -1.0 0.66666 1.0
 
-uniform float 16 0.5
-uniform vec4 0 0.0 2.0 0.0 2.0
-uniform float 20 0.0 0.0 0.0 0.0
+push float 16 0.5
+push vec4 0 0.0 2.0 0.0 2.0
+push float 20 0.0 0.0 0.0 0.0
 draw rect -0.33333 -1.0 1.33333 1.0
 draw rect -1.0 0.0 2.0 1.0
 
