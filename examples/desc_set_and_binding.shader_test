@@ -121,9 +121,9 @@ ssbo 2:3 subdata vec4 16 2.3 2.3 2.3 2.3
 ssbo 2:4 subdata vec4 16 2.4 2.4 2.4 2.4
 ssbo 2:7 subdata vec4 16 2.7 2.7 2.7 2.7
 
-uniform ubo 3:2 vec4 0 0.1 0.2 0.3 0.4
-uniform ubo 3:6 vec4 0 0.2 0.4 0.6 0.8
-uniform ubo 3:10 vec4 0 -0.1 -0.2 -0.3 -0.4
+ubo 3:2 subdata vec4 0 0.1 0.2 0.3 0.4
+ubo 3:6 subdata vec4 0 0.2 0.4 0.6 0.8
+ubo 3:10 subdata vec4 0 -0.1 -0.2 -0.3 -0.4
 
 
 draw rect -1 -1 2 2
