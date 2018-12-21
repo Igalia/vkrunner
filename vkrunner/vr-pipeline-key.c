@@ -30,6 +30,7 @@
 
 #include <string.h>
 #include <limits.h>
+#include <stddef.h>
 
 static const struct vr_pipeline_key
 base_key = {

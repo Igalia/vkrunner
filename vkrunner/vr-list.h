@@ -26,6 +26,7 @@
 #ifndef VR_LIST_H
 #define VR_LIST_H
 
+#include <stddef.h>
 #include "vr-util.h"
 
 /**

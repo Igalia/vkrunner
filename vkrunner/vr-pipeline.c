@@ -34,6 +34,7 @@
 #include "vr-temp-file.h"
 #include "vr-format-private.h"
 
+#include <stddef.h>
 #include <stdio.h>
 #include <errno.h>
 #include <assert.h>
