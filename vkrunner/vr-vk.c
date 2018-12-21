@@ -32,6 +32,7 @@
 #include <dlfcn.h>
 #endif
 
+#include <stddef.h>
 #include "vr-vk.h"
 #include "vr-util.h"
 #include "vr-error-message.h"

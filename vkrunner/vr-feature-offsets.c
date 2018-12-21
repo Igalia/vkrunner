@@ -24,6 +24,7 @@
  */
 
 #include "config.h"
+#include <stddef.h>
 
 #include "vr-feature-offsets.h"
 #include "vr-vk.h"
