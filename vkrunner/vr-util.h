@@ -36,6 +36,12 @@
 #include <alloca.h>
 #endif
 
+#ifdef _MSC_VER
+#define VR_INLINE __inline
+#else
+#define VR_INLINE inline
+#endif
+
 #define VR_SWAP_UINT16(x)                       \
   ((uint16_t)                                   \
    (((uint16_t) (x) >> 8) |                     \
@@ -166,7 +172,7 @@ vr_util_ffsl(long int value);
 /**
  * Align a value, only works pot alignemnts.
  */
-static inline int
+static VR_INLINE int
 vr_align(int value, int alignment)
 {
    return (value + alignment - 1) & ~(alignment - 1);
