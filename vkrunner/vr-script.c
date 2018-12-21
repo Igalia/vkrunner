@@ -237,6 +237,28 @@ is_end(const char *p)
         return *p == '\0';
 }
 
+static VR_PRINTF_FORMAT(2, 3) void
+error_at_line(struct load_state *data,
+              const char *format,
+              ...)
+{
+        struct vr_buffer buffer = VR_BUFFER_STATIC_INIT;
+
+        vr_buffer_append_printf(&buffer,
+                                "%s:%i: ",
+                                data->filename,
+                                data->line_num);
+
+        va_list ap;
+        va_start(ap, format);
+        vr_buffer_append_vprintf(&buffer, format, ap);
+        va_end(ap);
+
+        vr_error_message_string(data->config, (const char *) buffer.data);
+
+        vr_buffer_destroy(&buffer);
+}
+
 static bool
 parse_floats(struct load_state *data,
              const char **p,
@@ -823,10 +845,7 @@ parse_format(struct load_state *data,
                 end++;
 
         if (!is_end(end)) {
-                vr_error_message(data->config,
-                                 "%s:%i: Missing format name",
-                                 data->filename,
-                                 data->line_num);
+                error_at_line(data, "Missing format name");
                 return false;
         }
 
@@ -835,11 +854,7 @@ parse_format(struct load_state *data,
         bool ret;
 
         if (format == NULL) {
-                vr_error_message(data->config,
-                                 "%s:%i: Unknown format: %s",
-                                 data->filename,
-                                 data->line_num,
-                                 format_name);
+                error_at_line(data, "Unknown format: %s", format_name);
                 ret = false;
         } else {
                 *format_out = format;
@@ -861,10 +876,7 @@ parse_fbsize(struct load_state *data,
         if (!parse_uints(&p, parts, 2, NULL) ||
             parts[0] == 0 || parts[1] == 0 ||
             !is_end(p)) {
-                vr_error_message(data->config,
-                                 "%s:%i: Invalid fbsize",
-                                 data->filename,
-                                 data->line_num);
+                error_at_line(data, "Invalid fbsize");
                 return false;
         }
 
@@ -888,11 +900,9 @@ parse_tolerance(struct load_state *data,
                 data->tolerance.is_percent = parse_percent;
                 for (unsigned t = 0; t < n_tolerance; ++t) {
                         if (data->tolerance.value[t] < 0.0) {
-                                vr_error_message(data->config,
-                                                 "%s:%i: tolerance values "
-                                                 "must be non-negative",
-                                                 data->filename,
-                                                 data->line_num);
+                                error_at_line(data,
+                                              "tolerance values "
+                                              "must be non-negative");
                                 return false;
                         }
                 }
@@ -900,21 +910,17 @@ parse_tolerance(struct load_state *data,
                 if (n_tolerance == 1) {
                         data->tolerance.is_percent = looking_at(&p, "%");
                 } else if (parse_percent && !looking_at(&p, "%")) {
-                        vr_error_message(data->config,
-                                         "%s:%i: only the last tolerance "
-                                         "value is not a percent",
-                                         data->filename,
-                                         data->line_num);
+                        error_at_line(data,
+                                      "only the last tolerance "
+                                      "value is not a percent");
                         return false;
                 }
 
                 if (!is_end(p)) {
-                        vr_error_message(data->config,
-                                         "%s:%i: tolerance command has extra "
-                                         "arguments \"%s\"",
-                                         data->filename,
-                                         data->line_num,
-                                         p);
+                        error_at_line(data,
+                                      "tolerance command has extra "
+                                      "arguments \"%s\"",
+                                      p);
                         return false;
                 }
 
@@ -935,10 +941,7 @@ process_none_line(struct load_state *data)
                 start++;
 
         if (*start != '#' && *start != '\0') {
-                vr_error_message(data->config,
-                                 "%s:%i expected empty line",
-                                 data->filename,
-                                 data->line_num);
+                error_at_line(data, "expected empty line");
                 return false;
         }
 
@@ -1005,10 +1008,7 @@ process_require_line(struct load_state *data)
                 return true;
         }
 
-        vr_error_message(data->config,
-                         "%s:%i: Invalid require line",
-                         data->filename,
-                         data->line_num);
+        error_at_line(data, "Invalid require line");
 
         return false;
 }
@@ -1363,19 +1363,13 @@ process_draw_arrays_command(struct load_state *data,
                 }
         }
 
-        vr_error_message(data->config,
-                         "%s:%i: Unknown topology in draw arrays command",
-                         data->filename,
-                         data->line_num);
+        error_at_line(data, "Unknown topology in draw arrays command");
         return false;
 
 found_topology:
         if (!parse_ints(&p, args, n_args, NULL) ||
             !is_end(p)) {
-                vr_error_message(data->config,
-                                 "%s:%i: Invalid draw arrays command",
-                                 data->filename,
-                                 data->line_num);
+                error_at_line(data, "Invalid draw arrays command");
                 return false;
         }
 
@@ -1406,10 +1400,7 @@ process_compute_command(struct load_state *data,
 
         if (!parse_uints(&p, parts, 3, NULL) ||
             !is_end(p)) {
-                vr_error_message(data->config,
-                                 "%s:%i: Invalid compute command",
-                                 data->filename,
-                                 data->line_num);
+                error_at_line(data, "Invalid compute command");
                 return false;
         }
 
@@ -1444,10 +1435,7 @@ process_indices_line(struct load_state *data)
                 unsigned value = strtoul(p, &tail, 10);
 
                 if (errno || value > UINT16_MAX) {
-                        vr_error_message(data->config,
-                                         "%s:%i: Invalid index",
-                                         data->filename,
-                                         data->line_num);
+                        error_at_line(data, "Invalid index");
                         return false;
                 }
 
@@ -1478,10 +1466,7 @@ process_bool_property(struct load_state *data,
         return true;
 
 error:
-        vr_error_message(data->config,
-                         "%s:%i: Invalid boolean value",
-                         data->filename,
-                         data->line_num);
+        error_at_line(data, "Invalid boolean value");
         return false;
 }
 
@@ -1532,10 +1517,7 @@ process_int_property(struct load_state *data,
         return true;
 
 error:
-        vr_error_message(data->config,
-                         "%s:%i: Invalid int value",
-                         data->filename,
-                         data->line_num);
+        error_at_line(data, "Invalid int value");
         return false;
 }
 
@@ -1548,10 +1530,7 @@ process_float_property(struct load_state *data,
                 p++;
 
         if (!parse_floats(data, &p, &value->f, 1, NULL) || !is_end(p)) {
-                vr_error_message(data->config,
-                                 "%s:%i: Invalid float value",
-                                 data->filename,
-                                 data->line_num);
+                error_at_line(data, "Invalid float value");
                 return false;
         }
 
@@ -1594,14 +1573,12 @@ get_buffer(struct load_state *data,
                 if (buffer[i].desc_set == desc_set &&
                     buffer[i].binding == binding) {
                         if (buffer[i].type != type) {
-                                vr_error_message(data->config,
-                                                 "%s:%i: Buffer binding point "
-                                                 "%u:%u used with different "
-                                                 "types",
-                                                 data->filename,
-                                                 data->line_num,
-                                                 desc_set,
-                                                 binding);
+                                error_at_line(data,
+                                              "Buffer binding point "
+                                              "%u:%u used with different "
+                                              "types",
+                                              desc_set,
+                                              binding);
                                 return NULL;
                         }
 
@@ -1680,10 +1657,7 @@ process_set_buffer_subdata(struct load_state *data,
         return true;
 
 error:
-        vr_error_message(data->config,
-                         "%s:%i: Invalid set buffer subdata command",
-                         data->filename,
-                         data->line_num);
+        error_at_line(data, "Invalid set buffer subdata command");
         return false;
 }
 
@@ -1929,10 +1903,7 @@ process_test_line(struct load_state *data)
         }
 
 error:
-        vr_error_message(data->config,
-                         "%s:%i: Invalid test command",
-                         data->filename,
-                         data->line_num);
+        error_at_line(data, "Invalid test command");
         return false;
 }
 
@@ -1987,12 +1958,10 @@ start_spirv_shader(struct load_state *data,
                    enum vr_shader_stage stage)
 {
         if (!vr_list_empty(&data->script->stages[stage])) {
-                vr_error_message(data->config,
-                                 "%s:%i: SPIR-V source can not be "
-                                 "linked with other shaders in the "
-                                 "same stage",
-                                 data->filename,
-                                 data->line_num);
+                error_at_line(data,
+                              "SPIR-V source can not be "
+                              "linked with other shaders in the "
+                              "same stage");
                 return false;
         }
 
@@ -2022,10 +1991,7 @@ process_section_header(struct load_state *data)
         const char *start = (char *) data->line.data + 1;
         const char *end = strchr(start, ']');
         if (end == NULL) {
-                vr_error_message(data->config,
-                                 "%s:%i: Missing ']'",
-                                 data->filename,
-                                 data->line_num);
+                error_at_line(data, "Missing ']'");
                 return false;
         }
 
@@ -2060,11 +2026,8 @@ process_section_header(struct load_state *data)
                  * the commands.
                  */
                 if ((data->had_sections & ~(1 << SECTION_COMMENT)) != 0) {
-                        vr_error_message(data->config,
-                                         "%s:%i: [require] must be the first "
-                                         "section",
-                                         data->filename,
-                                         data->line_num);
+                        error_at_line(data,
+                                      "[require] must be the first section");
                         return false;
                 }
                 set_current_section(data, SECTION_REQUIRE);
@@ -2083,10 +2046,7 @@ process_section_header(struct load_state *data)
 
         if (is_string("vertex data", start, end)) {
                 if (data->script->vertex_data) {
-                        vr_error_message(data->config,
-                                         "%s:%i: Duplicate vertex data section",
-                                         data->filename,
-                                         data->line_num);
+                        error_at_line(data, "Duplicate vertex data section");
                         return false;
                 }
                 set_current_section(data, SECTION_VERTEX_DATA);
@@ -2094,12 +2054,10 @@ process_section_header(struct load_state *data)
                 return true;
         }
 
-        vr_error_message(data->config,
-                         "%s:%i: Unknown section “%.*s”",
-                         data->filename,
-                         data->line_num,
-                         (int) (end - start),
-                         start);
+        error_at_line(data,
+                      "Unknown section “%.*s”",
+                      (int) (end - start),
+                      start);
         return false;
 }
 
@@ -2147,11 +2105,7 @@ decode_binary(struct load_state *data,
                 int digit = hex_value(*(line++));
 
                 if (digit == -1) {
-                        vr_error_message(data->config,
-                                         "%s:%i: Invalid character "
-                                         "in binary data",
-                                         data->filename,
-                                         data->line_num);
+                        error_at_line(data, "Invalid character in binary data");
                         return false;
                 }
 
