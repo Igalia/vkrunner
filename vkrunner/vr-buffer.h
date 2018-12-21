@@ -64,7 +64,7 @@ vr_buffer_append(struct vr_buffer *buffer,
                  const void *data,
                  size_t length);
 
-static inline void
+static VR_INLINE void
 vr_buffer_append_c(struct vr_buffer *buffer,
                    char c)
 {
