@@ -45,10 +45,10 @@ enum vr_script_source_type {
 struct vr_script;
 
 struct vr_script_shader_code {
-	enum vr_script_source_type source_type;
-	enum vr_shader_stage stage;
-	size_t source_length;
-	char *source;
+        enum vr_script_source_type source_type;
+        enum vr_shader_stage stage;
+        size_t source_length;
+        char *source;
 };
 
 /* Writes the source code of the GLSL shaders in shaders parameter.
@@ -65,7 +65,9 @@ vr_script_get_shaders(const struct vr_script *script,
 int
 vr_script_get_num_shaders(const struct vr_script *script);
 
-/* Replaces the non-binary shaders by the binary version compiled by the caller */
+/* Replaces the non-binary shaders by the binary version compiled by
+ * the caller
+ */
 void
 vr_script_replace_shaders_stage_binary(struct vr_script *script,
                                        enum vr_shader_stage stage,

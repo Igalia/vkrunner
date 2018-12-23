@@ -2585,11 +2585,14 @@ vr_script_get_shaders(const struct vr_script *script,
                                       tmp,
                                       &script->stages[stage],
                                       link) {
-                        shaders[shaders_number].source_type = shader->source_type;
+                        shaders[shaders_number].source_type =
+                                shader->source_type;
                         shaders[shaders_number].source_length = shader->length;
                         shaders[shaders_number].stage = stage;
-                        shaders[shaders_number].source = (char*) malloc(shader->length + 1);
-                        memcpy(shaders[shaders_number].source, shader->source, shader->length);
+                        shaders[shaders_number].source =
+                                malloc(shader->length + 1);
+                        memcpy(shaders[shaders_number].source,
+                               shader->source, shader->length);
                         shaders[shaders_number].source[shader->length] = '\0';
                         shaders_number++;
                 }
