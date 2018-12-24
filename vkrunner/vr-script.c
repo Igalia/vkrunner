@@ -1831,19 +1831,19 @@ process_clear_values(struct load_state *data,
         if (!looking_at(&p, "clear "))
                 return PARSE_RESULT_NON_MATCHED;
 
-        if (!looking_at(&p, "color ")) {
+        if (looking_at(&p, "color ")) {
                 if (!parse_floats(data, &p, data->clear_color, 4, NULL) ||
                     !is_end(p)) {
                         error_at_line(data, "Invalid clear color command");
                         return PARSE_RESULT_ERROR;
                 }
-        } else if (!looking_at(&p, "depth ")) {
+        } else if (looking_at(&p, "depth ")) {
                 if (!parse_floats(data, &p, &data->clear_depth, 1, NULL) ||
                     !is_end(p)) {
                         error_at_line(data, "Invalid clear depth command");
                         return PARSE_RESULT_ERROR;
                 }
-        } else if (!looking_at(&p, "stencil ")) {
+        } else if (looking_at(&p, "stencil ")) {
                 if (!parse_uints(&p, &data->clear_stencil, 1, NULL) ||
                     !is_end(p)) {
                         error_at_line(data, "Invalid clear stencil command");
