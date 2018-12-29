@@ -1,0 +1,54 @@
+[vertex shader passthrough]
+
+[fragment shader]
+
+#version 450
+
+layout (location = 0) out vec4 color;
+layout (binding = 5, row_major) uniform AOA
+ {
+    vec4 c1;
+ } arr[2][2];
+
+void main()
+{
+       vec4 fail_color = vec4(1.0, 0.0, 0.0, 1.0);
+       color = vec4(0.0, 1.0, 0.0, 1.0);
+
+       // if (arr[0][0].c1 != vec4(610.072190433, 24998.1713741, 8190.74402991, 26479.0313725)) {
+       //    color = fail_color;
+       // }
+       if (arr[0][1].c1 != vec4(15538.2894026, 5642.53723964, -23131.3873198, 18541.5383078)) {
+          color = fail_color;
+       }
+       // if (arr[1][0].c1 != vec4(-32637.8949874, 12265.4819562, -13669.0617838, 27760.8253605)) {
+       //    color = fail_color;
+       // }
+       // if (arr[1][1].c1 != vec4(-1013.0991989, -23371.9822385, -3101.104448, -19908.5317922)) {
+       //    color = fail_color;
+       // }
+       color = arr[1][1].c1;
+}
+
+
+[test]
+clear
+
+#uniform ubo 5 vec4 0 610.072190433 24998.1713741 8190.74402991 26479.0313725
+
+#uniform ubo 6 vec4 0 15538.2894026 5642.53723964 -23131.3873198 18541.5383078
+
+#uniform ubo 7 vec4 0 -32637.8949874 12265.4819562 -13669.0617838 27760.8253605
+
+#uniform ubo 8 vec4 0 -1013.0991989 -23371.9822385 -3101.104448 -19908.5317922
+
+uniform ubo 5 vec4 0 0.1 0.1 0.1 0.1
+
+uniform ubo 6 vec4 0 0.2 0.2 0.2 0.2
+
+uniform ubo 7 vec4 0 0.3 0.3 0.3 0.3
+
+uniform ubo 8 vec4 0 0.4 0.4 0.4 0.4
+
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0
