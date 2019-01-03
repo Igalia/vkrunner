@@ -634,11 +634,13 @@ print_command_fail(const struct vr_config *config,
 static struct test_buffer *
 get_ubo_buffer(struct test_data *data,
                int desc_set,
-               int binding)
+               int binding,
+               int array_index)
 {
         for (unsigned i = 0; i < data->script->n_buffers; i++) {
                 if (data->script->buffers[i].binding == binding &&
-                    data->script->buffers[i].desc_set == desc_set)
+                    data->script->buffers[i].desc_set == desc_set &&
+                    data->script->buffers[i].array_index == array_index)
                         return data->ubo_buffers[i];
         }
 
@@ -1026,7 +1028,8 @@ probe_ssbo(struct test_data *data,
         struct test_buffer *buffer =
                 get_ubo_buffer(data,
                                command->probe_ssbo.desc_set,
-                               command->probe_ssbo.binding);
+                               command->probe_ssbo.binding,
+                               command->probe_ssbo.array_index);
 
         if (buffer == NULL) {
                 print_command_fail(data->window->config, command);
@@ -1123,6 +1126,9 @@ allocate_ubo_buffers(struct test_data *data)
         VkResult res;
         data->ubo_descriptor_set = vr_alloc(data->pipeline->n_desc_sets *
                                             sizeof(VkDescriptorSet *));
+
+        /* XXX: perhaps duplicate info? */
+        assert(data->pipeline->n_desc_sets == data->script->n_descriptors);
         for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
                 VkDescriptorSetAllocateInfo allocate_info = {
                         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -1149,18 +1155,13 @@ allocate_ubo_buffers(struct test_data *data)
                 const struct vr_script_buffer *script_buffer =
                         data->script->buffers + i;
 
-                unsigned desc_set = script_buffer->desc_set;
-
                 enum VkBufferUsageFlagBits usage;
-                VkDescriptorType descriptor_type;
                 switch (script_buffer->type) {
                 case VR_SCRIPT_BUFFER_TYPE_UBO:
                         usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-                        descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                         goto found_type;
                 case VR_SCRIPT_BUFFER_TYPE_SSBO:
                         usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-                        descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
                         goto found_type;
                 }
                 vr_fatal("Unexpected buffer type");
@@ -1174,27 +1175,65 @@ allocate_ubo_buffers(struct test_data *data)
                         return false;
 
                 data->ubo_buffers[i] = test_buffer;
+        }
 
-                VkDescriptorBufferInfo buffer_info = {
-                        .buffer = test_buffer->buffer,
-                        .offset = 0,
-                        .range = VK_WHOLE_SIZE
-                };
+        VkDescriptorBufferInfo *buffer_info =
+                vr_alloc(data->script->max_buffers_per_descriptor *
+                         sizeof(VkDescriptorBufferInfo));
+
+        /* XXX: We can just iterate through ubo_buffers as the
+         * descriptors were splitted using a qsorted list. But it
+         * would be more safe to add a relation between the
+         * script_buffer and the test_buffer
+         */
+        unsigned buffer_index = 0;
+        for (unsigned i = 0; i < data->script->n_descriptors; i++) {
+                const struct vr_script_descriptor_set *descriptor =
+                        data->script->descriptors + i;
+
+                VkDescriptorType descriptor_type = VK_DESCRIPTOR_TYPE_SAMPLER;
+                switch (descriptor->type) {
+                case VR_SCRIPT_BUFFER_TYPE_UBO:
+                        descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                        break;
+                case VR_SCRIPT_BUFFER_TYPE_SSBO:
+                        descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                        break;
+                }
+                if (descriptor_type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER &&
+                    descriptor_type != VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
+                        vr_fatal("Unexpected buffer type");
+                }
+
+                for (unsigned c = 0; c < descriptor->array_size; c++) {
+                        struct test_buffer *test_buffer = data->ubo_buffers[buffer_index];
+
+                        buffer_info[c].buffer = test_buffer->buffer;
+                        buffer_info[c].offset = 0;
+                        buffer_info[c].range = VK_WHOLE_SIZE;
+
+                        buffer_index++;
+                }
+
+                unsigned desc_set = descriptor->desc_set;
                 VkWriteDescriptorSet write = {
                         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                         .dstSet = data->ubo_descriptor_set[desc_set],
-                        .dstBinding = script_buffer->binding,
+                        .dstBinding = descriptor->binding,
                         .dstArrayElement = 0,
-                        .descriptorCount = 1,
+                        .descriptorCount = descriptor->array_size,
                         .descriptorType = descriptor_type,
-                        .pBufferInfo = &buffer_info
+                        .pBufferInfo = buffer_info
                 };
+
                 vkfn->vkUpdateDescriptorSets(data->window->device,
                                              1, /* descriptorWriteCount */
                                              &write,
                                              0, /* descriptorCopyCount */
                                              NULL /* pDescriptorCopies */);
         }
+
+        vr_free(buffer_info);
 
         return true;
 }
@@ -1206,7 +1245,8 @@ set_buffer_subdata(struct test_data *data,
         struct test_buffer *buffer =
                 get_ubo_buffer(data,
                                command->set_buffer_subdata.desc_set,
-                               command->set_buffer_subdata.binding);
+                               command->set_buffer_subdata.binding,
+                               command->set_buffer_subdata.array_index);
         assert(buffer);
 
         memcpy((uint8_t *) buffer->memory_map +

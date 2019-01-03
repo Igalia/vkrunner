@@ -83,6 +83,7 @@ struct vr_script_command {
                 struct {
                         unsigned desc_set;
                         unsigned binding;
+                        unsigned array_index;
                         enum vr_box_comparison comparison;
                         size_t offset;
                         enum vr_box_type type;
@@ -95,6 +96,7 @@ struct vr_script_command {
                 struct {
                         unsigned desc_set;
                         unsigned binding;
+                        unsigned array_index;
                         size_t offset;
                         size_t size;
                         void *data;
@@ -132,8 +134,21 @@ enum vr_script_buffer_type {
 struct vr_script_buffer {
         unsigned desc_set;
         unsigned binding;
+        unsigned array_index;
         enum vr_script_buffer_type type;
         size_t size;
+};
+
+struct vr_script_descriptor_set {
+        unsigned desc_set;
+        unsigned binding;
+        enum vr_script_buffer_type type;
+
+        /* In our case, array_size is the same that the number of
+         * buffers
+         */
+        unsigned array_size;
+        struct vr_script_buffer *buffers;
 };
 
 struct vr_script {
@@ -148,8 +163,17 @@ struct vr_script {
         struct vr_vbo *vertex_data;
         uint16_t *indices;
         size_t n_indices;
+
+        /* Note that although the buffers can be accessed through
+         * descriptors, we keep a list of all the buffers, because
+         * sometimes we want to iterate trough all of them
+         */
         struct vr_script_buffer *buffers;
         size_t n_buffers;
+
+        struct vr_script_descriptor_set *descriptors;
+        size_t n_descriptors;
+        unsigned max_buffers_per_descriptor;
 };
 
 #endif /* VR_SCRIPT_PRIVATE_H */

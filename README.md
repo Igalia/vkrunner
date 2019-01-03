@@ -88,7 +88,7 @@ offset is a byte offset into the push constant buffer rather than a
 uniform location. For a description of how the arguments work see
 “Setting buffer subdata” below.
 
-> (ubo|ssbo) _binding_ subdata _type_ _offset_ _values_…
+> (ubo|ssbo) _set_:_binding_:_array_index_ subdata _type_ _offset_ _values_…
 
 Sets a value within a uniform or storage buffer. The first time a
 value is set within a buffer it will be created with the minimum size
@@ -102,6 +102,24 @@ view of it which means that if you do an update, draw call, update and
 then another draw call both draws will use the values from the second
 update. This is because the draws are not flushed until the next probe
 command or the test completes.
+
+_set_ and _array_index_ are optional values. If not used they are
+assumed to be zero. The priority is binding > descriptor_set >
+array_index. So examples:
+
+    ssbo 5 subdata float 12 42.0
+
+This will write a value on ssbo with binding 5, being set and array
+index the default 0.
+
+    ssbo 1:5 subdata float 12 42.0
+
+This will write a value on ssbo with set 1 and binding 5, being array
+index the default 0.
+
+    ssbo 1:5:3 subdata float 12 42.0
+
+This will write a value on ssbo with set 1, binding 5, array index 3.
 
 > (ubo|ssbo) _binding_ _size_
 
@@ -296,6 +314,15 @@ This will write the same matrix but laid out in a way suitable for a
 uniform declared as row_major. It will look like this:
 
     1 4 7 0 2 5 8 0 3 6 9
+
+
+Note that for the case of arrays of ubo/ssbo, each descriptor, so
+component on the array, would use their own buffer. That means that
+for each component you should start to fill up the data starting on
+the offset 0, and now counting from the previous array component. This
+was done on purpose, to avoid need to handle
+VkPhysicalDeviceLimits:minUniformBufferOffsetAlignment while writing
+the offsets on the test.
 
 ## [require] section
 
