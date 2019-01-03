@@ -700,6 +700,8 @@ static bool
 create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
                                 const struct vr_script *script)
 {
+   unsigned ARRAY_SIZE = 2;
+
         struct vr_vk *vkfn = &pipeline->window->vkfn;
         VkResult res;
         bool ret = false;
@@ -734,7 +736,7 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
         found_type:
                 bindings[i].binding = buffer->binding;
                 bindings[i].descriptorType = descriptor_type;
-                bindings[i].descriptorCount = 1;
+                bindings[i].descriptorCount = ARRAY_SIZE;
                 bindings[i].stageFlags = pipeline->stages;
 
                 if (prev_desc_set != buffer->desc_set) {
@@ -760,7 +762,11 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
         if (n_ubo) {
                 pool_sizes[n_pool_sizes].type =
                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                pool_sizes[n_pool_sizes].descriptorCount = n_ubo;
+                /* FIXME: this works for this example, but in fact,
+                 *  this would be the sum of array_size of each ubo
+                 * (until now just n_ubo worked as array size was 1)
+                */
+                pool_sizes[n_pool_sizes].descriptorCount = n_ubo * ARRAY_SIZE;
                 n_pool_sizes++;
         }
         if (n_ssbo) {

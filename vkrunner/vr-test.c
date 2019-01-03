@@ -941,6 +941,8 @@ set_push_constant(struct test_data *data,
 static bool
 allocate_ubo_buffers(struct test_data *data)
 {
+   unsigned ARRAY_SIZE = 2;
+
         struct vr_vk *vkfn = &data->window->vkfn;
 
         VkResult res;
@@ -998,19 +1000,30 @@ allocate_ubo_buffers(struct test_data *data)
 
                 data->ubo_buffers[i] = test_buffer;
 
-                VkDescriptorBufferInfo buffer_info = {
-                        .buffer = test_buffer->buffer,
-                        .offset = 0,
-                        .range = VK_WHOLE_SIZE
-                };
+                VkDescriptorBufferInfo *buffer_info = vr_alloc(ARRAY_SIZE * sizeof(VkDescriptorBufferInfo));
+                for (unsigned i = 0; i < ARRAY_SIZE; i++) {
+                   /* FIXME: in theory here we could reuse the same
+                    * buffer, and just tweak with the offsets. But
+                    * offsets needs to be a multiple of
+                    * VkPhysicalDeviceLimits::minUniformBufferOffsetAlignment,
+                    * making it somewhat tricky. It would be better to
+                    * just use one buffer per array element.
+                    *
+                    * FIXME: pending. Right now there is just one
+                    * buffer available.
+                    */
+                   buffer_info[i].buffer = test_buffer->buffer;
+                   buffer_info[i].offset = 0;
+                   buffer_info[i].range = VK_WHOLE_SIZE;
+                }
                 VkWriteDescriptorSet write = {
                         .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                         .dstSet = data->ubo_descriptor_set[desc_set],
                         .dstBinding = script_buffer->binding,
                         .dstArrayElement = 0,
-                        .descriptorCount = 1,
+                        .descriptorCount = ARRAY_SIZE,
                         .descriptorType = descriptor_type,
-                        .pBufferInfo = &buffer_info
+                        .pBufferInfo = buffer_info
                 };
                 vkfn->vkUpdateDescriptorSets(data->window->device,
                                              1, /* descriptorWriteCount */
