@@ -638,6 +638,8 @@ parse_block_parameters(const char **p,
                                 return false;
                 }
         }
+        fprintf(stderr, "(descriptor_set:binding:array_index)=(%i, %i, %i)\n",
+                out[0], out[1], out[2]);
         return true;
 }
 
