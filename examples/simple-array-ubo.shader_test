@@ -23,8 +23,8 @@ clear
 # On Vulkan, arrays of resources uses the same binding. In that sense
 # an array of ubos
 
-uniform ubo 5 vec4 0  0.1 0.1 0.1 0.1
-uniform ubo 5 vec4 16 0.2 0.2 0.2 0.2
+uniform ubo 0:5:0 vec4 0  0.1 0.1 0.1 0.1
+uniform ubo 0:5:1 vec4 0 0.2 0.2 0.2 0.2
 
 draw rect -1 -1 2 2
 probe all rgba 0.3 0.3 0.3 0.3
