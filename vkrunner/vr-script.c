@@ -1679,6 +1679,7 @@ static struct vr_script_buffer *
 get_buffer(struct load_state *data,
            unsigned desc_set,
            unsigned binding,
+           unsigned array_index,
            enum vr_script_buffer_type type)
 {
         struct vr_script_buffer *buffer =
@@ -1688,7 +1689,8 @@ get_buffer(struct load_state *data,
 
         for (unsigned i = 0; i < n_buffers; i++) {
                 if (buffer[i].desc_set == desc_set &&
-                    buffer[i].binding == binding) {
+                    buffer[i].binding == binding &&
+                    buffer[i].array_index == array_index) {
                         if (buffer[i].type != type) {
                                 error_at_line(data,
                                               "Buffer binding point "
@@ -1711,6 +1713,7 @@ get_buffer(struct load_state *data,
         buffer->size = 0;
         buffer->desc_set = desc_set;
         buffer->binding = binding;
+        buffer->array_index = array_index;
 
         return buffer;
 }
@@ -1733,15 +1736,17 @@ static bool
 process_set_buffer_subdata(struct load_state *data,
                            unsigned desc_set,
                            unsigned binding,
+                           unsigned array_index,
                            enum vr_script_buffer_type type,
                            const char *p,
                            struct vr_script_command *command)
 {
         command->set_buffer_subdata.desc_set = desc_set;
         command->set_buffer_subdata.binding = binding;
+        command->set_buffer_subdata.array_index = array_index;
 
         struct vr_script_buffer *buffer =
-                get_buffer(data, desc_set, binding, type);
+                get_buffer(data, desc_set, binding, array_index, type);
         if (buffer == NULL)
                 return false;
 
@@ -1782,10 +1787,11 @@ static bool
 process_set_ssbo_size(struct load_state *data,
                       unsigned desc_set,
                       unsigned binding,
+                      unsigned array_index,
                       unsigned size)
 {
         struct vr_script_buffer *buffer =
-                get_buffer(data, desc_set, binding, VR_SCRIPT_BUFFER_TYPE_SSBO);
+                get_buffer(data, desc_set, binding, array_index, VR_SCRIPT_BUFFER_TYPE_SSBO);
         if (buffer == NULL)
                 return false;
 
@@ -1905,6 +1911,7 @@ process_ssbo_command(struct load_state *data,
                 if (!process_set_buffer_subdata(data,
                                                 binding[0],
                                                 binding[1],
+                                                binding[2],
                                                 VR_SCRIPT_BUFFER_TYPE_SSBO,
                                                 p,
                                                 command))
@@ -1920,6 +1927,7 @@ process_ssbo_command(struct load_state *data,
                 if (!process_set_ssbo_size(data,
                                            binding[0],
                                            binding[1],
+                                           binding[2],
                                            size))
                         return PARSE_RESULT_ERROR;
         }
@@ -1945,6 +1953,7 @@ process_uniform_ubo_command(struct load_state *data,
         if (!process_set_buffer_subdata(data,
                                         values[0],
                                         values[1],
+                                        values[2],
                                         VR_SCRIPT_BUFFER_TYPE_UBO,
                                         p,
                                         command))
