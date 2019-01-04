@@ -1271,6 +1271,7 @@ process_probe_ssbo_command(struct load_state *data,
 
         command->probe_ssbo.desc_set = values[0];
         command->probe_ssbo.binding = values[1];
+        /* FIXME: do something with the array_index */
         command->probe_ssbo.offset = values[3];
 
         while (vr_char_is_space(*p))
