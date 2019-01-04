@@ -604,16 +604,39 @@ parse_size_t(const char **p,
         return true;
 }
 
+/*
+ * FIXME: perhaps move all this to the README.md (that right now
+ * doesn't mention descriptor set).
+ *
+ * Where block here could be an ubo or an ssbo, and parameters refers
+ * to the data needed to refer to a specific ubo, and not the data
+ * itself. Right now it parses the following parameters:
+ *   descriptor_set:binding:array_index
+ *
+ * Only binding is mandatory. descriptor_set and array_index are
+ * optional, and if not specified will receive the value of 0.
+ *
+ * The priority is binding > descriptor_set > array_index.
+ *
+ * So you can write only the binding, or only the binding and
+ * descriptor set, but in order to set the array_index, you would need
+ * to set also binding and descriptor set.
+ */
 static bool
-parse_desc_set_and_binding(const char **p,
-                           unsigned *out)
+parse_block_parameters(const char **p,
+                       unsigned *out)
 {
         const char *p_backup = *p;
-        if (!parse_uints(p, out, 2, ":")) {
+
+        if (!parse_uints(p, out, 3, ":")) {
                 *p = p_backup;
-                out[0] = 0;
-                if (!parse_uints(p, &out[1], 1, NULL))
-                        return false;
+                out[2] = 0;
+                if (!parse_uints(p, out, 2, ":")) {
+                        *p = p_backup;
+                        out[0] = 0;
+                        if (!parse_uints(p, &out[1], 1, NULL))
+                                return false;
+                }
         }
         return true;
 }
@@ -1238,15 +1261,15 @@ process_probe_ssbo_command(struct load_state *data,
         while (vr_char_is_space(*p))
                 p++;
 
-        unsigned values[3];
-        if (!parse_desc_set_and_binding(&p, values) ||
-            !parse_uints(&p, &values[2], 1, NULL)) {
+        unsigned values[4];
+        if (!parse_block_parameters(&p, values) ||
+            !parse_uints(&p, &values[3], 1, NULL)) {
                 goto error;
         }
 
         command->probe_ssbo.desc_set = values[0];
         command->probe_ssbo.binding = values[1];
-        command->probe_ssbo.offset = values[2];
+        command->probe_ssbo.offset = values[3];
 
         while (vr_char_is_space(*p))
                 p++;
@@ -1863,9 +1886,9 @@ process_ssbo_command(struct load_state *data,
         if (!looking_at(&p, "ssbo "))
                 return PARSE_RESULT_NON_MATCHED;
 
-        unsigned binding[2];
+        unsigned binding[3];
 
-        if (!parse_desc_set_and_binding(&p, binding)) {
+        if (!parse_block_parameters(&p, binding)) {
                 error_at_line(data, "Invalid binding in ssbo command");
                 return PARSE_RESULT_ERROR;
         }
@@ -1910,8 +1933,8 @@ process_uniform_ubo_command(struct load_state *data,
 
         struct vr_script_command *command = add_command(data);
 
-        unsigned values[2];
-        if (!parse_desc_set_and_binding(&p, values)) {
+        unsigned values[3]; /* descriptor_set:binding_point:array_index*/
+        if (!parse_block_parameters(&p, values)) {
                 error_at_line(data, "Invalid binding in uniform ubo command");
                 return PARSE_RESULT_ERROR;
         }
