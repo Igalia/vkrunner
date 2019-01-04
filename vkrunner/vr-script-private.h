@@ -94,6 +94,7 @@ struct vr_script_command {
                 struct {
                         unsigned desc_set;
                         unsigned binding;
+                        unsigned array_index;
                         size_t offset;
                         size_t size;
                         void *data;
@@ -131,6 +132,7 @@ enum vr_script_buffer_type {
 struct vr_script_buffer {
         unsigned desc_set;
         unsigned binding;
+        unsigned array_index;
         enum vr_script_buffer_type type;
         size_t size;
 };
