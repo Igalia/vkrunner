@@ -462,11 +462,13 @@ print_command_fail(const struct vr_config *config,
 static struct test_buffer *
 get_ubo_buffer(struct test_data *data,
                int desc_set,
-               int binding)
+               int binding,
+               int array_index)
 {
         for (unsigned i = 0; i < data->script->n_buffers; i++) {
                 if (data->script->buffers[i].binding == binding &&
-                    data->script->buffers[i].desc_set == desc_set)
+                    data->script->buffers[i].desc_set == desc_set &&
+                    data->script->buffers[i].array_index == array_index)
                         return data->ubo_buffers[i];
         }
 
@@ -849,7 +851,8 @@ probe_ssbo(struct test_data *data,
         struct test_buffer *buffer =
                 get_ubo_buffer(data,
                                command->probe_ssbo.desc_set,
-                               command->probe_ssbo.binding);
+                               command->probe_ssbo.binding,
+                               command->probe_ssbo.array_index);
 
         if (buffer == NULL) {
                 print_command_fail(data->window->config, command);
@@ -1000,6 +1003,9 @@ allocate_ubo_buffers(struct test_data *data)
 
                 data->ubo_buffers[i] = test_buffer;
 
+                /* FIXME: script->buffers is a liner list of buffers, but here we
+                 * want to group buffers for the same binding
+                 */
                 VkDescriptorBufferInfo *buffer_info = vr_alloc(ARRAY_SIZE * sizeof(VkDescriptorBufferInfo));
                 for (unsigned i = 0; i < ARRAY_SIZE; i++) {
                    /* FIXME: in theory here we could reuse the same
@@ -1042,7 +1048,8 @@ set_buffer_subdata(struct test_data *data,
         struct test_buffer *buffer =
                 get_ubo_buffer(data,
                                command->set_buffer_subdata.desc_set,
-                               command->set_buffer_subdata.binding);
+                               command->set_buffer_subdata.binding,
+                               command->set_buffer_subdata.array_index);
         assert(buffer);
 
         memcpy((uint8_t *) buffer->memory_map +
