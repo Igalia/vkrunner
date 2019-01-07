@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2018 Neil Roberts
  * Copyright (C) 2018 Intel Coporation
+ * Copyright (C) 2019 Google LLC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -316,6 +317,45 @@ end_render_pass(struct test_data *data)
 
         vkfn->vkCmdEndRenderPass(window->context->command_buffer);
 
+        /* Image barrier: transition the layout but also ensure:
+         * - rendering is complete before vkCmdCopyImageToBuffer (below) and
+         * before any future color attachment accesses
+         * - the color attachment writes are visible to vkCmdCopyImageToBuffer
+         * and to any future color attachment accesses */
+        VkImageMemoryBarrier render_finish_barrier = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = 0,
+                .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT
+                        | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                        | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+                .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = window->color_image,
+                .subresourceRange = {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1
+                }
+        };
+
+        vkfn->vkCmdPipelineBarrier(
+                window->context->command_buffer,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                VK_PIPELINE_STAGE_TRANSFER_BIT
+                        | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                (VkDependencyFlags) 0,
+                0, /* memoryBarrierCount */
+                0, /* pMemoryBarriers */
+                0, /* bufferMemoryBarrierCount */
+                0, /* pBufferMemoryBarriers */
+                1, /* imageMemoryBarrierCount */
+                &render_finish_barrier);
+
         VkBufferImageCopy copy_region = {
                 .bufferOffset = 0,
                 .bufferRowLength = data->window->format.width,
@@ -339,6 +379,69 @@ end_render_pass(struct test_data *data)
                                      window->linear_buffer,
                                      1, /* regionCount */
                                      &copy_region);
+
+
+        /* Image barrier: transition the layout back but also ensure:
+         * - the copy image operation (above) completes before any future color
+         * attachment operations
+         * No memory dependencies are needed because the first set of operations
+         * are reads. */
+        VkImageMemoryBarrier copy_finish_barrier = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                .pNext = 0,
+                .srcAccessMask = 0,
+                .dstAccessMask = 0,
+                .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = window->color_image,
+                .subresourceRange = {
+                        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .baseMipLevel = 0,
+                        .levelCount = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount = 1
+                }
+        };
+
+        vkfn->vkCmdPipelineBarrier(
+                        window->context->command_buffer,
+                        VK_PIPELINE_STAGE_TRANSFER_BIT,
+                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        (VkDependencyFlags) 0,
+                        0, /* memoryBarrierCount */
+                        0, /* pMemoryBarriers */
+                        0, /* bufferMemoryBarrierCount */
+                        0, /* pBufferMemoryBarriers */
+                        1, /* imageMemoryBarrierCount */
+                        &copy_finish_barrier);
+
+
+        /* Buffer barrier: ensure the device transfer writes have completed
+         * before the host reads and are visible to host reads. */
+        VkBufferMemoryBarrier write_finish_buffer_memory_barrier = {
+                .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                .pNext = 0,
+                .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .dstAccessMask = VK_ACCESS_HOST_READ_BIT,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .buffer = window->linear_buffer,
+                .offset = 0,
+                .size = VK_WHOLE_SIZE
+        };
+
+        vkfn->vkCmdPipelineBarrier(window->context->command_buffer,
+                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                   VK_PIPELINE_STAGE_HOST_BIT,
+                                   (VkDependencyFlags) 0,
+                                   0, /* memoryBarrierCount */
+                                   0, /* pMemoryBarriers */
+                                   1, /* bufferMemoryBarrierCount */
+                                   &write_finish_buffer_memory_barrier,
+                                   0, /* imageMemoryBarrierCount */
+                                   0); /* pImageMemoryBarriers */
 
         return true;
 }
