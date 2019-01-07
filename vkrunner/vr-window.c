@@ -2,6 +2,7 @@
  * vkrunner
  *
  * Copyright (C) 2013, 2014, 2015, 2017 Neil Roberts
+ * Copyright (C) 2019 Google LLC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -234,10 +235,11 @@ create_render_pass(struct vr_window *window,
                         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
                         .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                         .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                        .initialLayout = (first_render ?
-                                          VK_IMAGE_LAYOUT_UNDEFINED :
-                                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
-                        .finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        .initialLayout =
+                        (first_render ?
+                         VK_IMAGE_LAYOUT_UNDEFINED :
+                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL),
+                        .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 },
                 {
                         .format = (depth_stencil_format ?
