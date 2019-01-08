@@ -51,6 +51,10 @@ struct test_buffer {
         void *memory_map;
         int memory_type_index;
         size_t size;
+        /* true if the buffer has been modified through the CPU-mapped
+         * memory since the last command buffer submission.
+         */
+        bool pending_write;
 };
 
 enum test_state {
@@ -218,6 +222,25 @@ invalidate_ssbos(struct test_data *data)
         }
 }
 
+static void
+flush_buffers(struct test_data *data)
+{
+        for (unsigned i = 0; i < data->script->n_buffers; i++) {
+                struct test_buffer *buffer = data->ubo_buffers[i];
+
+                if (!buffer->pending_write)
+                        continue;
+
+                vr_flush_memory(data->window->context,
+                                buffer->memory_type_index,
+                                buffer->memory,
+                                0, /* offset */
+                                VK_WHOLE_SIZE);
+
+                buffer->pending_write = false;
+        }
+}
+
 static bool
 end_command_buffer(struct test_data *data)
 {
@@ -225,6 +248,8 @@ end_command_buffer(struct test_data *data)
         struct vr_window *window = data->window;
         struct vr_context *context = window->context;
         struct vr_vk *vkfn = &context->vkfn;
+
+        flush_buffers(data);
 
         res = vkfn->vkEndCommandBuffer(context->command_buffer);
         if (res != VK_SUCCESS) {
@@ -1136,11 +1161,8 @@ set_buffer_subdata(struct test_data *data,
                command->set_buffer_subdata.offset,
                command->set_buffer_subdata.data,
                command->set_buffer_subdata.size);
-        vr_flush_memory(data->window->context,
-                        buffer->memory_type_index,
-                        buffer->memory,
-                        command->set_push_constant.offset,
-                        command->set_buffer_subdata.size);
+
+        buffer->pending_write = true;
 
         return true;
 }
