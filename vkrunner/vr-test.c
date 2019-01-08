@@ -1039,7 +1039,7 @@ set_buffer_subdata(struct test_data *data,
         vr_flush_memory(data->window->context,
                         buffer->memory_type_index,
                         buffer->memory,
-                        command->set_push_constant.offset,
+                        command->set_buffer_subdata.offset,
                         command->set_buffer_subdata.size);
 
         return true;
