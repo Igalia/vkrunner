@@ -18,6 +18,7 @@ ninja -C "$build_dir" install
 
 # Run the built executable with all of the examples and enable the
 # validation layer. Verify that nothing was written to the output.
+VKRUNNER_ALWAYS_FLUSH_MEMORY=true \
 VK_INSTANCE_LAYERS=VK_LAYER_LUNARG_standard_validation \
                   "$install_dir/bin/vkrunner" \
                   -q \
