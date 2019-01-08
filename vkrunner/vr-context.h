@@ -49,6 +49,8 @@ struct vr_context {
         VkInstance vk_instance;
         VkFence vk_fence;
 
+        bool always_flush_memory;
+
         struct vr_vk vkfn;
 };
 

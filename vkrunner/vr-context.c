@@ -418,6 +418,9 @@ vr_context_new(const struct vr_config *config,
 
         context->config = config;
 
+        context->always_flush_memory =
+                vr_env_var_as_boolean("VKRUNNER_ALWAYS_FLUSH_MEMORY", false);
+
         vres = init_vk_device(context, requires, extensions);
         if (vres != VR_RESULT_PASS)
                 goto error;
