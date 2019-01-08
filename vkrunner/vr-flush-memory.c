@@ -40,7 +40,8 @@ vr_flush_memory(struct vr_context *context,
 
         /* We don’t need to do anything if the memory is already
          * coherent */
-        if ((memory_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+        if (!context->always_flush_memory &&
+            (memory_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
                 return VK_SUCCESS;
 
         VkMappedMemoryRange mapped_memory_range = {
