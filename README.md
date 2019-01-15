@@ -197,6 +197,24 @@ be used for subsequent draw calls or compute dispatches.
 
 Take a look in the examples directory for more examples.
 
+## Command buffer flushing
+
+The following commands in the test section cause the command buffer to
+be flushed:
+
+* [relative] probe
+* uniform ubo
+* ssbo subdata
+* probe ssbo
+
+Flushing the command buffer means that `vkEndCommandBuffer` will be
+called, the comand buffer will be submitted and VkRunner will wait
+until it is completed. If any further commands reguiring a command
+buffer are in the test section then it will be started again. Note
+this will cause the driver to have unitialised values for push
+constants, so if push constants are needed again after a flush they
+must be reinitialised.
+
 ## [require] section
 
 > _feature_
