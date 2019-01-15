@@ -100,12 +100,7 @@ within a buffer it will be created with the minimum size needed to
 contain all of the values set on it via test commands. It will then be
 bound to the descriptor set at the given binding point. The rest of
 the arguments are the same as for the `uniform` command, except that
-it values are laid out according to the std140 rules. Note that the
-buffer is just updated by writing into a memory mapped view of it
-which means that if you do an update, draw call, update and then
-another draw call both draws will use the values from the second
-update. This is because the draws are not flushed until the next probe
-command or the test completes.
+it values are laid out according to the std140 rules.
 
 > ssbo _binding_ subdata _type_ _offset_ _values_…
 

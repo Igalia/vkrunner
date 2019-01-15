@@ -166,6 +166,25 @@ free_test_buffer(struct test_data *data,
         vr_free(buffer);
 }
 
+static void
+flush_buffers(struct test_data *data)
+{
+        for (unsigned i = 0; i < data->script->n_buffers; i++) {
+                struct test_buffer *buffer = data->ubo_buffers[i];
+
+                if (!buffer->pending_write)
+                        continue;
+
+                vr_flush_memory(data->window->context,
+                                buffer->memory_type_index,
+                                buffer->memory,
+                                0, /* offset */
+                                VK_WHOLE_SIZE);
+
+                buffer->pending_write = false;
+        }
+}
+
 static bool
 begin_command_buffer(struct test_data *data)
 {
@@ -185,6 +204,8 @@ begin_command_buffer(struct test_data *data)
 
         data->bound_pipeline = UINT_MAX;
         data->ubo_descriptor_set_bound = false;
+
+        flush_buffers(data);
 
         return true;
 }
@@ -267,25 +288,6 @@ invalidate_ssbos(struct test_data *data)
         }
 }
 
-static void
-flush_buffers(struct test_data *data)
-{
-        for (unsigned i = 0; i < data->script->n_buffers; i++) {
-                struct test_buffer *buffer = data->ubo_buffers[i];
-
-                if (!buffer->pending_write)
-                        continue;
-
-                vr_flush_memory(data->window->context,
-                                buffer->memory_type_index,
-                                buffer->memory,
-                                0, /* offset */
-                                VK_WHOLE_SIZE);
-
-                buffer->pending_write = false;
-        }
-}
-
 static bool
 end_command_buffer(struct test_data *data)
 {
@@ -294,7 +296,6 @@ end_command_buffer(struct test_data *data)
         struct vr_context *context = window->context;
         struct vr_vk *vkfn = &context->vkfn;
 
-        flush_buffers(data);
         add_ssbo_barriers(data);
 
         res = vkfn->vkEndCommandBuffer(context->command_buffer);
@@ -1202,6 +1203,9 @@ set_buffer_subdata(struct test_data *data,
                                command->set_buffer_subdata.desc_set,
                                command->set_buffer_subdata.binding);
         assert(buffer);
+
+        if (!set_state(data, TEST_STATE_IDLE))
+                return false;
 
         memcpy((uint8_t *) buffer->memory_map +
                command->set_buffer_subdata.offset,
