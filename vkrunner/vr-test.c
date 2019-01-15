@@ -190,6 +190,51 @@ begin_command_buffer(struct test_data *data)
 }
 
 static void
+add_ssbo_barriers(struct test_data *data)
+{
+        struct vr_vk *vkfn = &data->window->vkfn;
+        size_t n_barriers = 0;
+        VkBufferMemoryBarrier *barriers = NULL;
+
+        for (unsigned i = 0; i < data->script->n_buffers; i++) {
+                if (data->script->buffers[i].type != VR_SCRIPT_BUFFER_TYPE_SSBO)
+                        continue;
+
+                if (barriers == NULL) {
+                        barriers = vr_calloc(data->script->n_buffers *
+                                             sizeof *barriers);
+                }
+
+                VkBufferMemoryBarrier *barrier = barriers + n_barriers++;
+
+                barrier->sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+                barrier->srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+                barrier->dstAccessMask = VK_ACCESS_HOST_READ_BIT;
+                barrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier->buffer = data->ubo_buffers[i]->buffer;
+                barrier->offset = 0;
+                barrier->size = VK_WHOLE_SIZE;
+        }
+
+        if (n_barriers > 0) {
+                vkfn->vkCmdPipelineBarrier(
+                        data->window->context->command_buffer,
+                        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                        VK_PIPELINE_STAGE_HOST_BIT,
+                        (VkDependencyFlags) 0,
+                        0, /* memoryBarrierCount */
+                        NULL, /* pMemoryBarriers */
+                        n_barriers,
+                        barriers,
+                        0, /* imageMemoryBarrierCount */
+                        NULL /* pImageMemoryBarriers */);
+        }
+
+        vr_free(barriers);
+}
+
+static void
 invalidate_ssbos(struct test_data *data)
 {
         struct vr_vk *vkfn = &data->window->vkfn;
@@ -250,6 +295,7 @@ end_command_buffer(struct test_data *data)
         struct vr_vk *vkfn = &context->vkfn;
 
         flush_buffers(data);
+        add_ssbo_barriers(data);
 
         res = vkfn->vkEndCommandBuffer(context->command_buffer);
         if (res != VK_SUCCESS) {
