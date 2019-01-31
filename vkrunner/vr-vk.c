@@ -96,6 +96,9 @@ vr_vk_load_libvulkan(const struct vr_config *config,
         vkfn->vkCreateInstance =
                 (void *) vkfn->vkGetInstanceProcAddr(VK_NULL_HANDLE,
                                                      "vkCreateInstance");
+        const char *func_name = "vkEnumerateInstanceExtensionProperties";
+        vkfn->vkEnumerateInstanceExtensionProperties =
+                (void *) vkfn->vkGetInstanceProcAddr(VK_NULL_HANDLE, func_name);
 
         return true;
 }
