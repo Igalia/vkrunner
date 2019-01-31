@@ -38,7 +38,6 @@
 #include "vr-util.h"
 #include "vr-buffer.h"
 #include "vr-error-message.h"
-#include "vr-feature-offsets.h"
 #include "vr-window.h"
 #include "vr-format-private.h"
 #include "vr-source-private.h"
@@ -84,7 +83,6 @@ struct load_state {
         enum section current_section;
         struct vr_buffer commands;
         struct vr_buffer pipeline_keys;
-        struct vr_buffer extensions;
         struct vr_buffer buffers;
         struct vr_pipeline_key current_key;
         struct vr_buffer indices;
@@ -929,15 +927,6 @@ process_require_line(struct load_state *data)
         if (*start == '#' || *start == '\0')
                 return true;
 
-        for (int i = 0; vr_feature_offsets[i].name; i++) {
-                p = start;
-                if (!looking_at(&p, vr_feature_offsets[i].name) || !is_end(p))
-                        continue;
-                *(VkBool32 *) ((uint8_t *) &data->script->required_features +
-                               vr_feature_offsets[i].offset) = true;
-                return true;
-        }
-
         if (looking_at(&p, "framebuffer ")) {
                 struct vr_window_format *format =
                         &data->script->window_format;
@@ -968,13 +957,9 @@ process_require_line(struct load_state *data)
         }
 
         if (is_end(start + extension_len)) {
-                int n_extensions =
-                        data->extensions.length / sizeof (char *) - 1;
-                vr_buffer_set_length(&data->extensions,
-                                     (n_extensions + 2) * sizeof (char *));
-                char **extensions = (char **) data->extensions.data;
-                extensions[n_extensions++] = vr_strndup(start, extension_len);
-                extensions[n_extensions++] = NULL;
+                char *ext = vr_strndup(start, extension_len);
+                vr_requirements_add(data->script->requirements, ext);
+                vr_free(ext);
                 return true;
         }
 
@@ -2442,7 +2427,6 @@ vr_script_load(const struct vr_config *config,
                 .buffer = VR_BUFFER_STATIC_INIT,
                 .commands = VR_BUFFER_STATIC_INIT,
                 .pipeline_keys = VR_BUFFER_STATIC_INIT,
-                .extensions = VR_BUFFER_STATIC_INIT,
                 .buffers = VR_BUFFER_STATIC_INIT,
                 .tolerance = {
                         .value = {
@@ -2466,11 +2450,10 @@ vr_script_load(const struct vr_config *config,
                 vr_format_lookup_by_vk_format(VK_FORMAT_B8G8R8A8_UNORM);
         assert(script->window_format.color_format != NULL);
 
-        vr_buffer_set_length(&data.extensions, sizeof (const char *));
-        memset(data.extensions.data, 0, data.extensions.length);
-
         for (int stage = 0; stage < VR_SHADER_STAGE_N_STAGES; stage++)
                 vr_list_init(&script->stages[stage]);
+
+        script->requirements = vr_requirements_new();
 
         bool res = false;
 
@@ -2495,8 +2478,6 @@ vr_script_load(const struct vr_config *config,
                 (struct vr_pipeline_key *) data.pipeline_keys.data;
         script->n_pipeline_keys = (data.pipeline_keys.length /
                                    sizeof (struct vr_pipeline_key));
-        script->extensions =
-                (const char *const *) data.extensions.data;
         script->indices = (uint16_t *) data.indices.data;
         script->n_indices =
                 data.indices.length / sizeof (uint16_t);
@@ -2561,12 +2542,7 @@ vr_script_free(struct vr_script *script)
 
         vr_free(script->buffers);
 
-        if (script->extensions != NULL) {
-                for (const char *const *ext = script->extensions; *ext; ext++)
-                        vr_free((char *) *ext);
-
-                vr_free((void *) script->extensions);
-        }
+        vr_requirements_free(script->requirements);
 
         vr_free(script);
 }

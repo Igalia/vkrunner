@@ -38,6 +38,7 @@
 #include "vr-shader-stage.h"
 #include "vr-tolerance.h"
 #include "vr-window-format.h"
+#include "vr-requirements.h"
 
 enum vr_script_op {
         VR_SCRIPT_OP_DRAW_RECT,
@@ -142,8 +143,7 @@ struct vr_script {
         struct vr_script_command *commands;
         size_t n_pipeline_keys;
         struct vr_pipeline_key *pipeline_keys;
-        VkPhysicalDeviceFeatures required_features;
-        const char *const *extensions;
+        struct vr_requirements *requirements;
         struct vr_window_format window_format;
         struct vr_vbo *vertex_data;
         uint16_t *indices;
