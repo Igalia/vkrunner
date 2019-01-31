@@ -33,6 +33,7 @@ VKRUNNER_SRC_FILES := vkrunner/vr-allocate-store.c \
 	vkrunner/vr-context.c \
 	vkrunner/vr-error-message.c \
 	vkrunner/vr-executor.c \
+	vkrunner/vr-feature.c \
 	vkrunner/vr-feature-offsets.c \
 	vkrunner/vr-flush-memory.c \
 	vkrunner/vr-format.c \
