@@ -31,6 +31,7 @@
 #include "vr-vk.h"
 #include "vr-result.h"
 #include "vr-config.h"
+#include "vr-requirements.h"
 
 struct vr_context {
         const struct vr_config *config;
@@ -54,8 +55,7 @@ struct vr_context {
 
 enum vr_result
 vr_context_new(const struct vr_config *config,
-               const VkPhysicalDeviceFeatures *requires,
-               const char *const *extensions,
+               const struct vr_requirements *reqs,
                struct vr_context **context_out);
 
 enum vr_result
@@ -66,14 +66,6 @@ vr_context_new_with_device(const struct vr_config *config,
                            int queue_family,
                            VkDevice device,
                            struct vr_context **context_out);
-
-bool
-vr_context_check_extensions(struct vr_context *context,
-                            const char *const *extensions);
-
-bool
-vr_context_check_features(struct vr_context *context,
-                          const VkPhysicalDeviceFeatures *requires);
 
 void
 vr_context_free(struct vr_context *context);

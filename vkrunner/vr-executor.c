@@ -40,13 +40,13 @@
 #include "vr-test.h"
 #include "vr-error-message.h"
 #include "vr-source-private.h"
+#include "vr-requirements.h"
 
 struct vr_executor {
         struct vr_config *config;
         struct vr_window *window;
         struct vr_context *context;
-        char **extensions;
-        VkPhysicalDeviceFeatures enabled_features;
+        struct vr_requirements *requirements;
 
         bool use_external;
 
@@ -79,12 +79,8 @@ free_context(struct vr_executor *executor)
         vr_context_free(executor->context);
         executor->context = NULL;
 
-        if (!executor->use_external) {
-                for (char **ext = executor->extensions; *ext; ext++)
-                        vr_free(*ext);
-
-                vr_free(executor->extensions);
-        }
+        if (!executor->use_external)
+                vr_requirements_free(executor->requirements);
 }
 
 static bool
@@ -97,46 +93,11 @@ context_is_compatible(struct vr_executor *executor,
         if (executor->context->device_is_external)
                 return true;
 
-        if (memcmp(&executor->enabled_features,
-                   &script->required_features,
-                   sizeof script->required_features))
+        if (!vr_requirements_equal(executor->requirements,
+                                   script->requirements))
                 return false;
 
-        const char *const *a;
-        char **b;
-
-        for (a = script->extensions, b = executor->extensions;
-             true;
-             a++, b++) {
-                if (*a == NULL)
-                        return *b == NULL;
-
-                if (*b == NULL)
-                        return false;
-
-                if (strcmp(*a, *b))
-                        return false;
-        }
-
         return true;
-}
-
-static void
-copy_extensions(struct vr_executor *executor,
-                const char * const *extensions)
-{
-        int n_extensions = 0;
-
-        for (const char * const *ext = extensions; *ext; ext++)
-                n_extensions++;
-
-        executor->extensions = vr_alloc((sizeof executor->extensions[0]) *
-                                        (n_extensions + 1));
-
-        for (int i = 0; i < n_extensions; i++)
-                executor->extensions[i] = vr_strdup(extensions[i]);
-
-        executor->extensions[n_extensions] = NULL;
 }
 
 static enum vr_result
@@ -207,32 +168,27 @@ vr_executor_execute_script(struct vr_executor *executor,
                                 goto out;
                 } else {
                         res = vr_context_new(executor->config,
-                                             &script->required_features,
-                                             script->extensions,
+                                             script->requirements,
                                              &executor->context);
 
                         if (res != VR_RESULT_PASS)
                                 goto out;
 
-                        copy_extensions(executor, script->extensions);
-                        executor->enabled_features = script->required_features;
+                        executor->requirements =
+                                vr_requirements_copy(script->requirements);
                 }
         }
 
         if (executor->use_external) {
-                if (!vr_context_check_features(executor->context,
-                                               &script->required_features)) {
-                        vr_error_message(executor->config,
-                                         "%s: A required feature is missing",
-                                         script->filename);
-                        res = VR_RESULT_SKIP;
-                        goto out;
-                }
+                struct vr_context *context = executor->context;
 
-                if (!vr_context_check_extensions(executor->context,
-                                                 script->extensions)) {
+                if (!vr_requirements_check(script->requirements,
+                                           &context->vkfn,
+                                           context->vk_instance,
+                                           context->physical_device)) {
                         vr_error_message(executor->config,
-                                         "%s: A required extension is missing",
+                                         "%s: A required feature or extension "
+                                         "is missing",
                                          script->filename);
                         res = VR_RESULT_SKIP;
                         goto out;

@@ -34,7 +34,6 @@
 #include "vr-util.h"
 #include "vr-error-message.h"
 #include "vr-allocate-store.h"
-#include "vr-feature-offsets.h"
 
 static int
 find_queue_family(struct vr_context *context,
@@ -107,85 +106,9 @@ deinit_vk(struct vr_context *context)
         }
 }
 
-static bool
-get_feature(const VkPhysicalDeviceFeatures *features,
-            int feature_num)
-{
-        const struct vr_feature_offset *fo =
-                vr_feature_offsets + feature_num;
-        return *(const VkBool32 *) ((const uint8_t *) features + fo->offset);
-}
-
-static bool
-check_features(const VkPhysicalDeviceFeatures *features,
-               const VkPhysicalDeviceFeatures *requires)
-{
-        for (int i = 0; vr_feature_offsets[i].name; i++) {
-                if (get_feature(requires, i) &&
-                    !get_feature(features, i)) {
-                        return false;
-                }
-        }
-
-        return true;
-}
-
-static bool
-find_extension(uint32_t property_count,
-               const VkExtensionProperties *props,
-               const char *extension)
-{
-        for (uint32_t i = 0; i < property_count; i++) {
-                if (!strcmp(extension, props[i].extensionName))
-                        return true;
-        }
-
-        return false;
-}
-
-static bool
-check_extensions(struct vr_context *context,
-                 VkPhysicalDevice device,
-                 const char *const *extensions)
-{
-        struct vr_vk *vkfn = &context->vkfn;
-        VkResult res;
-        uint32_t property_count;
-
-        res = vkfn->vkEnumerateDeviceExtensionProperties(device,
-                                                         NULL, /* layerName */
-                                                         &property_count,
-                                                         NULL /* properties */);
-        if (res != VK_SUCCESS)
-                return false;
-
-        VkExtensionProperties *props = vr_alloc(property_count * sizeof *props);
-        bool ret = true;
-
-        res = vkfn->vkEnumerateDeviceExtensionProperties(device,
-                                                         NULL, /* layerName */
-                                                         &property_count,
-                                                         props);
-        if (res == VK_SUCCESS) {
-                for (const char * const *ext = extensions; *ext; ext++) {
-                        if (!find_extension(property_count, props, *ext)) {
-                                ret = false;
-                                break;
-                        }
-                }
-        } else {
-                ret = false;
-        }
-
-        vr_free(props);
-
-        return ret;
-}
-
 static enum vr_result
 find_physical_device(struct vr_context *context,
-                     const VkPhysicalDeviceFeatures *requires,
-                     const char *const *extensions)
+                     const struct vr_requirements *reqs)
 
 {
         struct vr_vk *vkfn = &context->vkfn;
@@ -215,12 +138,10 @@ find_physical_device(struct vr_context *context,
         }
 
         for (i = 0; i < count; i++) {
-                VkPhysicalDeviceFeatures features;
-                vkfn->vkGetPhysicalDeviceFeatures(devices[i], &features);
-                if (!check_features(&features, requires))
-                        continue;
-
-                if (!check_extensions(context, devices[i], extensions))
+                if (!vr_requirements_check(reqs,
+                                           vkfn,
+                                           context->vk_instance,
+                                           devices[i]))
                         continue;
 
                 queue_family = find_queue_family(context, devices[i]);
@@ -249,10 +170,50 @@ get_instance_proc(const char *name,
         return vkfn->vkGetInstanceProcAddr(context->vk_instance, name);
 }
 
+static bool
+find_extension(uint32_t property_count,
+               const VkExtensionProperties *props,
+               const char *extension)
+{
+        for (uint32_t i = 0; i < property_count; i++) {
+                if (!strcmp(extension, props[i].extensionName))
+                        return true;
+        }
+
+        return false;
+}
+
+static bool
+check_instance_extension(struct vr_vk *vkfn,
+                         const char *ext)
+{
+        VkResult res;
+        uint32_t count;
+
+        res = vkfn->vkEnumerateInstanceExtensionProperties(NULL, /* layerName */
+                                                           &count,
+                                                           NULL /* props */);
+
+        if (res != VK_SUCCESS)
+                return false;
+
+        VkExtensionProperties *props = vr_alloc(count * sizeof *props);
+        bool ret = true;
+
+        res = vkfn->vkEnumerateInstanceExtensionProperties(NULL, /* layerName */
+                                                           &count,
+                                                           props);
+        if (res != VK_SUCCESS && !find_extension(count, props, ext))
+                ret = false;
+
+        vr_free(props);
+
+        return ret;
+}
+
 static enum vr_result
 init_vk_device(struct vr_context *context,
-               const VkPhysicalDeviceFeatures *requires,
-               const char *const *extensions)
+               const struct vr_requirements *reqs)
 {
         struct vr_vk *vkfn = &context->vkfn;
         VkResult res;
@@ -265,6 +226,22 @@ init_vk_device(struct vr_context *context,
                         .apiVersion = VK_MAKE_VERSION(1, 0, 2)
                 },
         };
+
+        const char *ext =
+                VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME;
+
+        if (vr_requirements_get_structures(reqs)) {
+                if (!check_instance_extension(vkfn, ext)) {
+                        vr_error_message(context->config,
+                                         "Driver is missing the %s extension",
+                                         ext);
+                        return VR_RESULT_SKIP;
+                }
+
+                instance_create_info.enabledExtensionCount = 1;
+                instance_create_info.ppEnabledExtensionNames = &ext;
+        }
+
         res = vkfn->vkCreateInstance(&instance_create_info,
                                      NULL, /* allocator */
                                      &context->vk_instance);
@@ -278,16 +255,15 @@ init_vk_device(struct vr_context *context,
         vr_vk_init_instance(vkfn, get_instance_proc, context);
 
         enum vr_result vres =
-                find_physical_device(context, requires, extensions);
+                find_physical_device(context, reqs);
         if (vres != VR_RESULT_PASS)
                 return vres;
 
-        int n_extensions = 0;
-        for (const char * const *ext = extensions; *ext; ext++)
-                n_extensions++;
+        size_t n_extensions = vr_requirements_get_n_extensions(reqs);
 
         VkDeviceCreateInfo device_create_info = {
                 .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+                .pNext = vr_requirements_get_structures(reqs),
                 .queueCreateInfoCount = 1,
                 .pQueueCreateInfos = &(VkDeviceQueueCreateInfo) {
                         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -296,8 +272,11 @@ init_vk_device(struct vr_context *context,
                         .pQueuePriorities = (float[]) { 1.0f }
                 },
                 .enabledExtensionCount = n_extensions,
-                .ppEnabledExtensionNames = n_extensions ? extensions : NULL,
-                .pEnabledFeatures = requires
+                .ppEnabledExtensionNames =
+                (n_extensions > 0 ?
+                 vr_requirements_get_extensions(reqs) :
+                 NULL),
+                .pEnabledFeatures = vr_requirements_get_base_features(reqs)
         };
         res = vkfn->vkCreateDevice(context->physical_device,
                                    &device_create_info,
@@ -387,24 +366,9 @@ error:
         return vres;
 }
 
-bool
-vr_context_check_extensions(struct vr_context *context,
-                            const char *const *extensions)
-{
-        return check_extensions(context, context->physical_device, extensions);
-}
-
-bool
-vr_context_check_features(struct vr_context *context,
-                          const VkPhysicalDeviceFeatures *requires)
-{
-        return check_features(&context->features, requires);
-}
-
 enum vr_result
 vr_context_new(const struct vr_config *config,
-               const VkPhysicalDeviceFeatures *requires,
-               const char *const *extensions,
+               const struct vr_requirements *reqs,
                struct vr_context **context_out)
 {
         struct vr_context *context = vr_calloc(sizeof *context);
@@ -418,7 +382,7 @@ vr_context_new(const struct vr_config *config,
 
         context->config = config;
 
-        vres = init_vk_device(context, requires, extensions);
+        vres = init_vk_device(context, reqs);
         if (vres != VR_RESULT_PASS)
                 goto error;
 
