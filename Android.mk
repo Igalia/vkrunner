@@ -42,6 +42,7 @@ VKRUNNER_SRC_FILES := vkrunner/vr-allocate-store.c \
 	vkrunner/vr-list.c \
 	vkrunner/vr-pipeline.c \
 	vkrunner/vr-pipeline-key.c \
+	vkrunner/vr-requirements.c \
 	vkrunner/vr-result.c \
 	vkrunner/vr-script.c \
 	vkrunner/vr-source.c \
