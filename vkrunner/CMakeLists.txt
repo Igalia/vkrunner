@@ -34,8 +34,6 @@ set(VKRUNNER_SOURCE_FILES
         vr-executor.c
         vr-feature.c
         vr-feature.h
-        vr-feature-offsets.c
-        vr-feature-offsets.h
         vr-flush-memory.c
         vr-flush-memory.h
         vr-format-table.h
