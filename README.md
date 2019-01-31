@@ -211,6 +211,17 @@ VkPhysicalDeviceFeatures. These will be searched for when deciding
 which physical device to open. If no physical device with the
 corresponding requirements can be found then it will report an error.
 
+In addition to VkPhysicalDeviceFeatures, the name of a feature from
+any feature struct from an extension that VkRunner is aware of can
+also be requested. In that case VkRunner will also implicitly require
+the corresponding device extension. It will also need the
+`VK_KHR_get_physical_device_properties2` instance extension in order
+to check for the feature. For example, specifying `shaderFloat16` in
+the require section will make it also require the
+`VK_KHR_shader_float16_int8` extension. VkRunner will then enable the
+feature via the VkPhysicalDeviceFloat16Int8FeaturesKHR struct when
+creating the device.
+
 > _extension_
 
 Any line that is not a feature and contains entirely alphanumeric and
