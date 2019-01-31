@@ -78,7 +78,10 @@ EXTENSIONS = [
         "name": "KHR_VARIABLE_POINTERS",
         "struct_type": "VARIABLE_POINTER_FEATURES_KHR"
     },
-    "EXT_VERTEX_ATTRIBUTE_DIVISOR",
+    {
+        "name": "EXT_VERTEX_ATTRIBUTE_DIVISOR",
+        "version": 3
+    },
     "KHR_VULKAN_MEMORY_MODEL",
 ]
 
@@ -92,6 +95,13 @@ TEMPLATE="""\
 #include "vr-vk.h"
 
 % for e in extensions:
+% if e.name:
+#ifdef ${e.ext_name}
+% if e.version:
+#if ${e.version_var} >= ${e.version}
+% endif
+#define have_${e.name}
+% endif
 ${e.storage}const struct vr_feature_offset
 ${e.var_name}[] = {
 % for f in e.features:
@@ -102,17 +112,33 @@ ${e.var_name}[] = {
 % endfor
         { .name = NULL }
 };
+% if e.name:
+% if e.version:
+#else /* ${e.version_var} > ${e.version} */
+#warning "The Vulkan headers are too old for ${e.ext_name}"
+#endif
+% endif
+#else /* ${e.ext_name} */
+#warning "The vulkan headers are missing ${e.ext_name}"
+#endif
+% endif
 
 % endfor
 const struct vr_feature_extension
 vr_feature_extensions[] = {
 % for e in extensions:
+% if e.name:
+#ifdef have_${e.name}
+% endif
         {
                 .name = ${e.ext_name},
                 .struct_size = sizeof(${e.struct}),
                 .struct_type = ${e.struct_type},
                 .offsets = ${e.var_name}
         },
+% if e.name:
+#endif
+% endif
 % endfor
         { .struct_size = 0 }
 };
@@ -120,11 +146,12 @@ vr_feature_extensions[] = {
 
 
 class Extension:
-    def __init__(self, name, struct, struct_type, features):
+    def __init__(self, name, struct, struct_type, features, version=None):
         self.name = name
         self.struct = struct
         self.struct_type = struct_type
         self.features = features
+        self.version = version
 
         if name is None:
             self.ext_name = "NULL"
@@ -134,6 +161,9 @@ class Extension:
             self.ext_name = 'VK_{}_EXTENSION_NAME'.format(name)
             self.var_name = "offsets_{}".format(name)
             self.storage = "static "
+
+        if version is not None:
+            self.version_var = 'VK_{}_SPEC_VERSION'.format(name)
 
 
 def capitalize_part(part):
@@ -216,10 +246,13 @@ def main():
                               for part in parts[:-1]) +
                       parts[-1])
 
+        version = ext.get("version", None)
+
         struct_type_enum = "VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_" + struct_type
 
         features = list(get_struct_features(header, struct))
-        extensions.append(Extension(name, struct, struct_type_enum, features))
+        extension = Extension(name, struct, struct_type_enum, features, version)
+        extensions.append(extension)
 
     base_features = get_struct_features(header, "VkPhysicalDeviceFeaturesKHR")
     extensions.append(Extension(None,

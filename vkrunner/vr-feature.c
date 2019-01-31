@@ -6,6 +6,8 @@
 #include "vr-feature.h"
 #include "vr-vk.h"
 
+#ifdef VK_KHR_16BIT_STORAGE_EXTENSION_NAME
+#define have_KHR_16BIT_STORAGE
 static const struct vr_feature_offset
 offsets_KHR_16BIT_STORAGE[] = {
         {
@@ -26,7 +28,12 @@ offsets_KHR_16BIT_STORAGE[] = {
         },
         { .name = NULL }
 };
+#else /* VK_KHR_16BIT_STORAGE_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_KHR_16BIT_STORAGE_EXTENSION_NAME"
+#endif
 
+#ifdef VK_KHR_8BIT_STORAGE_EXTENSION_NAME
+#define have_KHR_8BIT_STORAGE
 static const struct vr_feature_offset
 offsets_KHR_8BIT_STORAGE[] = {
         {
@@ -43,7 +50,12 @@ offsets_KHR_8BIT_STORAGE[] = {
         },
         { .name = NULL }
 };
+#else /* VK_KHR_8BIT_STORAGE_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_KHR_8BIT_STORAGE_EXTENSION_NAME"
+#endif
 
+#ifdef VK_EXT_ASTC_DECODE_MODE_EXTENSION_NAME
+#define have_EXT_ASTC_DECODE_MODE
 static const struct vr_feature_offset
 offsets_EXT_ASTC_DECODE_MODE[] = {
         {
@@ -52,7 +64,12 @@ offsets_EXT_ASTC_DECODE_MODE[] = {
         },
         { .name = NULL }
 };
+#else /* VK_EXT_ASTC_DECODE_MODE_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_EXT_ASTC_DECODE_MODE_EXTENSION_NAME"
+#endif
 
+#ifdef VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME
+#define have_EXT_BLEND_OPERATION_ADVANCED
 static const struct vr_feature_offset
 offsets_EXT_BLEND_OPERATION_ADVANCED[] = {
         {
@@ -61,7 +78,12 @@ offsets_EXT_BLEND_OPERATION_ADVANCED[] = {
         },
         { .name = NULL }
 };
+#else /* VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME"
+#endif
 
+#ifdef VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME
+#define have_EXT_BUFFER_DEVICE_ADDRESS
 static const struct vr_feature_offset
 offsets_EXT_BUFFER_DEVICE_ADDRESS[] = {
         {
@@ -78,7 +100,12 @@ offsets_EXT_BUFFER_DEVICE_ADDRESS[] = {
         },
         { .name = NULL }
 };
+#else /* VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME"
+#endif
 
+#ifdef VK_NV_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME
+#define have_NV_COMPUTE_SHADER_DERIVATIVES
 static const struct vr_feature_offset
 offsets_NV_COMPUTE_SHADER_DERIVATIVES[] = {
         {
@@ -91,7 +118,12 @@ offsets_NV_COMPUTE_SHADER_DERIVATIVES[] = {
         },
         { .name = NULL }
 };
+#else /* VK_NV_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_NV_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME"
+#endif
 
+#ifdef VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME
+#define have_EXT_CONDITIONAL_RENDERING
 static const struct vr_feature_offset
 offsets_EXT_CONDITIONAL_RENDERING[] = {
         {
@@ -104,7 +136,12 @@ offsets_EXT_CONDITIONAL_RENDERING[] = {
         },
         { .name = NULL }
 };
+#else /* VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME"
+#endif
 
+#ifdef VK_NV_CORNER_SAMPLED_IMAGE_EXTENSION_NAME
+#define have_NV_CORNER_SAMPLED_IMAGE
 static const struct vr_feature_offset
 offsets_NV_CORNER_SAMPLED_IMAGE[] = {
         {
@@ -113,7 +150,12 @@ offsets_NV_CORNER_SAMPLED_IMAGE[] = {
         },
         { .name = NULL }
 };
+#else /* VK_NV_CORNER_SAMPLED_IMAGE_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_NV_CORNER_SAMPLED_IMAGE_EXTENSION_NAME"
+#endif
 
+#ifdef VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME
+#define have_EXT_DESCRIPTOR_INDEXING
 static const struct vr_feature_offset
 offsets_EXT_DESCRIPTOR_INDEXING[] = {
         {
@@ -198,7 +240,12 @@ offsets_EXT_DESCRIPTOR_INDEXING[] = {
         },
         { .name = NULL }
 };
+#else /* VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME"
+#endif
 
+#ifdef VK_NV_SCISSOR_EXCLUSIVE_EXTENSION_NAME
+#define have_NV_SCISSOR_EXCLUSIVE
 static const struct vr_feature_offset
 offsets_NV_SCISSOR_EXCLUSIVE[] = {
         {
@@ -207,7 +254,12 @@ offsets_NV_SCISSOR_EXCLUSIVE[] = {
         },
         { .name = NULL }
 };
+#else /* VK_NV_SCISSOR_EXCLUSIVE_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_NV_SCISSOR_EXCLUSIVE_EXTENSION_NAME"
+#endif
 
+#ifdef VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME
+#define have_KHR_SHADER_FLOAT16_INT8
 static const struct vr_feature_offset
 offsets_KHR_SHADER_FLOAT16_INT8[] = {
         {
@@ -220,7 +272,12 @@ offsets_KHR_SHADER_FLOAT16_INT8[] = {
         },
         { .name = NULL }
 };
+#else /* VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME"
+#endif
 
+#ifdef VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME
+#define have_EXT_FRAGMENT_DENSITY_MAP
 static const struct vr_feature_offset
 offsets_EXT_FRAGMENT_DENSITY_MAP[] = {
         {
@@ -237,7 +294,12 @@ offsets_EXT_FRAGMENT_DENSITY_MAP[] = {
         },
         { .name = NULL }
 };
+#else /* VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME"
+#endif
 
+#ifdef VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME
+#define have_NV_FRAGMENT_SHADER_BARYCENTRIC
 static const struct vr_feature_offset
 offsets_NV_FRAGMENT_SHADER_BARYCENTRIC[] = {
         {
@@ -246,7 +308,12 @@ offsets_NV_FRAGMENT_SHADER_BARYCENTRIC[] = {
         },
         { .name = NULL }
 };
+#else /* VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME"
+#endif
 
+#ifdef VK_EXT_INLINE_UNIFORM_BLOCK_EXTENSION_NAME
+#define have_EXT_INLINE_UNIFORM_BLOCK
 static const struct vr_feature_offset
 offsets_EXT_INLINE_UNIFORM_BLOCK[] = {
         {
@@ -259,7 +326,12 @@ offsets_EXT_INLINE_UNIFORM_BLOCK[] = {
         },
         { .name = NULL }
 };
+#else /* VK_EXT_INLINE_UNIFORM_BLOCK_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_EXT_INLINE_UNIFORM_BLOCK_EXTENSION_NAME"
+#endif
 
+#ifdef VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME
+#define have_EXT_MEMORY_PRIORITY
 static const struct vr_feature_offset
 offsets_EXT_MEMORY_PRIORITY[] = {
         {
@@ -268,7 +340,12 @@ offsets_EXT_MEMORY_PRIORITY[] = {
         },
         { .name = NULL }
 };
+#else /* VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME"
+#endif
 
+#ifdef VK_NV_MESH_SHADER_EXTENSION_NAME
+#define have_NV_MESH_SHADER
 static const struct vr_feature_offset
 offsets_NV_MESH_SHADER[] = {
         {
@@ -281,7 +358,12 @@ offsets_NV_MESH_SHADER[] = {
         },
         { .name = NULL }
 };
+#else /* VK_NV_MESH_SHADER_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_NV_MESH_SHADER_EXTENSION_NAME"
+#endif
 
+#ifdef VK_KHR_MULTIVIEW_EXTENSION_NAME
+#define have_KHR_MULTIVIEW
 static const struct vr_feature_offset
 offsets_KHR_MULTIVIEW[] = {
         {
@@ -298,7 +380,12 @@ offsets_KHR_MULTIVIEW[] = {
         },
         { .name = NULL }
 };
+#else /* VK_KHR_MULTIVIEW_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_KHR_MULTIVIEW_EXTENSION_NAME"
+#endif
 
+#ifdef VK_NV_REPRESENTATIVE_FRAGMENT_TEST_EXTENSION_NAME
+#define have_NV_REPRESENTATIVE_FRAGMENT_TEST
 static const struct vr_feature_offset
 offsets_NV_REPRESENTATIVE_FRAGMENT_TEST[] = {
         {
@@ -307,7 +394,12 @@ offsets_NV_REPRESENTATIVE_FRAGMENT_TEST[] = {
         },
         { .name = NULL }
 };
+#else /* VK_NV_REPRESENTATIVE_FRAGMENT_TEST_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_NV_REPRESENTATIVE_FRAGMENT_TEST_EXTENSION_NAME"
+#endif
 
+#ifdef VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME
+#define have_KHR_SAMPLER_YCBCR_CONVERSION
 static const struct vr_feature_offset
 offsets_KHR_SAMPLER_YCBCR_CONVERSION[] = {
         {
@@ -316,7 +408,12 @@ offsets_KHR_SAMPLER_YCBCR_CONVERSION[] = {
         },
         { .name = NULL }
 };
+#else /* VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME"
+#endif
 
+#ifdef VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME
+#define have_EXT_SCALAR_BLOCK_LAYOUT
 static const struct vr_feature_offset
 offsets_EXT_SCALAR_BLOCK_LAYOUT[] = {
         {
@@ -325,7 +422,12 @@ offsets_EXT_SCALAR_BLOCK_LAYOUT[] = {
         },
         { .name = NULL }
 };
+#else /* VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME"
+#endif
 
+#ifdef VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME
+#define have_KHR_SHADER_ATOMIC_INT64
 static const struct vr_feature_offset
 offsets_KHR_SHADER_ATOMIC_INT64[] = {
         {
@@ -338,7 +440,12 @@ offsets_KHR_SHADER_ATOMIC_INT64[] = {
         },
         { .name = NULL }
 };
+#else /* VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME"
+#endif
 
+#ifdef VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME
+#define have_NV_SHADER_IMAGE_FOOTPRINT
 static const struct vr_feature_offset
 offsets_NV_SHADER_IMAGE_FOOTPRINT[] = {
         {
@@ -347,7 +454,12 @@ offsets_NV_SHADER_IMAGE_FOOTPRINT[] = {
         },
         { .name = NULL }
 };
+#else /* VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME"
+#endif
 
+#ifdef VK_NV_SHADING_RATE_IMAGE_EXTENSION_NAME
+#define have_NV_SHADING_RATE_IMAGE
 static const struct vr_feature_offset
 offsets_NV_SHADING_RATE_IMAGE[] = {
         {
@@ -360,7 +472,12 @@ offsets_NV_SHADING_RATE_IMAGE[] = {
         },
         { .name = NULL }
 };
+#else /* VK_NV_SHADING_RATE_IMAGE_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_NV_SHADING_RATE_IMAGE_EXTENSION_NAME"
+#endif
 
+#ifdef VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME
+#define have_EXT_TRANSFORM_FEEDBACK
 static const struct vr_feature_offset
 offsets_EXT_TRANSFORM_FEEDBACK[] = {
         {
@@ -373,7 +490,12 @@ offsets_EXT_TRANSFORM_FEEDBACK[] = {
         },
         { .name = NULL }
 };
+#else /* VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME"
+#endif
 
+#ifdef VK_KHR_VARIABLE_POINTERS_EXTENSION_NAME
+#define have_KHR_VARIABLE_POINTERS
 static const struct vr_feature_offset
 offsets_KHR_VARIABLE_POINTERS[] = {
         {
@@ -386,7 +508,13 @@ offsets_KHR_VARIABLE_POINTERS[] = {
         },
         { .name = NULL }
 };
+#else /* VK_KHR_VARIABLE_POINTERS_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_KHR_VARIABLE_POINTERS_EXTENSION_NAME"
+#endif
 
+#ifdef VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME
+#if VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_SPEC_VERSION >= 3
+#define have_EXT_VERTEX_ATTRIBUTE_DIVISOR
 static const struct vr_feature_offset
 offsets_EXT_VERTEX_ATTRIBUTE_DIVISOR[] = {
         {
@@ -399,7 +527,15 @@ offsets_EXT_VERTEX_ATTRIBUTE_DIVISOR[] = {
         },
         { .name = NULL }
 };
+#else /* VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_SPEC_VERSION > 3 */
+#warning "The Vulkan headers are too old for VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME"
+#endif
+#else /* VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME"
+#endif
 
+#ifdef VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME
+#define have_KHR_VULKAN_MEMORY_MODEL
 static const struct vr_feature_offset
 offsets_KHR_VULKAN_MEMORY_MODEL[] = {
         {
@@ -412,6 +548,9 @@ offsets_KHR_VULKAN_MEMORY_MODEL[] = {
         },
         { .name = NULL }
 };
+#else /* VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME */
+#warning "The vulkan headers are missing VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME"
+#endif
 
 const struct vr_feature_offset
 vr_feature_base_offsets[] = {
@@ -640,168 +779,222 @@ vr_feature_base_offsets[] = {
 
 const struct vr_feature_extension
 vr_feature_extensions[] = {
+#ifdef have_KHR_16BIT_STORAGE
         {
                 .name = VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDevice16BitStorageFeaturesKHR),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR,
                 .offsets = offsets_KHR_16BIT_STORAGE
         },
+#endif
+#ifdef have_KHR_8BIT_STORAGE
         {
                 .name = VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDevice8BitStorageFeaturesKHR),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR,
                 .offsets = offsets_KHR_8BIT_STORAGE
         },
+#endif
+#ifdef have_EXT_ASTC_DECODE_MODE
         {
                 .name = VK_EXT_ASTC_DECODE_MODE_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceASTCDecodeFeaturesEXT),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT,
                 .offsets = offsets_EXT_ASTC_DECODE_MODE
         },
+#endif
+#ifdef have_EXT_BLEND_OPERATION_ADVANCED
         {
                 .name = VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT,
                 .offsets = offsets_EXT_BLEND_OPERATION_ADVANCED
         },
+#endif
+#ifdef have_EXT_BUFFER_DEVICE_ADDRESS
         {
                 .name = VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceBufferAddressFeaturesEXT),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT,
                 .offsets = offsets_EXT_BUFFER_DEVICE_ADDRESS
         },
+#endif
+#ifdef have_NV_COMPUTE_SHADER_DERIVATIVES
         {
                 .name = VK_NV_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceComputeShaderDerivativesFeaturesNV),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV,
                 .offsets = offsets_NV_COMPUTE_SHADER_DERIVATIVES
         },
+#endif
+#ifdef have_EXT_CONDITIONAL_RENDERING
         {
                 .name = VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceConditionalRenderingFeaturesEXT),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT,
                 .offsets = offsets_EXT_CONDITIONAL_RENDERING
         },
+#endif
+#ifdef have_NV_CORNER_SAMPLED_IMAGE
         {
                 .name = VK_NV_CORNER_SAMPLED_IMAGE_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceCornerSampledImageFeaturesNV),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV,
                 .offsets = offsets_NV_CORNER_SAMPLED_IMAGE
         },
+#endif
+#ifdef have_EXT_DESCRIPTOR_INDEXING
         {
                 .name = VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceDescriptorIndexingFeaturesEXT),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT,
                 .offsets = offsets_EXT_DESCRIPTOR_INDEXING
         },
+#endif
+#ifdef have_NV_SCISSOR_EXCLUSIVE
         {
                 .name = VK_NV_SCISSOR_EXCLUSIVE_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceExclusiveScissorFeaturesNV),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV,
                 .offsets = offsets_NV_SCISSOR_EXCLUSIVE
         },
+#endif
+#ifdef have_KHR_SHADER_FLOAT16_INT8
         {
                 .name = VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceFloat16Int8FeaturesKHR),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR,
                 .offsets = offsets_KHR_SHADER_FLOAT16_INT8
         },
+#endif
+#ifdef have_EXT_FRAGMENT_DENSITY_MAP
         {
                 .name = VK_EXT_FRAGMENT_DENSITY_MAP_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceFragmentDensityMapFeaturesEXT),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT,
                 .offsets = offsets_EXT_FRAGMENT_DENSITY_MAP
         },
+#endif
+#ifdef have_NV_FRAGMENT_SHADER_BARYCENTRIC
         {
                 .name = VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceFragmentShaderBarycentricFeaturesNV),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_NV,
                 .offsets = offsets_NV_FRAGMENT_SHADER_BARYCENTRIC
         },
+#endif
+#ifdef have_EXT_INLINE_UNIFORM_BLOCK
         {
                 .name = VK_EXT_INLINE_UNIFORM_BLOCK_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceInlineUniformBlockFeaturesEXT),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT,
                 .offsets = offsets_EXT_INLINE_UNIFORM_BLOCK
         },
+#endif
+#ifdef have_EXT_MEMORY_PRIORITY
         {
                 .name = VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceMemoryPriorityFeaturesEXT),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT,
                 .offsets = offsets_EXT_MEMORY_PRIORITY
         },
+#endif
+#ifdef have_NV_MESH_SHADER
         {
                 .name = VK_NV_MESH_SHADER_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceMeshShaderFeaturesNV),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV,
                 .offsets = offsets_NV_MESH_SHADER
         },
+#endif
+#ifdef have_KHR_MULTIVIEW
         {
                 .name = VK_KHR_MULTIVIEW_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceMultiviewFeaturesKHR),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR,
                 .offsets = offsets_KHR_MULTIVIEW
         },
+#endif
+#ifdef have_NV_REPRESENTATIVE_FRAGMENT_TEST
         {
                 .name = VK_NV_REPRESENTATIVE_FRAGMENT_TEST_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV,
                 .offsets = offsets_NV_REPRESENTATIVE_FRAGMENT_TEST
         },
+#endif
+#ifdef have_KHR_SAMPLER_YCBCR_CONVERSION
         {
                 .name = VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceSamplerYcbcrConversionFeaturesKHR),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES_KHR,
                 .offsets = offsets_KHR_SAMPLER_YCBCR_CONVERSION
         },
+#endif
+#ifdef have_EXT_SCALAR_BLOCK_LAYOUT
         {
                 .name = VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceScalarBlockLayoutFeaturesEXT),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT,
                 .offsets = offsets_EXT_SCALAR_BLOCK_LAYOUT
         },
+#endif
+#ifdef have_KHR_SHADER_ATOMIC_INT64
         {
                 .name = VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceShaderAtomicInt64FeaturesKHR),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR,
                 .offsets = offsets_KHR_SHADER_ATOMIC_INT64
         },
+#endif
+#ifdef have_NV_SHADER_IMAGE_FOOTPRINT
         {
                 .name = VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceShaderImageFootprintFeaturesNV),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_FOOTPRINT_FEATURES_NV,
                 .offsets = offsets_NV_SHADER_IMAGE_FOOTPRINT
         },
+#endif
+#ifdef have_NV_SHADING_RATE_IMAGE
         {
                 .name = VK_NV_SHADING_RATE_IMAGE_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceShadingRateImageFeaturesNV),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_FEATURES_NV,
                 .offsets = offsets_NV_SHADING_RATE_IMAGE
         },
+#endif
+#ifdef have_EXT_TRANSFORM_FEEDBACK
         {
                 .name = VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceTransformFeedbackFeaturesEXT),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT,
                 .offsets = offsets_EXT_TRANSFORM_FEEDBACK
         },
+#endif
+#ifdef have_KHR_VARIABLE_POINTERS
         {
                 .name = VK_KHR_VARIABLE_POINTERS_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceVariablePointerFeaturesKHR),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES_KHR,
                 .offsets = offsets_KHR_VARIABLE_POINTERS
         },
+#endif
+#ifdef have_EXT_VERTEX_ATTRIBUTE_DIVISOR
         {
                 .name = VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT,
                 .offsets = offsets_EXT_VERTEX_ATTRIBUTE_DIVISOR
         },
+#endif
+#ifdef have_KHR_VULKAN_MEMORY_MODEL
         {
                 .name = VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME,
                 .struct_size = sizeof(VkPhysicalDeviceVulkanMemoryModelFeaturesKHR),
                 .struct_type = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR,
                 .offsets = offsets_KHR_VULKAN_MEMORY_MODEL
         },
+#endif
         {
                 .name = NULL,
                 .struct_size = sizeof(VkPhysicalDeviceFeatures),
