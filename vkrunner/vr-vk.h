@@ -35,6 +35,8 @@ struct vr_vk {
 
         PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr;
         PFN_vkCreateInstance vkCreateInstance;
+        PFN_vkEnumerateInstanceExtensionProperties
+        vkEnumerateInstanceExtensionProperties;
 
 #define VR_VK_FUNC(name) PFN_ ## name name;
 #include "vr-vk-instance-funcs.h"
