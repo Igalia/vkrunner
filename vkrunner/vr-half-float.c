@@ -24,6 +24,7 @@
 #include "config.h"
 
 #include "vr-half-float.h"
+#include "vr-small-float.h"
 
 union fi_type {
         float f;
@@ -115,4 +116,10 @@ vr_half_float_from_float(float val)
 
         result = (s << 15) | (e << 10) | m;
         return result;
+}
+
+double
+vr_half_float_to_double(uint16_t half)
+{
+        return vr_small_float_load_signed(half, 5, 10);
 }

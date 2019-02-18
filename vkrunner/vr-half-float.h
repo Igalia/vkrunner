@@ -31,4 +31,7 @@
 uint16_t
 vr_half_float_from_float(float val);
 
+double
+vr_half_float_to_double(uint16_t half);
+
 #endif /* VR_HALF_FLOAT_H */
