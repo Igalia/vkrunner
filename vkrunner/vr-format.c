@@ -30,9 +30,9 @@
 
 #include <string.h>
 #include <assert.h>
-#include <math.h>
 
 #include "vr-format-table.h"
+#include "vr-small-float.h"
 
 const struct vr_format *
 vr_format_lookup_by_name(const char *name)
@@ -113,39 +113,6 @@ sign_extend(uint32_t part, int bits)
 }
 
 static double
-load_ufloat(uint32_t part,
-            int e_bits,
-            int m_bits)
-{
-        int e_max = UINT32_MAX >> (32 - e_bits);
-        int e = (part >> m_bits) & e_max;
-        int m = part & (UINT32_MAX >> (32 - m_bits));
-
-        if (e == e_max)
-                return m == 0 ? INFINITY : NAN;
-
-        if (e == 0)
-                e = 1;
-        else
-                m += 1 << m_bits;
-
-        return ldexp(m / (double) (1 << m_bits), e - (e_max >> 1));
-}
-
-static double
-load_sfloat(uint32_t part,
-            int e_bits,
-            int m_bits)
-{
-        double res = load_ufloat(part, e_bits, m_bits);
-
-        if (res != NAN && (part & (1 << (e_bits + m_bits))))
-                res = -res;
-
-        return res;
-}
-
-static double
 load_packed_part(uint32_t part,
                  int bits,
                  enum vr_format_mode mode)
@@ -168,9 +135,9 @@ load_packed_part(uint32_t part,
         case VR_FORMAT_MODE_UFLOAT:
                 switch (bits) {
                 case 10:
-                        return load_ufloat(part, 5, 5);
+                        return vr_small_float_load_unsigned(part, 5, 5);
                 case 11:
-                        return load_ufloat(part, 5, 6);
+                        return vr_small_float_load_unsigned(part, 5, 6);
                 default:
                         vr_fatal("unknown bit size in packed UFLOAT format");
                 }
@@ -273,7 +240,8 @@ load_part(int bits,
         case VR_FORMAT_MODE_SFLOAT:
                 switch (bits) {
                 case 16:
-                        return load_sfloat(*(uint16_t *) fb, 5, 10);
+                        return vr_small_float_load_signed(*(uint16_t *) fb,
+                                                          5, 10);
                 case 32:
                         return *(float *) fb;
                 case 64:

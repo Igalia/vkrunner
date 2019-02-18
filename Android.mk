@@ -44,6 +44,7 @@ VKRUNNER_SRC_FILES := vkrunner/vr-allocate-store.c \
 	vkrunner/vr-requirements.c \
 	vkrunner/vr-result.c \
 	vkrunner/vr-script.c \
+	vkrunner/vr-small-float.c \
 	vkrunner/vr-source.c \
 	vkrunner/vr-stream.c \
 	vkrunner/vr-strtof.c \
