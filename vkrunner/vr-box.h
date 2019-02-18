@@ -56,8 +56,12 @@ enum vr_box_type {
         VR_BOX_TYPE_UINT16,
         VR_BOX_TYPE_INT64,
         VR_BOX_TYPE_UINT64,
+        VR_BOX_TYPE_FLOAT16,
         VR_BOX_TYPE_FLOAT,
         VR_BOX_TYPE_DOUBLE,
+        VR_BOX_TYPE_F16VEC2,
+        VR_BOX_TYPE_F16VEC3,
+        VR_BOX_TYPE_F16VEC4,
         VR_BOX_TYPE_VEC2,
         VR_BOX_TYPE_VEC3,
         VR_BOX_TYPE_VEC4,
@@ -117,6 +121,7 @@ enum vr_box_base_type {
         VR_BOX_BASE_TYPE_UINT16,
         VR_BOX_BASE_TYPE_INT64,
         VR_BOX_BASE_TYPE_UINT64,
+        VR_BOX_BASE_TYPE_FLOAT16,
         VR_BOX_BASE_TYPE_FLOAT,
         VR_BOX_BASE_TYPE_DOUBLE
 };

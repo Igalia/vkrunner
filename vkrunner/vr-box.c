@@ -31,6 +31,7 @@
 
 #include "vr-util.h"
 #include "vr-tolerance.h"
+#include "vr-half-float.h"
 
 static const struct vr_box_type_info
 type_infos[] = {
@@ -42,8 +43,12 @@ type_infos[] = {
         [VR_BOX_TYPE_UINT16] = { VR_BOX_BASE_TYPE_UINT16, 1, 1 },
         [VR_BOX_TYPE_INT64] = { VR_BOX_BASE_TYPE_INT64, 1, 1 },
         [VR_BOX_TYPE_UINT64] = { VR_BOX_BASE_TYPE_UINT64, 1, 1 },
+        [VR_BOX_TYPE_FLOAT16] = { VR_BOX_BASE_TYPE_FLOAT16, 1, 1 },
         [VR_BOX_TYPE_FLOAT] = { VR_BOX_BASE_TYPE_FLOAT, 1, 1 },
         [VR_BOX_TYPE_DOUBLE] = { VR_BOX_BASE_TYPE_DOUBLE, 1, 1 },
+        [VR_BOX_TYPE_F16VEC2] = { VR_BOX_BASE_TYPE_FLOAT16, 1, 2 },
+        [VR_BOX_TYPE_F16VEC3] = { VR_BOX_BASE_TYPE_FLOAT16, 1, 3 },
+        [VR_BOX_TYPE_F16VEC4] = { VR_BOX_BASE_TYPE_FLOAT16, 1, 4 },
         [VR_BOX_TYPE_VEC2] = { VR_BOX_BASE_TYPE_FLOAT, 1, 2 },
         [VR_BOX_TYPE_VEC3] = { VR_BOX_BASE_TYPE_FLOAT, 1, 3 },
         [VR_BOX_TYPE_VEC4] = { VR_BOX_BASE_TYPE_FLOAT, 1, 4 },
@@ -106,6 +111,7 @@ vr_box_base_type_size(enum vr_box_base_type type)
         case VR_BOX_BASE_TYPE_UINT16: return sizeof (uint16_t);
         case VR_BOX_BASE_TYPE_INT64: return sizeof (int64_t);
         case VR_BOX_BASE_TYPE_UINT64: return sizeof (uint64_t);
+        case VR_BOX_BASE_TYPE_FLOAT16: return sizeof (uint16_t);
         case VR_BOX_BASE_TYPE_FLOAT: return sizeof (float);
         case VR_BOX_BASE_TYPE_DOUBLE: return sizeof (double);
         }
@@ -368,6 +374,13 @@ compare_value(const struct compare_closure *data,
                 return compare_unsigned(data->comparison,
                                         *(const uint64_t *) a,
                                         *(const uint64_t *) b);
+        case VR_BOX_BASE_TYPE_FLOAT16: {
+                uint16_t ai = *(const uint16_t *) a;
+                uint16_t bi = *(const uint16_t *) b;
+                return compare_double(data,
+                                      vr_half_float_to_double(ai),
+                                      vr_half_float_to_double(bi));
+        }
         case VR_BOX_BASE_TYPE_FLOAT:
                 return compare_double(data,
                                       *(const float *) a,

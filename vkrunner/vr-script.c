@@ -44,6 +44,7 @@
 #include "vr-tolerance.h"
 #include "vr-stream.h"
 #include "vr-char.h"
+#include "vr-hex.h"
 
 #define DEFAULT_TOLERANCE 0.01
 
@@ -271,6 +272,38 @@ error_at_line(struct load_state *data,
         vr_error_message_string(data->config, (const char *) buffer.data);
 
         vr_buffer_destroy(&buffer);
+}
+
+static bool
+parse_float16s(struct load_state *data,
+               const char **p,
+               uint16_t *out,
+               int n_floats,
+               const char *sep)
+{
+        char *tail;
+
+        for (int i = 0; i < n_floats; i++) {
+                while (vr_char_is_space(**p))
+                        (*p)++;
+
+                errno = 0;
+                *(out++) = vr_hex_strtohf(&data->config->strtof_data,
+                                          *p,
+                                          &tail);
+                if (errno != 0 || tail == *p)
+                        return false;
+                *p = tail;
+
+                if (sep && i < n_floats - 1) {
+                        while (vr_char_is_space(**p))
+                                (*p)++;
+                        if (!looking_at(p, sep))
+                                return false;
+                }
+        }
+
+        return true;
 }
 
 static bool
@@ -632,8 +665,12 @@ parse_value_type(const char **p,
                 { "uint16_t ", VR_BOX_TYPE_UINT16 },
                 { "int64_t ", VR_BOX_TYPE_INT64 },
                 { "uint64_t ", VR_BOX_TYPE_UINT64 },
+                { "float16_t ", VR_BOX_TYPE_FLOAT16 },
                 { "float ", VR_BOX_TYPE_FLOAT },
                 { "double ", VR_BOX_TYPE_DOUBLE },
+                { "f16vec2 ", VR_BOX_TYPE_F16VEC2 },
+                { "f16vec3 ", VR_BOX_TYPE_F16VEC3 },
+                { "f16vec4 ", VR_BOX_TYPE_F16VEC4 },
                 { "vec2 ", VR_BOX_TYPE_VEC2 },
                 { "vec3 ", VR_BOX_TYPE_VEC3 },
                 { "vec4 ", VR_BOX_TYPE_VEC4 },
@@ -746,6 +783,10 @@ parse_value_cb(enum vr_box_base_type base_type,
                 break;
         case VR_BOX_BASE_TYPE_UINT64:
                 if (!parse_uint64s(&data->p, value, 1, NULL))
+                        goto error;
+                break;
+        case VR_BOX_BASE_TYPE_FLOAT16:
+                if (!parse_float16s(data->data, &data->p, value, 1, NULL))
                         goto error;
                 break;
         case VR_BOX_BASE_TYPE_FLOAT:

@@ -36,6 +36,7 @@
 #include "vr-buffer.h"
 #include "vr-format-private.h"
 #include "vr-tolerance.h"
+#include "vr-half-float.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -978,6 +979,11 @@ append_box_cb(enum vr_box_base_type base_type,
                                         "%" PRIu64,
                                         *(const uint64_t *) p);
                 break;
+        case VR_BOX_BASE_TYPE_FLOAT16: {
+                double v = vr_half_float_to_double(*(const uint16_t *) p);
+                vr_buffer_append_printf(data->buf, "%f", v);
+                break;
+        }
         case VR_BOX_BASE_TYPE_FLOAT:
                 vr_buffer_append_printf(data->buf, "%f", *(const float *) p);
                 break;
