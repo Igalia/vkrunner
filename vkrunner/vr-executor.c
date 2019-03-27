@@ -169,6 +169,7 @@ vr_executor_execute_script(struct vr_executor *executor,
                 } else {
                         res = vr_context_new(executor->config,
                                              script->requirements,
+                                             &script->version,
                                              &executor->context);
 
                         if (res != VR_RESULT_PASS)

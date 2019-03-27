@@ -31,6 +31,12 @@
 
 #include "vr-vk.h"
 
+struct vr_version {
+        unsigned int major;
+        unsigned int minor;
+        unsigned int patch;
+};
+
 struct vr_requirements;
 
 struct vr_requirements *

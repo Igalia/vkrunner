@@ -58,6 +58,7 @@ struct vr_context {
 enum vr_result
 vr_context_new(const struct vr_config *config,
                const struct vr_requirements *reqs,
+               const struct vr_version *version,
                struct vr_context **context_out);
 
 enum vr_result

@@ -941,6 +941,24 @@ parse_fbsize(struct load_state *data,
         return true;
 }
 
+static bool
+parse_version(struct load_state *data,
+              const char *p,
+              struct vr_version *version)
+{
+        unsigned parts[3];
+        if (!parse_uints(&p, parts, 3, ".") || !is_end(p)) {
+                error_at_line(data, "Invalid version\n");
+                return false;
+        }
+
+        version->major = parts[0];
+        version->minor = parts[1];
+        version->patch = parts[2];
+
+        return true;
+}
+
 static enum parse_result
 process_layout(struct load_state *data,
                const char *p)
@@ -1028,6 +1046,11 @@ process_require_line(struct load_state *data)
 
         if (looking_at(&p, "fbsize "))
                 return parse_fbsize(data, p, &data->script->window_format);
+
+        if (looking_at(&p, "vulkan ")) {
+                struct vr_version *version = &data->script->version;
+                return parse_version(data, p, version);
+        }
 
         int extension_len = 0;
 

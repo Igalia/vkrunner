@@ -366,9 +366,29 @@ error:
         return vres;
 }
 
+static enum vr_result
+check_api_version(const struct vr_context *context,
+                  const struct vr_version *version)
+{
+        uint32_t req_version = VK_MAKE_VERSION(version->major,
+                                               version->minor,
+                                               version->patch);
+
+        if (context->device_properties.apiVersion < req_version) {
+                vr_error_message(context->config,
+                                 "Unsupported Vulkan version: %u.%u.%u",
+                                 version->major, version->minor,
+                                 version->patch);
+                return VR_RESULT_SKIP;
+        }
+
+        return VR_RESULT_PASS;
+}
+
 enum vr_result
 vr_context_new(const struct vr_config *config,
                const struct vr_requirements *reqs,
+               const struct vr_version *version,
                struct vr_context **context_out)
 {
         struct vr_context *context = vr_calloc(sizeof *context);
@@ -390,6 +410,11 @@ vr_context_new(const struct vr_config *config,
                 goto error;
 
         vres = init_vk(context);
+        if (vres != VR_RESULT_PASS)
+                goto error;
+
+
+        vres = check_api_version(context, version);
         if (vres != VR_RESULT_PASS)
                 goto error;
 
