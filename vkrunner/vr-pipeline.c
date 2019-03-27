@@ -66,8 +66,6 @@ base_multisample_state = {
         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT
 };
 
-#define TARGET_ENV "vulkan1.0"
-
 static char *
 create_file_for_shader(const struct vr_config *config,
                        const struct vr_script_shader *shader)
@@ -153,6 +151,11 @@ compile_stage(const struct vr_config *config,
         size_t module_size;
         bool res;
         int i;
+        char version_str[64];
+        uint32_t version = vr_requirements_get_version(script->requirements);
+
+        sprintf(version_str, "vulkan%u.%u", VK_VERSION_MAJOR(version),
+                VK_VERSION_MINOR(version));
 
         memset(args + n_base_args, 0, (n_shaders + 1) * sizeof args[0]);
 
@@ -167,7 +170,7 @@ compile_stage(const struct vr_config *config,
 
         args[1] = "-V";
         args[2] = "--target-env";
-        args[3] = TARGET_ENV;
+        args[3] = version_str;
         args[4] = "-S";
         args[5] = (char *) stage_names[stage];
         args[6] = "-o";
@@ -234,6 +237,7 @@ out:
 static VkShaderModule
 assemble_stage(const struct vr_config *config,
                struct vr_window *window,
+               const struct vr_script *script,
                const struct vr_script_shader *shader)
 {
         struct vr_vk *vkfn = &window->vkfn;
@@ -244,6 +248,11 @@ assemble_stage(const struct vr_config *config,
         VkShaderModule module = VK_NULL_HANDLE;
         size_t module_size;
         bool res;
+        char version_str[64];
+        uint32_t version = vr_requirements_get_version(script->requirements);
+
+        sprintf(version_str, "vulkan%u.%u", VK_VERSION_MAJOR(version),
+                VK_VERSION_MINOR(version));
 
         if (!vr_temp_file_create_named(config,
                                        &module_stream,
@@ -256,7 +265,7 @@ assemble_stage(const struct vr_config *config,
 
         char *args[] = {
                 getenv("PIGLIT_SPIRV_AS_BINARY"),
-                "--target-env", TARGET_ENV,
+                "--target-env", version_str,
                 "-o", module_filename,
                 source_filename,
                 NULL
@@ -373,7 +382,7 @@ build_stage(const struct vr_config *config,
         case VR_SCRIPT_SOURCE_TYPE_GLSL:
                 return compile_stage(config, window, script, stage);
         case VR_SCRIPT_SOURCE_TYPE_SPIRV:
-                return assemble_stage(config, window, shader);
+                return assemble_stage(config, window, script, shader);
         case VR_SCRIPT_SOURCE_TYPE_BINARY:
                 return load_binary_stage(config, window, shader);
         }

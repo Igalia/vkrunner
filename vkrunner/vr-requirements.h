@@ -36,6 +36,15 @@ struct vr_requirements;
 struct vr_requirements *
 vr_requirements_new(void);
 
+uint32_t
+vr_requirements_get_version(const struct vr_requirements *reqs);
+
+void
+vr_requirements_add_version(struct vr_requirements *reqs,
+                            unsigned int major,
+                            unsigned int minor,
+                            unsigned int patch);
+
 const char* const*
 vr_requirements_get_extensions(const struct vr_requirements *reqs);
 

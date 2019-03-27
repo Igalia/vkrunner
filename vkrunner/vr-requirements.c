@@ -49,6 +49,7 @@ struct full_structure {
 };
 
 struct vr_requirements {
+        uint32_t version;
         struct vr_buffer extensions;
         struct vr_list structures;
         VkPhysicalDeviceFeatures features;
@@ -62,7 +63,24 @@ vr_requirements_new(void)
         vr_buffer_init(&reqs->extensions);
         vr_list_init(&reqs->structures);
 
+        reqs->version = VK_MAKE_VERSION(1, 0, 2);
+
         return reqs;
+}
+
+uint32_t
+vr_requirements_get_version(const struct vr_requirements *reqs)
+{
+        return reqs->version;
+}
+
+void
+vr_requirements_add_version(struct vr_requirements *reqs,
+                            unsigned int major,
+                            unsigned int minor,
+                            unsigned int patch)
+{
+        reqs->version = VK_MAKE_VERSION(major, minor, patch);
 }
 
 const char* const*
@@ -268,6 +286,10 @@ vr_requirements_equal(const struct vr_requirements *reqs_a,
         if (&struct_b->link != &reqs_b->structures)
                 return false;
 
+        if (reqs_a->version != reqs_b->version) {
+                return false;
+        }
+
         return true;
 }
 
@@ -312,6 +334,7 @@ vr_requirements_copy(const struct vr_requirements *reqs)
         copy_structures(reqs, &reqs_copy->structures);
 
         reqs_copy->features = reqs->features;
+        reqs_copy->version = reqs->version;
 
         assert(vr_requirements_equal(reqs, reqs_copy));
 
@@ -466,6 +489,32 @@ check_structures(const struct vr_requirements *reqs,
         return ret;
 }
 
+static bool
+check_version(const struct vr_requirements *reqs,
+                  struct vr_vk *vkfn,
+                  VkInstance instance,
+                  VkPhysicalDevice device)
+{
+        uint32_t rversion = vr_requirements_get_version(reqs);
+
+        if (rversion >= VK_MAKE_VERSION(1, 1, 0)) {
+                const char *enum_instance_version_name = "vkEnumerateInstanceVersion";
+                PFN_vkEnumerateInstanceVersion enum_instance_version =
+                        (void *) vkfn->vkGetInstanceProcAddr(instance,
+                                                             enum_instance_version_name);
+
+                if (!enum_instance_version)
+                        return false;
+        }
+
+        VkPhysicalDeviceProperties props;
+        vkfn->vkGetPhysicalDeviceProperties(device, &props);
+        if (props.apiVersion < rversion)
+            return false;
+
+        return true;
+}
+
 bool
 vr_requirements_check(const struct vr_requirements *reqs,
                       struct vr_vk *vkfn,
@@ -485,6 +534,9 @@ vr_requirements_check(const struct vr_requirements *reqs,
                 return false;
 
         if (!check_structures(reqs, vkfn, instance, device))
+                return false;
+
+        if (!check_version(reqs, vkfn, instance, device))
                 return false;
 
         return true;

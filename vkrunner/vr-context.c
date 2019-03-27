@@ -223,7 +223,7 @@ init_vk_device(struct vr_context *context,
                 .pApplicationInfo = &(VkApplicationInfo) {
                         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
                         .pApplicationName = "vkrunner",
-                        .apiVersion = VK_MAKE_VERSION(1, 0, 2)
+                        .apiVersion = vr_requirements_get_version(reqs)
                 },
         };
 
