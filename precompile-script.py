@@ -36,6 +36,9 @@ import struct
 TARGET_ENV = "vulkan1.0"
 
 SECTION_RE = re.compile(r'^\[([^]]+)\]\s*$')
+VERSION_RE = re.compile(r'^(\s*vulkan\s*\d+\.\d+)(\.\d+\s*)$')
+TRIM_RE = re.compile(r'\s+')
+
 STAGE_MAP = {
     'vertex shader': 'vert',
     'tessellation control shader': 'tesc',
@@ -46,12 +49,13 @@ STAGE_MAP = {
 }
 
 class Converter:
-    def __init__(self, type, stage, fout, binary):
+    def __init__(self, type, stage, fout, binary, version):
         self._type = type
         self._stage = stage
         self._fout = fout
         self._tempfile = tempfile.NamedTemporaryFile('w+')
         self._binary = binary
+        self._version = version
 
     def add_line(self, line):
         self._tempfile.write(line)
@@ -65,12 +69,12 @@ class Converter:
                                        "-S", self._stage,
                                        "-G",
                                        "-V",
-                                       "--target-env", TARGET_ENV,
+                                       "--target-env", self._version,
                                        "-o", temp_outfile.name,
                                        self._tempfile.name])
             else:
                 subprocess.check_call([self._binary,
-                                       "--target-env", TARGET_ENV,
+                                       "--target-env", self._version,
                                        "-o", temp_outfile.name,
                                        self._tempfile.name])
 
@@ -111,9 +115,10 @@ class Converter:
             print(file=self._fout)
         print(file=self._fout)
 
-
 def convert_stream(fin, fout, glslang, spirv_as):
+    section_name = None
     converter = None
+    version = TARGET_ENV
 
     for line in fin:
         md = SECTION_RE.match(line)
@@ -129,18 +134,24 @@ def convert_stream(fin, fout, glslang, spirv_as):
                 converter = Converter('spirv',
                                       STAGE_MAP[stage_name],
                                       fout,
-                                      spirv_as)
+                                      spirv_as,
+                                      version)
                 print("[{} binary]".format(stage_name), file=fout)
             elif section_name in STAGE_MAP:
                 converter = Converter('glsl',
                                       STAGE_MAP[section_name],
-                                      fout, glslang)
+                                      fout, glslang, version)
                 print("[{} binary]".format(section_name), file=fout)
             else:
                 fout.write(line)
         elif converter:
             converter.add_line(line)
         else:
+            if section_name == 'require':
+                vmd = VERSION_RE.match(line)
+                if vmd:
+                    version = vmd.group(1)
+                    version = TRIM_RE.sub('', version)
             fout.write(line)
 
     if converter:
