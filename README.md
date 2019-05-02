@@ -326,6 +326,10 @@ device with the extension is found then the test will report that it
 was skipped. Otherwise the extension will be enabled when creating the
 device.
 
+The required Vulkan implementation version for the test can also be
+set in this section. If the version is not supported by the device
+driver the test will be skipped.
+
 > framebuffer _format_
 
 Use this to specify the format of the framebuffer using a format from
@@ -341,6 +345,11 @@ depth-stencil buffer will be created.
 
 Specify the size of the framebuffer. If not specified it defaults to
 250x250.
+
+> vulkan _major_._minor_._patch_
+
+Use this to specify the Vulkan implementation version against which
+the test should run.
 
 ## Shader sections
 
