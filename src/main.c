@@ -24,6 +24,7 @@
  */
 
 #include "config.h"
+#include "getopt.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,8 +56,9 @@ struct main_data {
 typedef bool (* option_cb_t) (struct main_data *data,
                               const char *arg);
 
-struct option {
-        char letter;
+struct vr_option {
+        char short_opt;
+        const char *long_opt;
         const char *description;
         /* If the option takes an argument then this will be its name
          * in the help. Otherwise it is NULL if the argument is just a
@@ -166,20 +168,23 @@ opt_quiet(struct main_data *data,
         return true;
 }
 
-static const struct option
+/* Use unique negative numbers to denote options without a short option.
+ * Don't choose -1, it's used in the getopt_long error check.
+ */
+static const struct vr_option
 options[] = {
-        { 'h', "Show this help message", NULL, opt_help },
-        { 'i', "Write the final rendering to IMG as a PPM image", "IMG",
+        { 'h', "help", "Show this help message", NULL, opt_help },
+        { 'i', "image", "Write the final rendering to IMG as a PPM image", "IMG",
           opt_image },
-        { 'b', "Dump contents of a UBO or SSBO to BUF", "BUF",
+        { 'b', "buffer", "Dump contents of a UBO or SSBO to BUF", "BUF",
           opt_buffer },
-        { 'B', "Select which buffer to dump using the -b option. "
+        { 'B', "binding", "Select which buffer to dump using the -b option. "
           "Defaults to first buffer", "BINDING",
           opt_binding },
-        { 'd', "Show the SPIR-V disassembly", NULL, opt_disassembly },
-        { 'D', "Replace occurences of TOK with REPL in the scripts",
+        { 'd', "disasm", "Show the SPIR-V disassembly", NULL, opt_disassembly },
+        { 'D', "replace", "Replace occurences of TOK with REPL in the scripts",
           "TOK=REPL", opt_token_replacement },
-        { 'q', "Don’t print any non-error information to stdout", NULL,
+        { 'q', "quiet", "Don’t print any non-error information to stdout", NULL,
           opt_quiet }
 };
 
@@ -195,8 +200,9 @@ opt_help(struct main_data *data,
                "Options:\n");
 
         for (int i = 0; i < N_OPTIONS; i++) {
-                printf("  -%c %-10s %s\n",
-                       options[i].letter,
+                printf("  -%c,--%-7s %-10s %s\n",
+                       options[i].short_opt,
+                       options[i].long_opt,
                        options[i].argument_name ?
                        options[i].argument_name :
                        "",
@@ -208,83 +214,47 @@ opt_help(struct main_data *data,
 }
 
 static bool
-handle_option(struct main_data *data,
-              const struct option *option,
-              const char *p,
-              int argc, char **argv,
-              int *arg_num)
-{
-        const char *arg;
-
-        if (option->argument_name) {
-                if (p[1]) {
-                        arg = p + 1;
-                } else {
-                        (*arg_num)++;
-                        if (*arg_num >= argc) {
-                                fprintf(stderr,
-                                        "option ‘%c’ expects an argument\n",
-                                        *p);
-                                opt_help(data, NULL);
-                                return false;
-                        }
-                        arg = argv[*arg_num];
-                }
-        } else {
-                arg = NULL;
-        }
-
-        return option->cb(data, arg);
-}
-
-static bool
 process_argv(struct main_data *data,
              int argc, char **argv)
 {
-        bool had_separator = false;
+        int num_sopts = 0;
 
-        for (int i = 1; i < argc; i++) {
-                if (!had_separator && argv[i][0] == '-') {
-                        if (!strcmp(argv[i], "--")) {
-                                had_separator = true;
-                                continue;
+        struct option opts[N_OPTIONS + 1];
+        char sopts[2 * N_OPTIONS + 1];
+
+        for (int i = 0; i < N_OPTIONS; i++) {
+                if (options[i].short_opt > 0) {
+                        sopts[num_sopts++] = options[i].short_opt;
+                        if (options[i].argument_name) {
+                                sopts[num_sopts++] = ':';
                         }
-
-                        for (const char *p = argv[i] + 1; *p; p++) {
-                                for (int option_num = 0;
-                                     option_num < N_OPTIONS;
-                                     option_num++) {
-                                        if (options[option_num].letter != *p)
-                                                continue;
-
-                                        if (!handle_option(data,
-                                                           options + option_num,
-                                                           p,
-                                                           argc, argv,
-                                                           &i))
-                                                return false;
-
-                                        if (options[option_num].argument_name)
-                                                goto handled_arg;
-
-                                        goto found_option;
-                                }
-
-                                fprintf(stderr,
-                                        "unknown option ‘%c’\n",
-                                        *p);
-                                opt_help(data, NULL);
-                                return false;
-
-                        found_option:
-                                (void) 0;
-                        }
-
-                handled_arg:
-                        (void) 0;
-                } else {
-                        string_array_add(&data->filenames, argv[i]);
                 }
+
+                opts[i].name = options[i].long_opt;
+                opts[i].has_arg = options[i].argument_name ?
+                                  required_argument : no_argument;
+                opts[i].flag = 0;
+                opts[i].val = options[i].short_opt;
+        }
+
+        memset(opts + N_OPTIONS, 0, sizeof *opts);
+        sopts[num_sopts] = 0;
+
+        int opt;
+        while ((opt = getopt_long(argc, argv, sopts, opts, 0)) != -1) {
+                if (opt == '?')
+                        return false;
+
+                for (int i = 0; i < N_OPTIONS; i++) {
+                        if (opt == options[i].short_opt) {
+                                if (!options[i].cb(data, optarg))
+                                        return false;
+                        }
+                }
+        }
+
+        for (int i = optind; i < argc; i++) {
+                string_array_add(&data->filenames, argv[i]);
         }
 
         if (data->filenames.length <= 0) {
