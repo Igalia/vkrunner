@@ -4,6 +4,7 @@ include_directories("${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
 
 set(VKRUNNERBIN_SOURCE_FILES
         main.c
+        getopt.c
         )
 
 add_executable(vkrunnerbin ${VKRUNNERBIN_SOURCE_FILES})
