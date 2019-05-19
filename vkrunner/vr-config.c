@@ -32,6 +32,7 @@ vr_config_new(void)
 {
         struct vr_config *config = vr_calloc(sizeof(struct vr_config));
         vr_strtof_init(&config->strtof_data);
+        config->device_id = -1;
         return config;
 }
 
@@ -69,4 +70,11 @@ vr_config_set_inspect_cb(struct vr_config *config,
                          vr_callback_inspect inspect_cb)
 {
         config->inspect_cb = inspect_cb;
+}
+
+void
+vr_config_set_device_id(struct vr_config *config,
+                        int device_id)
+{
+        config->device_id = device_id;
 }
