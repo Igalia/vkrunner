@@ -5,6 +5,15 @@ set -eu
 src_dir="$(cd $(dirname "$0") && pwd)"
 build_dir="$src_dir/tmp-build"
 install_dir="$build_dir/install"
+device_id=""
+
+if [ $# -gt 0 ] && [ "$1" = "--device-id" ]; then
+    if [ -z "${2:-}" ]; then
+        echo "--device-id must be followed by a number"
+        exit 1
+    fi
+    device_id="--device-id $2"
+fi
 
 rm -fr -- "$build_dir"
 
@@ -34,7 +43,7 @@ fi
 # Try again with precompiled scripts
 "$src_dir"/precompile-script.py -o "$build_dir/precompiled-examples" \
           "$src_dir/examples"/*.shader_test
-"$install_dir/bin/vkrunner" \
+"$install_dir/bin/vkrunner" $device_id \
     "$build_dir/precompiled-examples/"*.shader_test
 
 # Extract the example from the README. This will test both that the
