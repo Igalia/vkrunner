@@ -33,6 +33,7 @@
 
 struct vr_config {
         bool show_disassembly;
+        int device_id;
 
         vr_callback_error error_cb;
         vr_callback_inspect inspect_cb;

@@ -71,6 +71,10 @@ void
 vr_config_set_inspect_cb(struct vr_config *config,
                          vr_callback_inspect inspect_cb);
 
+void
+vr_config_set_device_id(struct vr_config *config,
+                        int device_id);
+
 #ifdef  __cplusplus
 }
 #endif

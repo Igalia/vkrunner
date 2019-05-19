@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <math.h>
+#include <limits.h>
 
 #include <vkrunner/vkrunner.h>
 
@@ -168,6 +169,22 @@ opt_quiet(struct main_data *data,
         return true;
 }
 
+static bool
+opt_device_id(struct main_data *data,
+              const char *arg)
+{
+        char *endp;
+        long id = strtol(arg, &endp, 0) - 1;
+        if (id < 0 || *endp) {
+                fprintf(stderr,
+                        "Invalid device id.\n");
+                return false;
+        }
+
+        vr_config_set_device_id(data->config, id);
+        return true;
+}
+
 /* Use unique negative numbers to denote options without a short option.
  * Don't choose -1, it's used in the getopt_long error check.
  */
@@ -185,7 +202,8 @@ options[] = {
         { 'D', "replace", "Replace occurences of TOK with REPL in the scripts",
           "TOK=REPL", opt_token_replacement },
         { 'q', "quiet", "Don’t print any non-error information to stdout", NULL,
-          opt_quiet }
+          opt_quiet },
+        { -2, "device-id", "Select the Vulkan device", "DEVID", opt_device_id }
 };
 
 #define N_OPTIONS (sizeof options / sizeof options[0])
@@ -200,8 +218,15 @@ opt_help(struct main_data *data,
                "Options:\n");
 
         for (int i = 0; i < N_OPTIONS; i++) {
-                printf("  -%c,--%-7s %-10s %s\n",
-                       options[i].short_opt,
+                char fmt[] = "  -%c,--%-10s %-10s %s\n";
+                char shortopt = options[i].short_opt;
+
+                if (shortopt < 0) {
+                        fmt[2] = fmt[5] = shortopt = ' ';
+                }
+
+                printf(fmt,
+                       shortopt,
                        options[i].long_opt,
                        options[i].argument_name ?
                        options[i].argument_name :
