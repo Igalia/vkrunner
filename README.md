@@ -416,10 +416,11 @@ ubo 0 subdata int 0 \
     Runs the shader test script SCRIPT
     
     Options:
-      -h            Show this help message
-      -i IMG        Write the final rendering to IMG as a PPM image
-      -d            Show the SPIR-V disassembly
-      -D TOK=REPL   Replace occurences of TOK with REPL in the scripts
+      -h                Show this help message
+      -i IMG            Write the final rendering to IMG as a PPM image
+      -d                Show the SPIR-V disassembly
+      -D TOK=REPL       Replace occurences of TOK with REPL in the scripts
+      --device-id DEVID Select the Vulkan device
 
 ## Precompiling shaders
 
