@@ -63,7 +63,7 @@ vr_requirements_new(void)
         vr_buffer_init(&reqs->extensions);
         vr_list_init(&reqs->structures);
 
-        reqs->version = VK_MAKE_VERSION(1, 0, 2);
+        reqs->version = VK_MAKE_VERSION(1, 0, 0);
 
         return reqs;
 }
