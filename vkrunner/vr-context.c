@@ -262,7 +262,15 @@ init_vk_device(struct vr_context *context,
         if (res != VK_SUCCESS) {
                 vr_error_message(context->config,
                                  "Failed to create VkInstance");
-                return VR_RESULT_FAIL;
+                if (res == VK_ERROR_INCOMPATIBLE_DRIVER) {
+                        /* The loader reports this if there are no
+                         * drivers available at all. In that case we
+                         * want to skip.
+                         */
+                        return VR_RESULT_SKIP;
+                } else {
+                        return VR_RESULT_FAIL;
+                }
         }
 
         vr_vk_init_instance(vkfn, get_instance_proc, context);
