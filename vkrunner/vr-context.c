@@ -262,7 +262,7 @@ init_vk_device(struct vr_context *context,
         if (res != VK_SUCCESS) {
                 vr_error_message(context->config,
                                  "Failed to create VkInstance");
-                return VR_RESULT_FAIL;
+                return VR_RESULT_SKIP;
         }
 
         vr_vk_init_instance(vkfn, get_instance_proc, context);
