@@ -172,6 +172,17 @@ struct vr_script {
         size_t n_buffers;
 
         struct vr_script_descriptor_set *descriptors;
+
+	/* The number of descriptors that the script really
+	 * defines/uses. But note that vulkan API doesn't allow to
+	 * have gaps when defining the sets used (so on
+	 * VkDescriptorSetLayoutCreate) so in the end more would be
+	 * defined, even if just some really used on the shader.
+	 *
+	 * So use n_descriptors to iterate through
+	 * vr_script->descriptors. But if you want to know how many
+	 * would be declared, use vr_pipeline->max_desc_set
+	 */
         size_t n_descriptors;
         unsigned max_buffers_per_descriptor;
 };

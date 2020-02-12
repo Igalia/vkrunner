@@ -1123,12 +1123,15 @@ allocate_ubo_buffers(struct test_data *data)
 {
         struct vr_vk *vkfn = &data->window->vkfn;
 
+        /* Note that script->n_descriptors only take into account the
+         * sets that the script is using. As Vulkan API doesn't really
+         * allow to have "gaps" when declaring descriptor sets, we are
+         * declaring, so allocating, as many as pipeline->n_desc_sets
+         */
         VkResult res;
         data->ubo_descriptor_set = vr_alloc(data->pipeline->n_desc_sets *
                                             sizeof(VkDescriptorSet *));
 
-        /* XXX: perhaps duplicate info? */
-        assert(data->pipeline->n_desc_sets == data->script->n_descriptors);
         for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
                 VkDescriptorSetAllocateInfo allocate_info = {
                         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -1185,8 +1188,12 @@ allocate_ubo_buffers(struct test_data *data)
          * descriptors were splitted using a qsorted list. But it
          * would be more safe to add a relation between the
          * script_buffer and the test_buffer
+         *
+         * Note2: here we can update only the descriptors that we know
+         * that we are using.
          */
         unsigned buffer_index = 0;
+        assert(data->script->n_descriptors <= data->pipeline->n_desc_sets);
         for (unsigned i = 0; i < data->script->n_descriptors; i++) {
                 const struct vr_script_descriptor_set *descriptor =
                         data->script->descriptors + i;
