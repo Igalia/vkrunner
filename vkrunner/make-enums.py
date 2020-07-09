@@ -29,7 +29,7 @@ from __future__ import (
 # is not run automatically as part of the build process but if need be
 # it can be used to update the file as follows:
 #
-# ./make-enums.py < /usr/include/vulkan/vulkan.h > vr-enum-table.h
+# echo | gcc -include "vulkan/vulkan.h" -E - | ./make-enums.py > vr-enum-table.h
 
 import re
 import sys
