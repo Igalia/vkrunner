@@ -1,5 +1,7 @@
 # cmake file for VkRunner
 
+include(GNUInstallDirs)
+
 include_directories(${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR})
 
 set(VKRUNNER_PUBLIC_HEADERS
