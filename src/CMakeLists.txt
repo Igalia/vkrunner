@@ -12,4 +12,4 @@ set_target_properties(vkrunnerbin PROPERTIES OUTPUT_NAME "vkrunner")
 
 target_link_libraries(vkrunnerbin vkrunner)
 
-install(TARGETS vkrunnerbin DESTINATION bin)
+install(TARGETS vkrunnerbin DESTINATION ${CMAKE_INSTALL_BINDIR})
