@@ -104,7 +104,7 @@ endif()
 include_directories(${VULKAN_INCLUDE_DIRS})
 add_definitions(${VULKAN_CFLAGS_OTHER})
 
-install(TARGETS vkrunner DESTINATION lib)
+install(TARGETS vkrunner DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${VKRUNNER_PUBLIC_HEADERS} DESTINATION include/vkrunner)
 
 configure_file(
@@ -113,4 +113,4 @@ configure_file(
   @ONLY
   )
 install(FILES "${PROJECT_BINARY_DIR}/vkrunner/vkrunner.pc"
-  DESTINATION lib/pkgconfig)
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
