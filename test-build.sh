@@ -57,7 +57,7 @@ sed -rn -e '/^```C\s*$/,/^```\s*$/! b ; s/^```.*// ; p' \
     < "$src_dir/README.md" \
     > "$example_dir/myrunner.c"
 
-export PKG_CONFIG_PATH="$install_dir/lib/pkgconfig"
+export PKG_CONFIG_PATH=$(find "$install_dir" -name pkgconfig)
 
 gcc -Wall -Werror -o "$example_dir/myrunner" "$example_dir/myrunner.c" \
     $(pkg-config vkrunner --cflags --libs)
