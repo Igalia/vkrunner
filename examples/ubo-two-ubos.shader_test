@@ -1,0 +1,39 @@
+[vertex shader passthrough]
+
+[fragment shader]
+
+#version 450
+
+layout (location = 0) out vec4 color;
+layout (std140, binding = 5) uniform ComponentsBlock
+ {
+    vec4 c1;
+ } components;
+
+layout (std140, binding = 5) uniform ComponentsBlock2
+ {
+    layout(offset = 16) vec4 c1;
+ } components2;
+
+void main()
+{
+   vec4 fail_color = vec4(1.0, 0.0, 0.0, 1.0);
+   color = vec4(0.0, 1.0, 0.0, 1.0);
+
+   if (components.c1 != vec4(20530.7108263, -10508.5105669, -23051.9953613, -23564.0673228))
+        color = fail_color;
+
+   if (components2.c1 != vec4(-3274.39775692, -7391.61915007, 29371.4563058, 7793.47278553))
+        color = fail_color;
+}
+
+
+[test]
+clear color 1.0 0.0 0.0 0.0
+clear
+
+uniform ubo 5 vec4 0 20530.7108263 -10508.5105669 -23051.9953613 -23564.0673228
+uniform ubo 5 vec4 16 -3274.39775692 -7391.61915007 29371.4563058 7793.47278553
+
+draw rect -1 -1 2 2
+probe all rgba 0.0 1.0 0.0 1.0

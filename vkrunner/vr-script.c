@@ -95,6 +95,8 @@ struct load_state {
         struct vr_box_layout ubo_layout;
         struct vr_box_layout ssbo_layout;
         int had_sections;
+        unsigned max_set;
+        unsigned max_binding;
 };
 
 typedef enum parse_result
@@ -635,16 +637,36 @@ parse_size_t(const char **p,
         return true;
 }
 
+/*
+ * Where block here could be an ubo or an ssbo, and parameters refers
+ * to the data needed to refer to a specific ubo, and not the data
+ * itself. Right now it parses the following parameters:
+ *   descriptor_set:binding:array_index
+ *
+ * Only binding is mandatory. descriptor_set and array_index are
+ * optional, and if not specified will receive the value of 0.
+ *
+ * The priority is binding > descriptor_set > array_index.
+ *
+ * So you can write only the binding, or only the binding and
+ * descriptor set, but in order to set the array_index, you would need
+ * to set also binding and descriptor set.
+ */
 static bool
-parse_desc_set_and_binding(const char **p,
-                           unsigned *out)
+parse_block_parameters(const char **p,
+                       unsigned *out)
 {
         const char *p_backup = *p;
-        if (!parse_uints(p, out, 2, ":")) {
+
+        if (!parse_uints(p, out, 3, ":")) {
                 *p = p_backup;
-                out[0] = 0;
-                if (!parse_uints(p, &out[1], 1, NULL))
-                        return false;
+                out[2] = 0;
+                if (!parse_uints(p, out, 2, ":")) {
+                        *p = p_backup;
+                        out[0] = 0;
+                        if (!parse_uints(p, &out[1], 1, NULL))
+                                return false;
+                }
         }
         return true;
 }
@@ -1329,15 +1351,16 @@ process_probe_ssbo_command(struct load_state *data,
         while (vr_char_is_space(*p))
                 p++;
 
-        unsigned values[3];
-        if (!parse_desc_set_and_binding(&p, values) ||
-            !parse_uints(&p, &values[2], 1, NULL)) {
+        unsigned values[4];
+        if (!parse_block_parameters(&p, values) ||
+            !parse_uints(&p, &values[3], 1, NULL)) {
                 goto error;
         }
 
         command->probe_ssbo.desc_set = values[0];
         command->probe_ssbo.binding = values[1];
-        command->probe_ssbo.offset = values[2];
+        /* FIXME: do something with the array_index */
+        command->probe_ssbo.offset = values[3];
 
         while (vr_char_is_space(*p))
                 p++;
@@ -1745,6 +1768,7 @@ static struct vr_script_buffer *
 get_buffer(struct load_state *data,
            unsigned desc_set,
            unsigned binding,
+           unsigned array_index,
            enum vr_script_buffer_type type)
 {
         struct vr_script_buffer *buffer =
@@ -1754,7 +1778,8 @@ get_buffer(struct load_state *data,
 
         for (unsigned i = 0; i < n_buffers; i++) {
                 if (buffer[i].desc_set == desc_set &&
-                    buffer[i].binding == binding) {
+                    buffer[i].binding == binding &&
+                    buffer[i].array_index == array_index) {
                         if (buffer[i].type != type) {
                                 error_at_line(data,
                                               "Buffer binding point "
@@ -1777,6 +1802,10 @@ get_buffer(struct load_state *data,
         buffer->size = 0;
         buffer->desc_set = desc_set;
         buffer->binding = binding;
+        buffer->array_index = array_index;
+
+        if (binding > data->max_binding)
+           data->max_binding = binding;
 
         return buffer;
 }
@@ -1799,15 +1828,17 @@ static bool
 process_set_buffer_subdata(struct load_state *data,
                            unsigned desc_set,
                            unsigned binding,
+                           unsigned array_index,
                            enum vr_script_buffer_type type,
                            const char *p,
                            struct vr_script_command *command)
 {
         command->set_buffer_subdata.desc_set = desc_set;
         command->set_buffer_subdata.binding = binding;
+        command->set_buffer_subdata.array_index = array_index;
 
         struct vr_script_buffer *buffer =
-                get_buffer(data, desc_set, binding, type);
+                get_buffer(data, desc_set, binding, array_index, type);
         if (buffer == NULL)
                 return false;
 
@@ -1848,11 +1879,13 @@ static bool
 process_set_buffer_size(struct load_state *data,
                         unsigned desc_set,
                         unsigned binding,
+                        unsigned array_index,
                         enum vr_script_buffer_type buffer_type,
                         unsigned size)
 {
         struct vr_script_buffer *buffer =
-                get_buffer(data, desc_set, binding, buffer_type);
+           get_buffer(data, desc_set, binding, array_index, buffer_type);
+
         if (buffer == NULL)
                 return false;
 
@@ -1962,9 +1995,9 @@ process_buffer_command(struct load_state *data,
         else
                 return PARSE_RESULT_NON_MATCHED;
 
-        unsigned binding[2];
+        unsigned binding[3];
 
-        if (!parse_desc_set_and_binding(&p, binding)) {
+        if (!parse_block_parameters(&p, binding)) {
                 error_at_line(data, "Invalid binding in buffer command");
                 return PARSE_RESULT_ERROR;
         }
@@ -1978,6 +2011,7 @@ process_buffer_command(struct load_state *data,
                 if (!process_set_buffer_subdata(data,
                                                 binding[0],
                                                 binding[1],
+                                                binding[2],
                                                 buffer_type,
                                                 p,
                                                 command))
@@ -1993,8 +2027,10 @@ process_buffer_command(struct load_state *data,
                 if (!process_set_buffer_size(data,
                                              binding[0],
                                              binding[1],
+                                             binding[2],
                                              buffer_type,
                                              size))
+
                         return PARSE_RESULT_ERROR;
         }
 
@@ -2010,8 +2046,8 @@ process_uniform_ubo_command(struct load_state *data,
 
         struct vr_script_command *command = add_command(data);
 
-        unsigned values[2];
-        if (!parse_desc_set_and_binding(&p, values)) {
+        unsigned values[3]; /* descriptor_set:binding_point:array_index*/
+        if (!parse_block_parameters(&p, values)) {
                 error_at_line(data, "Invalid binding in uniform ubo command");
                 return PARSE_RESULT_ERROR;
         }
@@ -2019,6 +2055,7 @@ process_uniform_ubo_command(struct load_state *data,
         if (!process_set_buffer_subdata(data,
                                         values[0],
                                         values[1],
+                                        values[2],
                                         VR_SCRIPT_BUFFER_TYPE_UBO,
                                         p,
                                         command))
@@ -2403,8 +2440,12 @@ compare_buffer_set_and_binding(const void *a,
                 (const struct vr_script_buffer *) a;
         const struct vr_script_buffer *buffer_b =
                 (const struct vr_script_buffer *) b;
-        if ((int) buffer_a->desc_set == (int) buffer_b->desc_set)
+        if ((int) buffer_a->desc_set == (int) buffer_b->desc_set) {
+                if ((int) buffer_a->binding == (int) buffer_b->binding)
+                        return ((int) buffer_a->array_index - (int) buffer_b->array_index);
+
                 return ((int) buffer_a->binding - (int) buffer_b->binding);
+        }
         return ((int) buffer_a->desc_set - (int) buffer_b->desc_set);
 }
 
@@ -2526,6 +2567,60 @@ load_script_from_string(struct load_state *data,
         return res;
 }
 
+static void
+fill_descriptors_info(struct load_state *data,
+                      struct vr_script *script)
+{
+        /* For simplicity we allocate as many as if all the bindings
+         * were used.
+         */
+        script->descriptors =
+                vr_calloc(sizeof(struct vr_script_descriptor_set) *
+                          (data->max_binding + 1) * (data->max_set + 1));
+
+        script->n_descriptors = 0;
+        struct vr_script_descriptor_set *current_descriptor = NULL;
+
+        unsigned current_dest_set = UINT_MAX;
+        unsigned current_binding = UINT_MAX;
+        unsigned max_buffers_per_descriptor = 0;
+
+        for (unsigned i = 0; i < script->n_buffers; i++) {
+                struct vr_script_buffer *script_buffer = script->buffers + i;
+
+                if (script_buffer->desc_set != current_dest_set ||
+                    script_buffer->binding != current_binding) {
+
+                        if (current_descriptor == NULL) {
+                                current_descriptor = script->descriptors;
+                        } else {
+                                current_descriptor++;
+                        }
+
+                        current_dest_set = script_buffer->desc_set;
+                        current_binding = script_buffer->binding;
+
+                        current_descriptor->desc_set = current_dest_set;
+                        current_descriptor->binding = current_binding;
+
+                        current_descriptor->desc_set = script_buffer->desc_set;
+                        current_descriptor->binding = script_buffer->binding;
+                        current_descriptor->type = script_buffer->type;
+
+                        current_descriptor->buffers = script_buffer;
+                        current_descriptor->array_size = 1;
+
+                        script->n_descriptors++;
+                } else {
+                        assert(script_buffer->type == current_descriptor->type);
+                        current_descriptor->array_size++;
+                        if (max_buffers_per_descriptor < current_descriptor->array_size)
+                                max_buffers_per_descriptor = current_descriptor->array_size;
+                }
+        }
+        script->max_buffers_per_descriptor = max_buffers_per_descriptor;
+}
+
 struct vr_script *
 vr_script_load(const struct vr_config *config,
                const struct vr_source *source)
@@ -2556,6 +2651,8 @@ vr_script_load(const struct vr_config *config,
                 .push_layout = default_push_layout,
                 .ubo_layout = default_ubo_layout,
                 .ssbo_layout = default_ssbo_layout,
+                .max_set = 0,
+                .max_binding = 0,
         };
 
         vr_pipeline_key_init(&data.current_key);
@@ -2605,6 +2702,8 @@ vr_script_load(const struct vr_config *config,
               script->n_buffers,
               sizeof script->buffers[0],
               compare_buffer_set_and_binding);
+
+        fill_descriptors_info(&data, script);
 
         vr_buffer_destroy(&data.buffer);
         vr_buffer_destroy(&data.line);

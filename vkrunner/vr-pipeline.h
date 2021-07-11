@@ -36,6 +36,10 @@ struct vr_pipeline {
         VkPipelineLayout layout;
         VkDescriptorPool descriptor_pool;
         VkDescriptorSetLayout *descriptor_set_layout;
+	/* This is the number of desc_sets really defined, as Vulkan
+	 * API doesn't allow gaps when defining it, even if your
+	 * shader only use some specific sets
+	 */
         unsigned n_desc_sets;
         int n_pipelines;
         VkPipeline *pipelines;

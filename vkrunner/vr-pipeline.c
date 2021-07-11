@@ -712,70 +712,75 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
         struct vr_vk *vkfn = &pipeline->window->vkfn;
         VkResult res;
         bool ret = false;
-        size_t n_buffers = script->n_buffers;
+        size_t n_descriptors = script->n_descriptors;
 
-        assert(n_buffers);
+        assert(n_descriptors);
 
         VkDescriptorSetLayoutBinding *bindings =
-                vr_calloc(sizeof (*bindings) * n_buffers);
+                vr_calloc(sizeof (*bindings) * n_descriptors);
         struct desc_set_bindings_info *info =
-                vr_alloc(sizeof *info * n_buffers);
+                vr_alloc(sizeof *info * n_descriptors);
         size_t n_used_desc_sets = 0;
         unsigned prev_desc_set = UINT_MAX;
 
-        unsigned n_ubo = 0;
-        unsigned n_ssbo = 0;
+        unsigned n_ubo_buffers = 0;
+        unsigned n_ssbo_buffers = 0;
 
-        for (unsigned i = 0; i < n_buffers; i++) {
-                const struct vr_script_buffer *buffer = script->buffers + i;
+        for (unsigned i = 0; i < n_descriptors; i++) {
+                const struct vr_script_descriptor_set *descriptor =
+                   script->descriptors+ i;
+
                 VkDescriptorType descriptor_type;
-                switch (buffer->type) {
+                switch (descriptor->type) {
                 case VR_SCRIPT_BUFFER_TYPE_UBO:
                         descriptor_type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                        ++n_ubo;
+                        n_ubo_buffers += descriptor->array_size;;
                         goto found_type;
                 case VR_SCRIPT_BUFFER_TYPE_SSBO:
                         descriptor_type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                        ++n_ssbo;
+                        n_ssbo_buffers += descriptor->array_size;
                         goto found_type;
                 }
                 vr_fatal("Unexpected buffer type");
         found_type:
-                bindings[i].binding = buffer->binding;
+                bindings[i].binding = descriptor->binding;
                 bindings[i].descriptorType = descriptor_type;
-                bindings[i].descriptorCount = 1;
+                /* In our implementation we are using as many buffers
+                 * as components on the array of descriptors
+                 */
+                bindings[i].descriptorCount = descriptor->array_size;
                 bindings[i].stageFlags = pipeline->stages;
 
-                if (prev_desc_set != buffer->desc_set) {
+                if (prev_desc_set != descriptor->desc_set) {
                         if (prev_desc_set != UINT_MAX) {
                                 info[n_used_desc_sets].n_bindings =
                                         &bindings[i] -
                                         info[n_used_desc_sets].bindings;
                                 ++n_used_desc_sets;
                         }
-                        info[n_used_desc_sets].desc_set = buffer->desc_set;
+                        info[n_used_desc_sets].desc_set = descriptor->desc_set;
                         info[n_used_desc_sets].bindings = &bindings[i];
-                        prev_desc_set = buffer->desc_set;
+                        prev_desc_set = descriptor->desc_set;
                 }
         }
         info[n_used_desc_sets].n_bindings =
-                &bindings[n_buffers] - info[n_used_desc_sets].bindings;
+                &bindings[n_descriptors] - info[n_used_desc_sets].bindings;
         ++n_used_desc_sets;
 
         size_t n_desc_sets = info[n_used_desc_sets - 1].desc_set + 1;
 
         VkDescriptorPoolSize pool_sizes[2];
         uint32_t n_pool_sizes = 0;
-        if (n_ubo) {
+        if (n_ubo_buffers) {
                 pool_sizes[n_pool_sizes].type =
                         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                pool_sizes[n_pool_sizes].descriptorCount = n_ubo;
+                pool_sizes[n_pool_sizes].descriptorCount = n_ubo_buffers;
                 n_pool_sizes++;
         }
-        if (n_ssbo) {
+        if (n_ssbo_buffers) {
                 pool_sizes[n_pool_sizes].type =
                         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                pool_sizes[n_pool_sizes].descriptorCount = n_ssbo;
+                pool_sizes[n_pool_sizes].descriptorCount = n_ssbo_buffers;
                 n_pool_sizes++;
         }
 
@@ -873,7 +878,7 @@ vr_pipeline_create(const struct vr_config *config,
 
         pipeline->stages = get_script_stages(script);
 
-        if (script->n_buffers > 0) {
+        if (script->n_descriptors > 0) {
                 if (!create_vk_descriptor_set_layout(pipeline, script))
                         goto error;
         }
