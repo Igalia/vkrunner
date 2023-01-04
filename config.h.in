@@ -1,5 +1,0 @@
-#if @PLATFORM_ENDIANNESS@ == 0
-#define HAVE_LITTLE_ENDIAN
-#elif @PLATFORM_ENDIANNESS@ == 1
-#define HAVE_BIG_ENDIAN
-#endif

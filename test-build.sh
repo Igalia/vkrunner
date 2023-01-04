@@ -17,10 +17,8 @@ fi
 
 rm -fr -- "$build_dir"
 
-mkdir -p "$build_dir"
+meson -Dprefix="$install_dir" "$build_dir" "$src_dir"
 cd "$build_dir"
-
-cmake -G Ninja -DCMAKE_INSTALL_PREFIX="$install_dir" "$src_dir"
 
 ninja -C "$build_dir"
 ninja -C "$build_dir" install
