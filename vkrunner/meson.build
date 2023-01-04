@@ -37,7 +37,6 @@ vkrunner_source_files = [
    'vr-format-table.h',
    'vr-format-private.h',
    'vr-format.c',
-   'vr-half-float.c',
    'vr-half-float.h',
    'vr-hex.c',
    'vr-hex.h',
