@@ -37,11 +37,6 @@ vr_hex_strtod(const struct vr_strtof_data *data,
               const char *nptr,
               char **endptr);
 
-int
-vr_hex_strtol(const struct vr_strtof_data *data,
-              const char *nptr,
-              char **endptr);
-
 uint16_t
 vr_hex_strtohf(const struct vr_strtof_data *data,
                const char *nptr,
