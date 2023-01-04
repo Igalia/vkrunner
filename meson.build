@@ -1,4 +1,4 @@
-project('vkrunner', 'c',
+project('vkrunner', ['c', 'rust'],
         version : '0.1',
         default_options : 'default_library=static')
 

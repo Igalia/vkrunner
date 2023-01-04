@@ -50,7 +50,6 @@ vkrunner_source_files = [
    'vr-result.c',
    'vr-script.c',
    'vr-script-private.h',
-   'vr-small-float.c',
    'vr-small-float.h',
    'vr-source-private.h',
    'vr-source.c',
@@ -89,10 +88,15 @@ if target_machine.system() != 'windows'
    vkrunner_deps += dependency('dl')
 endif
 
+rust_parts_lib = static_library('rust_parts',
+                                rust_crate_type : 'staticlib',
+                                sources : 'lib.rs')
+
 vkrunner_lib = library('vkrunner',
                        install : true,
                        dependencies : vkrunner_deps,
                        sources : vkrunner_source_files,
+                       link_with: rust_parts_lib,
                        include_directories : include_directories('..'))
 
 install_headers(vkrunner_public_headers, subdir : 'vkrunner')
