@@ -29,6 +29,7 @@ vkrunner_source_files = [
    'vr-enum-table.h',
    'vr-error-message.c',
    'vr-error-message.h',
+   'vr-errno.c',
    'vr-executor.c',
    'vr-feature.c',
    'vr-feature.h',
