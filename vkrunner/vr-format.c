@@ -34,6 +34,12 @@
 #include "vr-format-table.h"
 #include "vr-small-float.h"
 
+char *
+vr_format_get_name(const struct vr_format *format)
+{
+        return vr_strdup(format->name);
+}
+
 const struct vr_format *
 vr_format_lookup_by_name(const char *name)
 {

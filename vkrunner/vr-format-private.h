@@ -68,6 +68,10 @@ struct vr_format {
         struct vr_format_part parts[4];
 };
 
+/* Caller owns the string */
+char *
+vr_format_get_name(const struct vr_format *format);
+
 const struct vr_format *
 vr_format_lookup_by_name(const char *name);
 

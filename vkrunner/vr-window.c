@@ -485,10 +485,12 @@ vr_window_new(struct vr_context *context,
                           format->color_format,
                           VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
                           VK_FORMAT_FEATURE_BLIT_SRC_BIT)) {
+                char *format_name = vr_format_get_name(format->color_format);
                 vr_error_message(window->config,
                                  "Format %s is not supported as a color "
                                  "attachment and blit source",
-                                 format->color_format->name);
+                                 format_name);
+                vr_free(format_name);
                 vres = VR_RESULT_SKIP;
                 goto error;
         }
@@ -497,10 +499,13 @@ vr_window_new(struct vr_context *context,
             !check_format(window,
                           format->depth_stencil_format,
                           VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+                char *format_name =
+                        vr_format_get_name(format->depth_stencil_format);
                 vr_error_message(window->config,
                                  "Format %s is not supported as a "
                                  "depth/stencil attachment",
-                                 format->depth_stencil_format->name);
+                                 format_name);
+                vr_free(format_name);
                 vres = VR_RESULT_SKIP;
                 goto error;
         }
