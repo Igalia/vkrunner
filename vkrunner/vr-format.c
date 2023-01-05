@@ -37,14 +37,14 @@
 char *
 vr_format_get_name(const struct vr_format *format)
 {
-        return vr_strdup(format->name);
+        return vr_strdup(format->name_start);
 }
 
 const struct vr_format *
 vr_format_lookup_by_name(const char *name)
 {
         for (int i = 0; i < VR_N_ELEMENTS(formats); i++) {
-                if (!vr_strcasecmp(formats[i].name, name))
+                if (!vr_strcasecmp(formats[i].name_start, name))
                         return formats + i;
         }
 
@@ -172,7 +172,7 @@ load_packed_parts(const struct vr_format *format,
                 packed_parts = *(uint32_t *) fb;
                 break;
         default:
-                vr_fatal("Unknown packed bit size: %i", format->packed_size);
+                vr_fatal("Unknown packed bit size: %zu", format->packed_size);
         }
 
         for (int i = format->n_parts - 1; i >= 0; i--) {

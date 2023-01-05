@@ -51,7 +51,7 @@ formats[] = {
 % for format in formats:
         {
                 .vk_format = VK_FORMAT_${format['name']},
-                .name = "${format['name']}",
+                .name_start = "${format['name']}",
                 .packed_size = ${format['packed_size']},
                 .n_parts = ${len(format['components'])},
                 .parts = {

@@ -3,7 +3,7 @@ static const struct vr_format
 formats[] = {
         {
                 .vk_format = VK_FORMAT_A1R5G5B5_UNORM_PACK16,
-                .name = "A1R5G5B5_UNORM_PACK16",
+                .name_start = "A1R5G5B5_UNORM_PACK16",
                 .packed_size = 16,
                 .n_parts = 4,
                 .parts = {
@@ -31,7 +31,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_SINT_PACK32,
-                .name = "A2B10G10R10_SINT_PACK32",
+                .name_start = "A2B10G10R10_SINT_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -59,7 +59,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_SNORM_PACK32,
-                .name = "A2B10G10R10_SNORM_PACK32",
+                .name_start = "A2B10G10R10_SNORM_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -87,7 +87,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_SSCALED_PACK32,
-                .name = "A2B10G10R10_SSCALED_PACK32",
+                .name_start = "A2B10G10R10_SSCALED_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -115,7 +115,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_UINT_PACK32,
-                .name = "A2B10G10R10_UINT_PACK32",
+                .name_start = "A2B10G10R10_UINT_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -143,7 +143,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_UNORM_PACK32,
-                .name = "A2B10G10R10_UNORM_PACK32",
+                .name_start = "A2B10G10R10_UNORM_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -171,7 +171,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2B10G10R10_USCALED_PACK32,
-                .name = "A2B10G10R10_USCALED_PACK32",
+                .name_start = "A2B10G10R10_USCALED_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -199,7 +199,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_SINT_PACK32,
-                .name = "A2R10G10B10_SINT_PACK32",
+                .name_start = "A2R10G10B10_SINT_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -227,7 +227,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_SNORM_PACK32,
-                .name = "A2R10G10B10_SNORM_PACK32",
+                .name_start = "A2R10G10B10_SNORM_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -255,7 +255,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_SSCALED_PACK32,
-                .name = "A2R10G10B10_SSCALED_PACK32",
+                .name_start = "A2R10G10B10_SSCALED_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -283,7 +283,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_UINT_PACK32,
-                .name = "A2R10G10B10_UINT_PACK32",
+                .name_start = "A2R10G10B10_UINT_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -311,7 +311,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_UNORM_PACK32,
-                .name = "A2R10G10B10_UNORM_PACK32",
+                .name_start = "A2R10G10B10_UNORM_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -339,7 +339,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A2R10G10B10_USCALED_PACK32,
-                .name = "A2R10G10B10_USCALED_PACK32",
+                .name_start = "A2R10G10B10_USCALED_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -367,7 +367,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_SINT_PACK32,
-                .name = "A8B8G8R8_SINT_PACK32",
+                .name_start = "A8B8G8R8_SINT_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -395,7 +395,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_SNORM_PACK32,
-                .name = "A8B8G8R8_SNORM_PACK32",
+                .name_start = "A8B8G8R8_SNORM_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -423,7 +423,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_SRGB_PACK32,
-                .name = "A8B8G8R8_SRGB_PACK32",
+                .name_start = "A8B8G8R8_SRGB_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -451,7 +451,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_SSCALED_PACK32,
-                .name = "A8B8G8R8_SSCALED_PACK32",
+                .name_start = "A8B8G8R8_SSCALED_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -479,7 +479,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_UINT_PACK32,
-                .name = "A8B8G8R8_UINT_PACK32",
+                .name_start = "A8B8G8R8_UINT_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -507,7 +507,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_UNORM_PACK32,
-                .name = "A8B8G8R8_UNORM_PACK32",
+                .name_start = "A8B8G8R8_UNORM_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -535,7 +535,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_A8B8G8R8_USCALED_PACK32,
-                .name = "A8B8G8R8_USCALED_PACK32",
+                .name_start = "A8B8G8R8_USCALED_PACK32",
                 .packed_size = 32,
                 .n_parts = 4,
                 .parts = {
@@ -563,7 +563,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B10G11R11_UFLOAT_PACK32,
-                .name = "B10G11R11_UFLOAT_PACK32",
+                .name_start = "B10G11R11_UFLOAT_PACK32",
                 .packed_size = 32,
                 .n_parts = 3,
                 .parts = {
@@ -586,7 +586,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B4G4R4A4_UNORM_PACK16,
-                .name = "B4G4R4A4_UNORM_PACK16",
+                .name_start = "B4G4R4A4_UNORM_PACK16",
                 .packed_size = 16,
                 .n_parts = 4,
                 .parts = {
@@ -614,7 +614,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B5G5R5A1_UNORM_PACK16,
-                .name = "B5G5R5A1_UNORM_PACK16",
+                .name_start = "B5G5R5A1_UNORM_PACK16",
                 .packed_size = 16,
                 .n_parts = 4,
                 .parts = {
@@ -642,7 +642,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B5G6R5_UNORM_PACK16,
-                .name = "B5G6R5_UNORM_PACK16",
+                .name_start = "B5G6R5_UNORM_PACK16",
                 .packed_size = 16,
                 .n_parts = 3,
                 .parts = {
@@ -665,7 +665,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_SINT,
-                .name = "B8G8R8A8_SINT",
+                .name_start = "B8G8R8A8_SINT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -693,7 +693,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_SNORM,
-                .name = "B8G8R8A8_SNORM",
+                .name_start = "B8G8R8A8_SNORM",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -721,7 +721,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_SRGB,
-                .name = "B8G8R8A8_SRGB",
+                .name_start = "B8G8R8A8_SRGB",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -749,7 +749,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_SSCALED,
-                .name = "B8G8R8A8_SSCALED",
+                .name_start = "B8G8R8A8_SSCALED",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -777,7 +777,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_UINT,
-                .name = "B8G8R8A8_UINT",
+                .name_start = "B8G8R8A8_UINT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -805,7 +805,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_UNORM,
-                .name = "B8G8R8A8_UNORM",
+                .name_start = "B8G8R8A8_UNORM",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -833,7 +833,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8A8_USCALED,
-                .name = "B8G8R8A8_USCALED",
+                .name_start = "B8G8R8A8_USCALED",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -861,7 +861,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_SINT,
-                .name = "B8G8R8_SINT",
+                .name_start = "B8G8R8_SINT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -884,7 +884,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_SNORM,
-                .name = "B8G8R8_SNORM",
+                .name_start = "B8G8R8_SNORM",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -907,7 +907,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_SRGB,
-                .name = "B8G8R8_SRGB",
+                .name_start = "B8G8R8_SRGB",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -930,7 +930,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_SSCALED,
-                .name = "B8G8R8_SSCALED",
+                .name_start = "B8G8R8_SSCALED",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -953,7 +953,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_UINT,
-                .name = "B8G8R8_UINT",
+                .name_start = "B8G8R8_UINT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -976,7 +976,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_UNORM,
-                .name = "B8G8R8_UNORM",
+                .name_start = "B8G8R8_UNORM",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -999,7 +999,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_B8G8R8_USCALED,
-                .name = "B8G8R8_USCALED",
+                .name_start = "B8G8R8_USCALED",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -1022,7 +1022,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_D16_UNORM,
-                .name = "D16_UNORM",
+                .name_start = "D16_UNORM",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1035,7 +1035,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_D16_UNORM_S8_UINT,
-                .name = "D16_UNORM_S8_UINT",
+                .name_start = "D16_UNORM_S8_UINT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1053,7 +1053,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_D24_UNORM_S8_UINT,
-                .name = "D24_UNORM_S8_UINT",
+                .name_start = "D24_UNORM_S8_UINT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1071,7 +1071,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_D32_SFLOAT,
-                .name = "D32_SFLOAT",
+                .name_start = "D32_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1084,7 +1084,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_D32_SFLOAT_S8_UINT,
-                .name = "D32_SFLOAT_S8_UINT",
+                .name_start = "D32_SFLOAT_S8_UINT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1102,7 +1102,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_SFLOAT,
-                .name = "R16G16B16A16_SFLOAT",
+                .name_start = "R16G16B16A16_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -1130,7 +1130,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_SINT,
-                .name = "R16G16B16A16_SINT",
+                .name_start = "R16G16B16A16_SINT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -1158,7 +1158,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_SNORM,
-                .name = "R16G16B16A16_SNORM",
+                .name_start = "R16G16B16A16_SNORM",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -1186,7 +1186,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_SSCALED,
-                .name = "R16G16B16A16_SSCALED",
+                .name_start = "R16G16B16A16_SSCALED",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -1214,7 +1214,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_UINT,
-                .name = "R16G16B16A16_UINT",
+                .name_start = "R16G16B16A16_UINT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -1242,7 +1242,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_UNORM,
-                .name = "R16G16B16A16_UNORM",
+                .name_start = "R16G16B16A16_UNORM",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -1270,7 +1270,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16A16_USCALED,
-                .name = "R16G16B16A16_USCALED",
+                .name_start = "R16G16B16A16_USCALED",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -1298,7 +1298,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_SFLOAT,
-                .name = "R16G16B16_SFLOAT",
+                .name_start = "R16G16B16_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -1321,7 +1321,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_SINT,
-                .name = "R16G16B16_SINT",
+                .name_start = "R16G16B16_SINT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -1344,7 +1344,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_SNORM,
-                .name = "R16G16B16_SNORM",
+                .name_start = "R16G16B16_SNORM",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -1367,7 +1367,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_SSCALED,
-                .name = "R16G16B16_SSCALED",
+                .name_start = "R16G16B16_SSCALED",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -1390,7 +1390,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_UINT,
-                .name = "R16G16B16_UINT",
+                .name_start = "R16G16B16_UINT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -1413,7 +1413,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_UNORM,
-                .name = "R16G16B16_UNORM",
+                .name_start = "R16G16B16_UNORM",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -1436,7 +1436,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16B16_USCALED,
-                .name = "R16G16B16_USCALED",
+                .name_start = "R16G16B16_USCALED",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -1459,7 +1459,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16_SFLOAT,
-                .name = "R16G16_SFLOAT",
+                .name_start = "R16G16_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1477,7 +1477,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16_SINT,
-                .name = "R16G16_SINT",
+                .name_start = "R16G16_SINT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1495,7 +1495,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16_SNORM,
-                .name = "R16G16_SNORM",
+                .name_start = "R16G16_SNORM",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1513,7 +1513,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16_SSCALED,
-                .name = "R16G16_SSCALED",
+                .name_start = "R16G16_SSCALED",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1531,7 +1531,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16_UINT,
-                .name = "R16G16_UINT",
+                .name_start = "R16G16_UINT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1549,7 +1549,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16_UNORM,
-                .name = "R16G16_UNORM",
+                .name_start = "R16G16_UNORM",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1567,7 +1567,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16G16_USCALED,
-                .name = "R16G16_USCALED",
+                .name_start = "R16G16_USCALED",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1585,7 +1585,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16_SFLOAT,
-                .name = "R16_SFLOAT",
+                .name_start = "R16_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1598,7 +1598,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16_SINT,
-                .name = "R16_SINT",
+                .name_start = "R16_SINT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1611,7 +1611,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16_SNORM,
-                .name = "R16_SNORM",
+                .name_start = "R16_SNORM",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1624,7 +1624,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16_SSCALED,
-                .name = "R16_SSCALED",
+                .name_start = "R16_SSCALED",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1637,7 +1637,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16_UINT,
-                .name = "R16_UINT",
+                .name_start = "R16_UINT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1650,7 +1650,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16_UNORM,
-                .name = "R16_UNORM",
+                .name_start = "R16_UNORM",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1663,7 +1663,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R16_USCALED,
-                .name = "R16_USCALED",
+                .name_start = "R16_USCALED",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1676,7 +1676,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32A32_SFLOAT,
-                .name = "R32G32B32A32_SFLOAT",
+                .name_start = "R32G32B32A32_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -1704,7 +1704,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32A32_SINT,
-                .name = "R32G32B32A32_SINT",
+                .name_start = "R32G32B32A32_SINT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -1732,7 +1732,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32A32_UINT,
-                .name = "R32G32B32A32_UINT",
+                .name_start = "R32G32B32A32_UINT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -1760,7 +1760,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32_SFLOAT,
-                .name = "R32G32B32_SFLOAT",
+                .name_start = "R32G32B32_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -1783,7 +1783,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32_SINT,
-                .name = "R32G32B32_SINT",
+                .name_start = "R32G32B32_SINT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -1806,7 +1806,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32G32B32_UINT,
-                .name = "R32G32B32_UINT",
+                .name_start = "R32G32B32_UINT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -1829,7 +1829,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32G32_SFLOAT,
-                .name = "R32G32_SFLOAT",
+                .name_start = "R32G32_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1847,7 +1847,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32G32_SINT,
-                .name = "R32G32_SINT",
+                .name_start = "R32G32_SINT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1865,7 +1865,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32G32_UINT,
-                .name = "R32G32_UINT",
+                .name_start = "R32G32_UINT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -1883,7 +1883,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32_SFLOAT,
-                .name = "R32_SFLOAT",
+                .name_start = "R32_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1896,7 +1896,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32_SINT,
-                .name = "R32_SINT",
+                .name_start = "R32_SINT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1909,7 +1909,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R32_UINT,
-                .name = "R32_UINT",
+                .name_start = "R32_UINT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -1922,7 +1922,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R4G4B4A4_UNORM_PACK16,
-                .name = "R4G4B4A4_UNORM_PACK16",
+                .name_start = "R4G4B4A4_UNORM_PACK16",
                 .packed_size = 16,
                 .n_parts = 4,
                 .parts = {
@@ -1950,7 +1950,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R4G4_UNORM_PACK8,
-                .name = "R4G4_UNORM_PACK8",
+                .name_start = "R4G4_UNORM_PACK8",
                 .packed_size = 8,
                 .n_parts = 2,
                 .parts = {
@@ -1968,7 +1968,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R5G5B5A1_UNORM_PACK16,
-                .name = "R5G5B5A1_UNORM_PACK16",
+                .name_start = "R5G5B5A1_UNORM_PACK16",
                 .packed_size = 16,
                 .n_parts = 4,
                 .parts = {
@@ -1996,7 +1996,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R5G6B5_UNORM_PACK16,
-                .name = "R5G6B5_UNORM_PACK16",
+                .name_start = "R5G6B5_UNORM_PACK16",
                 .packed_size = 16,
                 .n_parts = 3,
                 .parts = {
@@ -2019,7 +2019,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64A64_SFLOAT,
-                .name = "R64G64B64A64_SFLOAT",
+                .name_start = "R64G64B64A64_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -2047,7 +2047,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64A64_SINT,
-                .name = "R64G64B64A64_SINT",
+                .name_start = "R64G64B64A64_SINT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -2075,7 +2075,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64A64_UINT,
-                .name = "R64G64B64A64_UINT",
+                .name_start = "R64G64B64A64_UINT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -2103,7 +2103,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64_SFLOAT,
-                .name = "R64G64B64_SFLOAT",
+                .name_start = "R64G64B64_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -2126,7 +2126,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64_SINT,
-                .name = "R64G64B64_SINT",
+                .name_start = "R64G64B64_SINT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -2149,7 +2149,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64G64B64_UINT,
-                .name = "R64G64B64_UINT",
+                .name_start = "R64G64B64_UINT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -2172,7 +2172,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64G64_SFLOAT,
-                .name = "R64G64_SFLOAT",
+                .name_start = "R64G64_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -2190,7 +2190,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64G64_SINT,
-                .name = "R64G64_SINT",
+                .name_start = "R64G64_SINT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -2208,7 +2208,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64G64_UINT,
-                .name = "R64G64_UINT",
+                .name_start = "R64G64_UINT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -2226,7 +2226,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64_SFLOAT,
-                .name = "R64_SFLOAT",
+                .name_start = "R64_SFLOAT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -2239,7 +2239,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64_SINT,
-                .name = "R64_SINT",
+                .name_start = "R64_SINT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -2252,7 +2252,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R64_UINT,
-                .name = "R64_UINT",
+                .name_start = "R64_UINT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -2265,7 +2265,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_SINT,
-                .name = "R8G8B8A8_SINT",
+                .name_start = "R8G8B8A8_SINT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -2293,7 +2293,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_SNORM,
-                .name = "R8G8B8A8_SNORM",
+                .name_start = "R8G8B8A8_SNORM",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -2321,7 +2321,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_SRGB,
-                .name = "R8G8B8A8_SRGB",
+                .name_start = "R8G8B8A8_SRGB",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -2349,7 +2349,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_SSCALED,
-                .name = "R8G8B8A8_SSCALED",
+                .name_start = "R8G8B8A8_SSCALED",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -2377,7 +2377,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_UINT,
-                .name = "R8G8B8A8_UINT",
+                .name_start = "R8G8B8A8_UINT",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -2405,7 +2405,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_UNORM,
-                .name = "R8G8B8A8_UNORM",
+                .name_start = "R8G8B8A8_UNORM",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -2433,7 +2433,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8A8_USCALED,
-                .name = "R8G8B8A8_USCALED",
+                .name_start = "R8G8B8A8_USCALED",
                 .packed_size = 0,
                 .n_parts = 4,
                 .parts = {
@@ -2461,7 +2461,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_SINT,
-                .name = "R8G8B8_SINT",
+                .name_start = "R8G8B8_SINT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -2484,7 +2484,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_SNORM,
-                .name = "R8G8B8_SNORM",
+                .name_start = "R8G8B8_SNORM",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -2507,7 +2507,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_SRGB,
-                .name = "R8G8B8_SRGB",
+                .name_start = "R8G8B8_SRGB",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -2530,7 +2530,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_SSCALED,
-                .name = "R8G8B8_SSCALED",
+                .name_start = "R8G8B8_SSCALED",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -2553,7 +2553,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_UINT,
-                .name = "R8G8B8_UINT",
+                .name_start = "R8G8B8_UINT",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -2576,7 +2576,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_UNORM,
-                .name = "R8G8B8_UNORM",
+                .name_start = "R8G8B8_UNORM",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -2599,7 +2599,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8B8_USCALED,
-                .name = "R8G8B8_USCALED",
+                .name_start = "R8G8B8_USCALED",
                 .packed_size = 0,
                 .n_parts = 3,
                 .parts = {
@@ -2622,7 +2622,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8_SINT,
-                .name = "R8G8_SINT",
+                .name_start = "R8G8_SINT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -2640,7 +2640,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8_SNORM,
-                .name = "R8G8_SNORM",
+                .name_start = "R8G8_SNORM",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -2658,7 +2658,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8_SRGB,
-                .name = "R8G8_SRGB",
+                .name_start = "R8G8_SRGB",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -2676,7 +2676,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8_SSCALED,
-                .name = "R8G8_SSCALED",
+                .name_start = "R8G8_SSCALED",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -2694,7 +2694,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8_UINT,
-                .name = "R8G8_UINT",
+                .name_start = "R8G8_UINT",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -2712,7 +2712,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8_UNORM,
-                .name = "R8G8_UNORM",
+                .name_start = "R8G8_UNORM",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -2730,7 +2730,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8G8_USCALED,
-                .name = "R8G8_USCALED",
+                .name_start = "R8G8_USCALED",
                 .packed_size = 0,
                 .n_parts = 2,
                 .parts = {
@@ -2748,7 +2748,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8_SINT,
-                .name = "R8_SINT",
+                .name_start = "R8_SINT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -2761,7 +2761,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8_SNORM,
-                .name = "R8_SNORM",
+                .name_start = "R8_SNORM",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -2774,7 +2774,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8_SRGB,
-                .name = "R8_SRGB",
+                .name_start = "R8_SRGB",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -2787,7 +2787,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8_SSCALED,
-                .name = "R8_SSCALED",
+                .name_start = "R8_SSCALED",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -2800,7 +2800,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8_UINT,
-                .name = "R8_UINT",
+                .name_start = "R8_UINT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -2813,7 +2813,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8_UNORM,
-                .name = "R8_UNORM",
+                .name_start = "R8_UNORM",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -2826,7 +2826,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_R8_USCALED,
-                .name = "R8_USCALED",
+                .name_start = "R8_USCALED",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -2839,7 +2839,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_S8_UINT,
-                .name = "S8_UINT",
+                .name_start = "S8_UINT",
                 .packed_size = 0,
                 .n_parts = 1,
                 .parts = {
@@ -2852,7 +2852,7 @@ formats[] = {
         },
         {
                 .vk_format = VK_FORMAT_X8_D24_UNORM_PACK32,
-                .name = "X8_D24_UNORM_PACK32",
+                .name_start = "X8_D24_UNORM_PACK32",
                 .packed_size = 32,
                 .n_parts = 2,
                 .parts = {

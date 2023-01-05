@@ -52,19 +52,20 @@ enum vr_format_component {
 };
 
 struct vr_format_part {
-        int bits;
+        size_t bits;
         enum vr_format_component component;
         enum vr_format_mode mode;
 };
 
 struct vr_format {
         VkFormat vk_format;
-        const char *name;
+        const char *name_start;
+        size_t name_len;
         /* If the format is packed, this is the total number of bits.
          * Otherwise it is zero.
          */
-        int packed_size;
-        int n_parts;
+        size_t packed_size;
+        size_t n_parts;
         struct vr_format_part parts[4];
 };
 
