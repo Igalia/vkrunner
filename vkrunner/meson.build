@@ -70,7 +70,6 @@ vkrunner_source_files = [
    'vr-test.c',
    'vr-test.h',
    'vr-tolerance.h',
-   'vr-vbo.c',
    'vr-vbo.h',
    'vr-window.c',
    'vr-window.h',
