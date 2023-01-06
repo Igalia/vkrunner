@@ -166,6 +166,13 @@ impl Format {
     pub fn packed_size(&self) -> Option<usize> {
         self.packed_size.map(|s| usize::from(s))
     }
+
+    pub fn alignment(&self) -> usize {
+        match self.packed_size {
+            Some(size) => usize::from(size) / 8,
+            None => self.parts().iter().map(|p| p.bits).max().unwrap() / 8,
+        }
+    }
 }
 
 impl Mode {
@@ -694,5 +701,17 @@ mod test {
         for (i, &pixel_comp) in pixel.iter().enumerate() {
             assert_float_equal(pixel_comp, expected[i]);
         }
+    }
+
+    #[test]
+    fn test_alignment() {
+        let format = Format::lookup_by_vk_format(VkFormat::R5G6B5_UNORM_PACK16);
+        assert_eq!(format.alignment(), 2);
+
+        let format = Format::lookup_by_vk_format(VkFormat::D24_UNORM_S8_UINT);
+        assert_eq!(format.alignment(), 3);
+
+        let format = Format::lookup_by_vk_format(VkFormat::R8G8B8_UNORM);
+        assert_eq!(format.alignment(), 1);
     }
 }
