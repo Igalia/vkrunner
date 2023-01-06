@@ -75,6 +75,11 @@ vr_vbo_parse(const struct vr_config *config,
              size_t text_length);
 
 void
+vr_vbo_for_each_attrib(const struct vr_vbo *vbo,
+                       void (* func)(const struct vr_vbo_attrib *, void *),
+                       void *user_data);
+
+void
 vr_vbo_free(struct vr_vbo *vbo);
 
 #endif /* VR_VBO_H */

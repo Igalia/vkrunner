@@ -682,6 +682,18 @@ vr_vbo_parse(const struct vr_config *config,
 }
 
 void
+vr_vbo_for_each_attrib(const struct vr_vbo *vbo,
+                       void (* func)(const struct vr_vbo_attrib *, void *),
+                       void *user_data)
+{
+        struct vr_vbo_attrib *attrib;
+
+        vr_list_for_each(attrib, &vbo->attribs, link) {
+                func(attrib, user_data);
+        }
+}
+
+void
 vr_vbo_free(struct vr_vbo *vbo)
 {
         struct vr_vbo_attrib *attrib, *tmp;

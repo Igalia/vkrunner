@@ -391,6 +391,21 @@ build_stage(const struct vr_config *config,
 }
 
 static void
+set_up_attrib_cb(const struct vr_vbo_attrib *attrib,
+                 void *user_data)
+{
+        VkVertexInputAttributeDescription **attrib_desc_ptr = user_data;
+        VkVertexInputAttributeDescription *attrib_desc = *attrib_desc_ptr;
+
+        attrib_desc->location = attrib->location;
+        attrib_desc->binding = 0;
+        attrib_desc->format = attrib->format->vk_format;
+        attrib_desc->offset = attrib->offset;
+
+        (*attrib_desc_ptr)++;
+}
+
+static void
 set_vertex_input_state(const struct vr_script *script,
                        VkPipelineVertexInputStateCreateInfo *state,
                        const struct vr_pipeline_key *key)
@@ -433,19 +448,14 @@ set_vertex_input_state(const struct vr_script *script,
         int n_attribs = vr_list_length(&script->vertex_data->attribs);
         VkVertexInputAttributeDescription *attrib_desc =
                 vr_calloc((sizeof *attrib_desc) * n_attribs);
-        const struct vr_vbo_attrib *attrib;
 
         state->vertexAttributeDescriptionCount = n_attribs;
         state->pVertexAttributeDescriptions = attrib_desc;
         input_binding[0].stride = script->vertex_data->stride;
 
-        vr_list_for_each(attrib, &script->vertex_data->attribs, link) {
-                attrib_desc->location = attrib->location;
-                attrib_desc->binding = 0;
-                attrib_desc->format = attrib->format->vk_format,
-                attrib_desc->offset = attrib->offset;
-                attrib_desc++;
-        };
+        vr_vbo_for_each_attrib(script->vertex_data,
+                               set_up_attrib_cb,
+                               &attrib_desc);
 }
 
 static VkPipeline
