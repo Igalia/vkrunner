@@ -69,6 +69,22 @@
 #include <stdint.h>
 #include <string.h>
 
+struct vr_vbo_attrib {
+        struct vr_list link;
+
+        const struct vr_format *format;
+
+        /**
+         * Vertex location
+         */
+        unsigned location;
+
+        /**
+         * Byte offset into the vertex data of this attribute.
+         */
+        size_t offset;
+};
+
 /**
  * Convert from Piglit style formats to a VkFormat
  */
@@ -691,6 +707,25 @@ vr_vbo_for_each_attrib(const struct vr_vbo *vbo,
         vr_list_for_each(attrib, &vbo->attribs, link) {
                 func(attrib, user_data);
         }
+}
+
+
+const struct vr_format *
+vr_vbo_attrib_get_format(const struct vr_vbo_attrib *attrib)
+{
+        return attrib->format;
+}
+
+unsigned
+vr_vbo_attrib_get_location(const struct vr_vbo_attrib *attrib)
+{
+        return attrib->location;
+}
+
+size_t
+vr_vbo_attrib_get_offset(const struct vr_vbo_attrib *attrib)
+{
+        return attrib->offset;
 }
 
 void

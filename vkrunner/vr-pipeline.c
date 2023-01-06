@@ -397,10 +397,10 @@ set_up_attrib_cb(const struct vr_vbo_attrib *attrib,
         VkVertexInputAttributeDescription **attrib_desc_ptr = user_data;
         VkVertexInputAttributeDescription *attrib_desc = *attrib_desc_ptr;
 
-        attrib_desc->location = attrib->location;
+        attrib_desc->location = vr_vbo_attrib_get_location(attrib);
         attrib_desc->binding = 0;
-        attrib_desc->format = attrib->format->vk_format;
-        attrib_desc->offset = attrib->offset;
+        attrib_desc->format = vr_vbo_attrib_get_format(attrib)->vk_format;
+        attrib_desc->offset = vr_vbo_attrib_get_offset(attrib);
 
         (*attrib_desc_ptr)++;
 }

@@ -31,21 +31,7 @@
 #include "vr-format.h"
 #include "vr-config-private.h"
 
-struct vr_vbo_attrib {
-        struct vr_list link;
-
-        const struct vr_format *format;
-
-        /**
-         * Vertex location
-         */
-        unsigned location;
-
-        /**
-         * Byte offset into the vertex data of this attribute.
-         */
-        size_t offset;
-};
+struct vr_vbo_attrib;
 
 struct vr_vbo {
         /**
@@ -78,6 +64,15 @@ void
 vr_vbo_for_each_attrib(const struct vr_vbo *vbo,
                        void (* func)(const struct vr_vbo_attrib *, void *),
                        void *user_data);
+
+const struct vr_format *
+vr_vbo_attrib_get_format(const struct vr_vbo_attrib *attrib);
+
+unsigned
+vr_vbo_attrib_get_location(const struct vr_vbo_attrib *attrib);
+
+size_t
+vr_vbo_attrib_get_offset(const struct vr_vbo_attrib *attrib);
 
 void
 vr_vbo_free(struct vr_vbo *vbo);
