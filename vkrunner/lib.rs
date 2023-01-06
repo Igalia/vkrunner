@@ -3,3 +3,4 @@ mod half_float;
 mod hex;
 mod format;
 mod tolerance;
+mod util;
