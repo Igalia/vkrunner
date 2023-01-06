@@ -31,34 +31,25 @@
 #include "vr-format.h"
 #include "vr-config-private.h"
 
+struct vr_vbo;
 struct vr_vbo_attrib;
-
-struct vr_vbo {
-        /**
-         * Description of each attribute.
-         */
-        struct vr_list attribs;
-
-        /**
-         * Raw data buffer containing parsed numbers.
-         */
-        uint8_t *raw_data;
-
-        /**
-         * Number of bytes in each row of raw_data.
-         */
-        size_t stride;
-
-        /**
-         * Number of rows in raw_data.
-         */
-        size_t num_rows;
-};
 
 struct vr_vbo *
 vr_vbo_parse(const struct vr_config *config,
              const char *text,
              size_t text_length);
+
+const uint8_t *
+vr_vbo_get_raw_data(const struct vr_vbo *vbo);
+
+size_t
+vr_vbo_get_stride(const struct vr_vbo *vbo);
+
+size_t
+vr_vbo_get_num_rows(const struct vr_vbo *vbo);
+
+size_t
+vr_vbo_get_num_attribs(const struct vr_vbo *vbo);
 
 void
 vr_vbo_for_each_attrib(const struct vr_vbo *vbo,

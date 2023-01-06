@@ -85,6 +85,28 @@ struct vr_vbo_attrib {
         size_t offset;
 };
 
+struct vr_vbo {
+        /**
+         * Description of each attribute.
+         */
+        struct vr_list attribs;
+
+        /**
+         * Raw data buffer containing parsed numbers.
+         */
+        uint8_t *raw_data;
+
+        /**
+         * Number of bytes in each row of raw_data.
+         */
+        size_t stride;
+
+        /**
+         * Number of rows in raw_data.
+         */
+        size_t num_rows;
+};
+
 /**
  * Convert from Piglit style formats to a VkFormat
  */
@@ -695,6 +717,30 @@ vr_vbo_parse(const struct vr_config *config,
                 vr_buffer_destroy(&data.raw_data);
 
         return data.vbo;
+}
+
+const uint8_t *
+vr_vbo_get_raw_data(const struct vr_vbo *vbo)
+{
+        return vbo->raw_data;
+}
+
+size_t
+vr_vbo_get_stride(const struct vr_vbo *vbo)
+{
+        return vbo->stride;
+}
+
+size_t
+vr_vbo_get_num_rows(const struct vr_vbo *vbo)
+{
+        return vbo->num_rows;
+}
+
+size_t
+vr_vbo_get_num_attribs(const struct vr_vbo *vbo)
+{
+        return vr_list_length(&vbo->attribs);
 }
 
 void

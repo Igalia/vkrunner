@@ -741,17 +741,20 @@ ensure_vbo_buffer(struct test_data *data)
         if (vbo == NULL || data->vbo_buffer)
                 return true;
 
+        size_t raw_data_size =
+                vr_vbo_get_stride(vbo) *
+                vr_vbo_get_num_rows(vbo);
+
         data->vbo_buffer =
                 allocate_test_buffer(data,
-                                     vbo->stride *
-                                     vbo->num_rows,
+                                     raw_data_size,
                                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
         if (data->vbo_buffer == NULL)
                 return false;
 
         memcpy(data->vbo_buffer->memory_map,
-               vbo->raw_data,
-               vbo->stride * vbo->num_rows);
+               vr_vbo_get_raw_data(vbo),
+               raw_data_size);
 
         vr_flush_memory(data->window->context,
                         data->vbo_buffer->memory_type_index,

@@ -445,13 +445,13 @@ set_vertex_input_state(const struct vr_script *script,
                 return;
         }
 
-        int n_attribs = vr_list_length(&script->vertex_data->attribs);
+        int n_attribs = vr_vbo_get_num_attribs(script->vertex_data);
         VkVertexInputAttributeDescription *attrib_desc =
                 vr_calloc((sizeof *attrib_desc) * n_attribs);
 
         state->vertexAttributeDescriptionCount = n_attribs;
         state->pVertexAttributeDescriptions = attrib_desc;
-        input_binding[0].stride = script->vertex_data->stride;
+        input_binding[0].stride = vr_vbo_get_stride(script->vertex_data);
 
         vr_vbo_for_each_attrib(script->vertex_data,
                                set_up_attrib_cb,
