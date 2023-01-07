@@ -711,7 +711,7 @@ pub extern "C" fn vr_vbo_free(vbo: *mut Vbo) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::format::VkFormat;
+    use crate::vk;
 
     #[test]
     fn test_general() {
@@ -730,13 +730,13 @@ mod test {
 
         assert_eq!(
             vbo.attribs()[0].format(),
-            Format::lookup_by_vk_format(VkFormat::R32G32_SFLOAT),
+            Format::lookup_by_vk_format(vk::VK_FORMAT_R32G32_SFLOAT),
         );
         assert_eq!(vbo.attribs()[0].location(), 0);
         assert_eq!(vbo.attribs()[0].offset(), 0);
         assert_eq!(
             vbo.attribs()[1].format(),
-            Format::lookup_by_vk_format(VkFormat::A8B8G8R8_UNORM_PACK32),
+            Format::lookup_by_vk_format(vk::VK_FORMAT_A8B8G8R8_UNORM_PACK32),
         );
         assert_eq!(vbo.attribs()[1].location(), 1);
         assert_eq!(vbo.attribs()[1].offset(), 8);

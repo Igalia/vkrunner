@@ -24,6 +24,7 @@
 
 use crate::small_float;
 use crate::half_float;
+use crate::vk;
 use std::convert::TryInto;
 use std::num::NonZeroUsize;
 use std::slice;
@@ -32,7 +33,7 @@ use std::ffi::CStr;
 #[derive(Debug)]
 #[repr(C)]
 pub struct Format {
-    pub vk_format: VkFormat,
+    pub vk_format: vk::VkFormat,
     pub name: &'static str,
     pub packed_size: Option<NonZeroUsize>,
     n_parts: usize,
@@ -84,14 +85,14 @@ impl PartialEq for Format {
     }
 }
 
-impl PartialEq<VkFormat> for Format {
+impl PartialEq<vk::VkFormat> for Format {
     #[inline]
-    fn eq(&self, other: &VkFormat) -> bool {
+    fn eq(&self, other: &vk::VkFormat) -> bool {
         self.vk_format == *other
     }
 }
 
-impl PartialEq<Format> for VkFormat {
+impl PartialEq<Format> for vk::VkFormat {
     #[inline]
     fn eq(&self, other: &Format) -> bool {
         *self == other.vk_format
@@ -106,7 +107,7 @@ impl Format {
         }
     }
 
-    pub fn lookup_by_vk_format(vk_format: VkFormat) -> &'static Format {
+    pub fn lookup_by_vk_format(vk_format: vk::VkFormat) -> &'static Format {
         for format in FORMATS.iter() {
             if format.vk_format == vk_format {
                 return format;
@@ -426,7 +427,7 @@ pub extern "C" fn vr_format_lookup_by_name(
 
 #[no_mangle]
 pub extern "C" fn vr_format_lookup_by_vk_format(
-    vk_format: VkFormat
+    vk_format: vk::VkFormat
 ) -> &'static Format {
     Format::lookup_by_vk_format(vk_format)
 }
@@ -461,44 +462,6 @@ mod test {
         assert!(matches!(Format::lookup_by_name("B8G8R8_SRGBC"), None));
     }
 
-    fn all_format_names() -> Vec<String> {
-        let mut names = Vec::new();
-
-        // Extract the names from the source so that we can be sure
-        // that every VkFormat has a corresponding entry in the
-        // formats array
-        let table_source = include_str!("format_table.rs");
-        let mut in_enum = false;
-
-        for line in table_source.split("\n") {
-            let line = line.trim_start();
-
-            if line.starts_with("pub enum VkFormat") {
-                in_enum = true;
-            } else if in_enum {
-                if line.starts_with("}") {
-                    break;
-                }
-
-                names.push(line[0..line.find(" = ").unwrap()].to_owned());
-            }
-        }
-
-        assert!(names.len() == FORMATS.len());
-
-        names
-    }
-
-    #[test]
-    fn test_every_enum_has_matching_data() {
-        for name in all_format_names().iter() {
-            match Format::lookup_by_name(name) {
-                Some(f) => assert_eq!(name, f.name),
-                None => unreachable!("lookup for {} failed", name),
-            }
-        }
-    }
-
     #[test]
     fn test_lookup_by_vk_format() {
         // Test that we can find every format
@@ -511,13 +474,17 @@ mod test {
 
     #[test]
     fn test_lookup_by_details() {
+        let expected_format =
+            Format::lookup_by_vk_format(vk::VK_FORMAT_R8G8B8_UNORM);
         assert_eq!(
             Format::lookup_by_details(8, Mode::UNORM, 3),
-            Some(Format::lookup_by_vk_format(VkFormat::R8G8B8_UNORM)),
+            Some(expected_format),
         );
+        let expected_format =
+            Format::lookup_by_vk_format(vk::VK_FORMAT_R64G64B64A64_SFLOAT);
         assert_eq!(
             Format::lookup_by_details(64, Mode::SFLOAT, 4),
-            Some(Format::lookup_by_vk_format(VkFormat::R64G64B64A64_SFLOAT)),
+            Some(expected_format),
         );
         assert_eq!(
             Format::lookup_by_details(64, Mode::UFLOAT, 4),
@@ -534,11 +501,12 @@ mod test {
 
         // Check some types
         assert_eq!(
-            Format::lookup_by_vk_format(VkFormat::R8_UINT).parts(),
+            Format::lookup_by_vk_format(vk::VK_FORMAT_R8_UINT).parts(),
             &[Part { bits: 8, component: Component::R, mode: Mode::UINT }]
         );
         assert_eq!(
-            Format::lookup_by_vk_format(VkFormat::B5G6R5_UNORM_PACK16).parts(),
+            Format::lookup_by_vk_format(vk::VK_FORMAT_B5G6R5_UNORM_PACK16)
+                .parts(),
             &[
                 Part { bits: 5, component: Component::B, mode: Mode::UNORM },
                 Part { bits: 6, component: Component::G, mode: Mode::UNORM },
@@ -550,15 +518,16 @@ mod test {
     #[test]
     fn test_size() {
         assert_eq!(
-            Format::lookup_by_vk_format(VkFormat::B8G8R8_UINT).size(),
+            Format::lookup_by_vk_format(vk::VK_FORMAT_B8G8R8_UINT).size(),
             3
         );
         assert_eq!(
-            Format::lookup_by_vk_format(VkFormat::R16G16_SINT).size(),
+            Format::lookup_by_vk_format(vk::VK_FORMAT_R16G16_SINT).size(),
             4
         );
         assert_eq!(
-            Format::lookup_by_vk_format(VkFormat::B5G6R5_UNORM_PACK16).size(),
+            Format::lookup_by_vk_format(vk::VK_FORMAT_B5G6R5_UNORM_PACK16)
+                .size(),
             2
         );
     }
@@ -681,16 +650,19 @@ mod test {
             .map(|v| v.to_ne_bytes())
             .flatten()
             .collect();
-        let format = Format::lookup_by_vk_format(VkFormat::R64G64B64A64_SFLOAT);
+        let format =
+            Format::lookup_by_vk_format(vk::VK_FORMAT_R64G64B64A64_SFLOAT);
         assert_eq!(format.load_pixel(&pixel), source_data);
 
         // Try a depth-stencil format. This should just return the
         // default rgb values.
-        let format = Format::lookup_by_vk_format(VkFormat::D24_UNORM_S8_UINT);
+        let format =
+            Format::lookup_by_vk_format(vk::VK_FORMAT_D24_UNORM_S8_UINT);
         assert_eq!(format.load_pixel(&[0xff; 4]), [0.0, 0.0, 0.0, 1.0]);
 
         // Packed format
-        let format = Format::lookup_by_vk_format(VkFormat::R5G6B5_UNORM_PACK16);
+        let format =
+            Format::lookup_by_vk_format(vk::VK_FORMAT_R5G6B5_UNORM_PACK16);
         let pixel = format.load_pixel(&0xae27u16.to_ne_bytes());
         let expected = [
             0b10101 as f64 / 0b11111 as f64,
@@ -705,13 +677,16 @@ mod test {
 
     #[test]
     fn test_alignment() {
-        let format = Format::lookup_by_vk_format(VkFormat::R5G6B5_UNORM_PACK16);
+        let format =
+            Format::lookup_by_vk_format(vk::VK_FORMAT_R5G6B5_UNORM_PACK16);
         assert_eq!(format.alignment(), 2);
 
-        let format = Format::lookup_by_vk_format(VkFormat::D24_UNORM_S8_UINT);
+        let format =
+            Format::lookup_by_vk_format(vk::VK_FORMAT_D24_UNORM_S8_UINT);
         assert_eq!(format.alignment(), 3);
 
-        let format = Format::lookup_by_vk_format(VkFormat::R8G8B8_UNORM);
+        let format =
+            Format::lookup_by_vk_format(vk::VK_FORMAT_R8G8B8_UNORM);
         assert_eq!(format.alignment(), 1);
     }
 }
