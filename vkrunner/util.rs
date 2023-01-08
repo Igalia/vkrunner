@@ -23,7 +23,7 @@
 
 // Align a value, only works on power-of-two alignments
 #[inline]
-pub fn align(value: usize, alignment: usize) -> usize {
+pub const fn align(value: usize, alignment: usize) -> usize {
     debug_assert!(alignment.is_power_of_two());
     debug_assert!(alignment > 0);
 
