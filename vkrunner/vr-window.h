@@ -40,7 +40,7 @@ struct vr_window {
         /* These are copies of the values from the context for convenience */
         const struct vr_config *config;
         VkDevice device;
-        struct vr_vk vkfn;
+        struct vr_vk_device *vkdev;
 
         /* The first render pass is used for the first render and has
          * a loadOp of DONT_CARE. The second is used for subsequent

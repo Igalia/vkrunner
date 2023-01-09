@@ -34,7 +34,7 @@ vr_flush_memory(struct vr_context *context,
                 VkDeviceSize offset,
                 VkDeviceSize size)
 {
-        struct vr_vk *vkfn = &context->vkfn;
+        struct vr_vk_device *vkfn = context->vkdev;
         const VkMemoryType *memory_type =
                 &context->memory_properties.memoryTypes[memory_type_index];
 

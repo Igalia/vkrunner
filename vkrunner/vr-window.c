@@ -39,7 +39,7 @@
 static void
 destroy_framebuffer_resources(struct vr_window *window)
 {
-        struct vr_vk *vkfn = &window->vkfn;
+        struct vr_vk_device *vkfn = window->vkdev;
 
         if (window->color_image_view) {
                 vkfn->vkDestroyImageView(window->device,
@@ -113,7 +113,7 @@ destroy_framebuffer_resources(struct vr_window *window)
 static bool
 init_depth_stencil_resources(struct vr_window *window)
 {
-        struct vr_vk *vkfn = &window->vkfn;
+        struct vr_vk_device *vkfn = window->vkdev;
         VkResult res;
 
         VkImageCreateInfo image_create_info = {
@@ -194,7 +194,7 @@ check_format(struct vr_window *window,
              const struct vr_format *format,
              VkFormatFeatureFlags flags)
 {
-        struct vr_vk *vkfn = &window->vkfn;
+        struct vr_vk_instance *vkfn = window->context->vkinst;
         VkFormatProperties format_properties;
         VkPhysicalDevice physical_device = window->context->physical_device;
 
@@ -210,7 +210,7 @@ create_render_pass(struct vr_window *window,
                    bool first_render,
                    VkRenderPass *render_pass_out)
 {
-        struct vr_vk *vkfn = &window->vkfn;
+        struct vr_vk_device *vkfn = window->vkdev;
         VkResult res;
         bool has_stencil = false;
         const struct vr_format *depth_stencil_format =
@@ -306,7 +306,7 @@ create_render_pass(struct vr_window *window,
 static bool
 init_framebuffer_resources(struct vr_window *window)
 {
-        struct vr_vk *vkfn = &window->vkfn;
+        struct vr_vk_device *vkfn = window->vkdev;
         VkResult res;
         int linear_memory_type;
 
@@ -471,13 +471,12 @@ vr_window_new(struct vr_context *context,
               struct vr_window **window_out)
 {
         struct vr_window *window = vr_calloc(sizeof *window);
-        struct vr_vk *vkfn = &window->vkfn;
         enum vr_result vres;
 
         window->context = context;
         window->config = context->config;
         window->device = context->device;
-        *vkfn = context->vkfn;
+        window->vkdev = context->vkdev;
 
         window->format = *format;
 

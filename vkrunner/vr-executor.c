@@ -183,7 +183,8 @@ vr_executor_execute_script(struct vr_executor *executor,
                 struct vr_context *context = executor->context;
 
                 if (!vr_requirements_check(script->requirements,
-                                           &context->vkfn,
+                                           context->vklib,
+                                           context->vkinst,
                                            context->vk_instance,
                                            context->physical_device)) {
                         vr_error_message(executor->config,

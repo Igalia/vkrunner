@@ -88,7 +88,7 @@ allocate_test_buffer(struct test_data *data,
                      size_t size,
                      VkBufferUsageFlagBits usage)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
         struct test_buffer *buffer = vr_calloc(sizeof *buffer);
         VkResult res;
 
@@ -146,7 +146,7 @@ free_test_buffer(struct test_data *data,
                  struct test_buffer *buffer)
 {
         struct vr_window *window = data->window;
-        struct vr_vk *vkfn = &window->vkfn;
+        struct vr_vk_device *vkfn = window->vkdev;
 
         if (buffer->memory_map) {
                 vkfn->vkUnmapMemory(window->device,
@@ -170,7 +170,7 @@ free_test_buffer(struct test_data *data,
 static bool
 begin_command_buffer(struct test_data *data)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
         VkResult res;
 
         VkCommandBufferBeginInfo begin_command_buffer_info = {
@@ -193,7 +193,7 @@ begin_command_buffer(struct test_data *data)
 static void
 add_ssbo_barriers(struct test_data *data)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
         size_t n_barriers = 0;
         VkBufferMemoryBarrier *barriers = NULL;
 
@@ -238,7 +238,7 @@ add_ssbo_barriers(struct test_data *data)
 static void
 invalidate_ssbos(struct test_data *data)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
 
         for (unsigned i = 0; i < data->script->n_buffers; i++) {
                 if (data->script->buffers[i].type != VR_SCRIPT_BUFFER_TYPE_SSBO)
@@ -293,7 +293,7 @@ end_command_buffer(struct test_data *data)
         VkResult res;
         struct vr_window *window = data->window;
         struct vr_context *context = window->context;
-        struct vr_vk *vkfn = &context->vkfn;
+        struct vr_vk_device *vkfn = context->vkdev;
 
         flush_buffers(data);
         add_ssbo_barriers(data);
@@ -356,7 +356,7 @@ end_command_buffer(struct test_data *data)
 static bool
 begin_render_pass(struct test_data *data)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
 
         VkRenderPassBeginInfo render_pass_begin_info = {
                 .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -385,7 +385,7 @@ static bool
 end_render_pass(struct test_data *data)
 {
         struct vr_window *window = data->window;
-        struct vr_vk *vkfn = &window->vkfn;
+        struct vr_vk_device *vkfn = window->vkdev;
 
         vkfn->vkCmdEndRenderPass(window->context->command_buffer);
 
@@ -557,7 +557,7 @@ set_state(struct test_data *data,
 static void
 bind_ubo_descriptor_set(struct test_data *data)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
         const struct vr_context *context = data->window->context;
 
         if (data->ubo_descriptor_set_bound || !data->ubo_descriptor_set)
@@ -598,7 +598,7 @@ static void
 bind_pipeline(struct test_data *data,
               unsigned pipeline_num)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
         struct vr_context *context = data->window->context;
 
         if (pipeline_num == data->bound_pipeline)
@@ -649,7 +649,7 @@ static bool
 draw_rect(struct test_data *data,
           const struct vr_script_command *command)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
         struct test_buffer *buffer;
 
         buffer = allocate_test_buffer(data,
@@ -769,7 +769,7 @@ static bool
 draw_arrays(struct test_data *data,
             const struct vr_script_command *command)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
         struct vr_context *context = data->window->context;
 
         if (!set_state(data, TEST_STATE_RENDER_PASS))
@@ -820,7 +820,7 @@ static bool
 dispatch_compute(struct test_data *data,
                  const struct vr_script_command *command)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
 
         if (!set_state(data, TEST_STATE_COMMAND_BUFFER))
                 return false;
@@ -1102,7 +1102,7 @@ static bool
 set_push_constant(struct test_data *data,
                   const struct vr_script_command *command)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
 
         if (data->test_state < TEST_STATE_COMMAND_BUFFER &&
             !set_state(data, TEST_STATE_COMMAND_BUFFER))
@@ -1121,7 +1121,7 @@ set_push_constant(struct test_data *data,
 static bool
 allocate_ubo_buffers(struct test_data *data)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
 
         VkResult res;
         data->ubo_descriptor_set = vr_alloc(data->pipeline->n_desc_sets *
@@ -1226,7 +1226,7 @@ static bool
 clear(struct test_data *data,
       const struct vr_script_command *command)
 {
-        struct vr_vk *vkfn = &data->window->vkfn;
+        struct vr_vk_device *vkfn = data->window->vkdev;
 
         if (!set_state(data, TEST_STATE_RENDER_PASS))
                 return false;
@@ -1382,7 +1382,7 @@ vr_test_run(struct vr_window *window,
             struct vr_pipeline *pipeline,
             const struct vr_script *script)
 {
-        struct vr_vk *vkfn = &window->vkfn;
+        struct vr_vk_device *vkfn = window->vkdev;
 
         struct test_data data = {
                 .window = window,

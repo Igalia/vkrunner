@@ -52,7 +52,9 @@ struct vr_context {
 
         bool always_flush_memory;
 
-        struct vr_vk vkfn;
+        struct vr_vk_library *vklib;
+        struct vr_vk_instance *vkinst;
+        struct vr_vk_device *vkdev;
 };
 
 enum vr_result

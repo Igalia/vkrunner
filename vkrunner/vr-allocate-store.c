@@ -59,7 +59,7 @@ vr_allocate_store_buffer(struct vr_context *context,
                          int *memory_type_index_out,
                          int *offsets)
 {
-        struct vr_vk *vkfn = &context->vkfn;
+        struct vr_vk_device *vkfn = context->vkdev;
         VkDeviceMemory memory;
         VkMemoryRequirements reqs;
         VkResult res;
@@ -126,7 +126,7 @@ vr_allocate_store_image(struct vr_context *context,
                         VkDeviceMemory *memory_out,
                         int *memory_type_index_out)
 {
-        struct vr_vk *vkfn = &context->vkfn;
+        struct vr_vk_device *vkfn = context->vkdev;
         VkDeviceMemory memory;
         VkMemoryRequirements reqs;
         VkResult res;

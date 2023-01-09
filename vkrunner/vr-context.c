@@ -40,7 +40,7 @@ static int
 find_queue_family(struct vr_context *context,
                   VkPhysicalDevice physical_device)
 {
-        struct vr_vk *vkfn = &context->vkfn;
+        struct vr_vk_instance *vkfn = context->vkinst;
         VkQueueFamilyProperties *queues;
         uint32_t count = 0;
         uint32_t i;
@@ -72,7 +72,7 @@ find_queue_family(struct vr_context *context,
 static void
 deinit_vk(struct vr_context *context)
 {
-        struct vr_vk *vkfn = &context->vkfn;
+        struct vr_vk_device *vkfn = context->vkdev;
 
         if (context->vk_fence) {
                 vkfn->vkDestroyFence(context->device,
@@ -94,16 +94,23 @@ deinit_vk(struct vr_context *context)
                 context->command_pool = VK_NULL_HANDLE;
         }
         if (!context->device_is_external) {
+
                 if (context->device) {
                         vkfn->vkDestroyDevice(context->device,
                                               NULL /* allocator */);
                         context->device = VK_NULL_HANDLE;
                 }
                 if (context->vk_instance) {
-                        vkfn->vkDestroyInstance(context->vk_instance,
-                                                NULL /* allocator */);
+                        struct vr_vk_instance *vkinst = context->vkinst;
+
+                        vkinst->vkDestroyInstance(context->vk_instance,
+                                                  NULL /* allocator */);
                         context->vk_instance = VK_NULL_HANDLE;
                 }
+        }
+        if (context->vkdev) {
+                vr_vk_device_free(context->vkdev);
+                context->vkdev = NULL;
         }
 }
 
@@ -112,7 +119,7 @@ find_physical_device(struct vr_context *context,
                      const struct vr_requirements *reqs)
 
 {
-        struct vr_vk *vkfn = &context->vkfn;
+        struct vr_vk_instance *vkfn = context->vkinst;
         VkResult res;
         uint32_t count;
         VkPhysicalDevice *devices;
@@ -152,7 +159,8 @@ find_physical_device(struct vr_context *context,
         }
         for (i = first_dev; i < count; i++) {
                 if (!vr_requirements_check(reqs,
-                                           vkfn,
+                                           context->vklib,
+                                           context->vkinst,
                                            context->vk_instance,
                                            devices[i]))
                         continue;
@@ -178,9 +186,9 @@ get_instance_proc(const char *name,
                   void *user_data)
 {
         struct vr_context *context = user_data;
-        struct vr_vk *vkfn = &context->vkfn;
+        struct vr_vk_library *vklib = context->vklib;
 
-        return vkfn->vkGetInstanceProcAddr(context->vk_instance, name);
+        return vklib->vkGetInstanceProcAddr(context->vk_instance, name);
 }
 
 static bool
@@ -197,7 +205,7 @@ find_extension(uint32_t property_count,
 }
 
 static bool
-check_instance_extension(struct vr_vk *vkfn,
+check_instance_extension(struct vr_vk_library *vkfn,
                          const char *ext)
 {
         VkResult res;
@@ -228,7 +236,7 @@ static enum vr_result
 init_vk_device(struct vr_context *context,
                const struct vr_requirements *reqs)
 {
-        struct vr_vk *vkfn = &context->vkfn;
+        struct vr_vk_library *vklib = context->vklib;
         VkResult res;
 
         struct VkInstanceCreateInfo instance_create_info = {
@@ -244,7 +252,7 @@ init_vk_device(struct vr_context *context,
                 VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME;
 
         if (vr_requirements_get_structures(reqs)) {
-                if (!check_instance_extension(vkfn, ext)) {
+                if (!check_instance_extension(vklib, ext)) {
                         vr_error_message(context->config,
                                          "Driver is missing the %s extension",
                                          ext);
@@ -255,9 +263,9 @@ init_vk_device(struct vr_context *context,
                 instance_create_info.ppEnabledExtensionNames = &ext;
         }
 
-        res = vkfn->vkCreateInstance(&instance_create_info,
-                                     NULL, /* allocator */
-                                     &context->vk_instance);
+        res = vklib->vkCreateInstance(&instance_create_info,
+                                      NULL, /* allocator */
+                                      &context->vk_instance);
 
         if (res != VK_SUCCESS) {
                 vr_error_message(context->config,
@@ -273,7 +281,9 @@ init_vk_device(struct vr_context *context,
                 }
         }
 
-        vr_vk_init_instance(vkfn, get_instance_proc, context);
+        context->vkinst = vr_vk_instance_new(get_instance_proc, context);
+
+        struct vr_vk_instance *vkinst = context->vkinst;
 
         enum vr_result vres =
                 find_physical_device(context, reqs);
@@ -299,10 +309,10 @@ init_vk_device(struct vr_context *context,
                  NULL),
                 .pEnabledFeatures = vr_requirements_get_base_features(reqs)
         };
-        res = vkfn->vkCreateDevice(context->physical_device,
-                                   &device_create_info,
-                                   NULL, /* allocator */
-                                   &context->device);
+        res = vkinst->vkCreateDevice(context->physical_device,
+                                     &device_create_info,
+                                     NULL, /* allocator */
+                                     &context->device);
         if (res != VK_SUCCESS) {
                 vr_error_message(context->config, "Error creating VkDevice");
                 return VR_RESULT_FAIL;
@@ -314,35 +324,37 @@ init_vk_device(struct vr_context *context,
 static enum vr_result
 init_vk(struct vr_context *context)
 {
-        struct vr_vk *vkfn = &context->vkfn;
+        struct vr_vk_instance *vkinst = context->vkinst;
         VkPhysicalDeviceMemoryProperties *memory_properties =
                 &context->memory_properties;
         enum vr_result vres = VR_RESULT_PASS;
         VkResult res;
 
-        vkfn->vkGetPhysicalDeviceProperties(context->physical_device,
-                                            &context->device_properties);
-        vkfn->vkGetPhysicalDeviceMemoryProperties(context->physical_device,
-                                                  memory_properties);
-        vkfn->vkGetPhysicalDeviceFeatures(context->physical_device,
-                                          &context->features);
+        vkinst->vkGetPhysicalDeviceProperties(context->physical_device,
+                                              &context->device_properties);
+        vkinst->vkGetPhysicalDeviceMemoryProperties(context->physical_device,
+                                                    memory_properties);
+        vkinst->vkGetPhysicalDeviceFeatures(context->physical_device,
+                                            &context->features);
 
-        vr_vk_init_device(vkfn, context->device);
+        context->vkdev = vr_vk_device_new(vkinst, context->device);
 
-        vkfn->vkGetDeviceQueue(context->device,
-                               context->queue_family,
-                               0, /* queueIndex */
-                               &context->queue);
+        struct vr_vk_device *vkdev = context->vkdev;
+
+        vkdev->vkGetDeviceQueue(context->device,
+                                context->queue_family,
+                                0, /* queueIndex */
+                                &context->queue);
 
         VkCommandPoolCreateInfo command_pool_create_info = {
                 .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                 .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
                 .queueFamilyIndex = context->queue_family
         };
-        res = vkfn->vkCreateCommandPool(context->device,
-                                        &command_pool_create_info,
-                                        NULL, /* allocator */
-                                        &context->command_pool);
+        res = vkdev->vkCreateCommandPool(context->device,
+                                         &command_pool_create_info,
+                                         NULL, /* allocator */
+                                         &context->command_pool);
         if (res != VK_SUCCESS) {
                 vr_error_message(context->config,
                                  "Error creating VkCommandPool");
@@ -356,9 +368,9 @@ init_vk(struct vr_context *context)
                 .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                 .commandBufferCount = 1
         };
-        res = vkfn->vkAllocateCommandBuffers(context->device,
-                                             &command_buffer_allocate_info,
-                                             &context->command_buffer);
+        res = vkdev->vkAllocateCommandBuffers(context->device,
+                                              &command_buffer_allocate_info,
+                                              &context->command_buffer);
 
         if (res != VK_SUCCESS) {
                 vr_error_message(context->config,
@@ -370,10 +382,10 @@ init_vk(struct vr_context *context)
         VkFenceCreateInfo fence_create_info = {
                 .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO
         };
-        res = vkfn->vkCreateFence(context->device,
-                                  &fence_create_info,
-                                  NULL, /* allocator */
-                                  &context->vk_fence);
+        res = vkdev->vkCreateFence(context->device,
+                                   &fence_create_info,
+                                   NULL, /* allocator */
+                                   &context->vk_fence);
         if (res != VK_SUCCESS) {
                 vr_error_message(context->config, "Error creating fence");
                 vres = VR_RESULT_FAIL;
@@ -393,10 +405,11 @@ vr_context_new(const struct vr_config *config,
                struct vr_context **context_out)
 {
         struct vr_context *context = vr_calloc(sizeof *context);
-        struct vr_vk *vkfn = &context->vkfn;
         enum vr_result vres;
 
-        if (!vr_vk_load_libvulkan(config, vkfn)) {
+        context->vklib = vr_vk_library_new(config);
+
+        if (context->vklib == NULL) {
                 vres = VR_RESULT_FAIL;
                 goto error;
         }
@@ -432,7 +445,6 @@ vr_context_new_with_device(const struct vr_config *config,
                            struct vr_context **context_out)
 {
         struct vr_context *context = vr_calloc(sizeof *context);
-        struct vr_vk *vkfn = &context->vkfn;
         enum vr_result vres;
 
         context->config = config;
@@ -441,7 +453,7 @@ vr_context_new_with_device(const struct vr_config *config,
         context->device = device;
         context->device_is_external = true;
 
-        vr_vk_init_instance(vkfn, get_instance_proc_cb, user_data);
+        context->vkinst = vr_vk_instance_new(get_instance_proc_cb, user_data);
 
         vres = init_vk(context);
         if (vres != VR_RESULT_PASS)
@@ -460,8 +472,11 @@ vr_context_free(struct vr_context *context)
 {
         deinit_vk(context);
 
-        if (!context->device_is_external && context->vkfn.lib_vulkan)
-                vr_vk_unload_libvulkan(&context->vkfn);
+        if (context->vkinst)
+                vr_vk_instance_free(context->vkinst);
+
+        if (context->vklib)
+                vr_vk_library_free(context->vklib);
 
         vr_free(context);
 }

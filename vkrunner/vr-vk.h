@@ -30,38 +30,48 @@
 #include "vk-vulkan-header.h"
 #include "vr-config.h"
 
-struct vr_vk {
+struct vr_vk_library {
         void *lib_vulkan;
 
         PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr;
         PFN_vkCreateInstance vkCreateInstance;
         PFN_vkEnumerateInstanceExtensionProperties
         vkEnumerateInstanceExtensionProperties;
+};
 
 #define VR_VK_FUNC(name) PFN_ ## name name;
+
+struct vr_vk_instance {
 #include "vr-vk-instance-funcs.h"
-#include "vr-vk-device-funcs.h"
-#undef VR_VK_FUNC
 };
+
+struct vr_vk_device {
+#include "vr-vk-device-funcs.h"
+};
+
+#undef VR_VK_FUNC
 
 typedef void *
 (* vr_vk_get_instance_proc_cb)(const char *name,
                                void *user_data);
 
-bool
-vr_vk_load_libvulkan(const struct vr_config *config,
-                     struct vr_vk *vkfn);
+struct vr_vk_library *
+vr_vk_library_new(const struct vr_config *config);
 
 void
-vr_vk_init_instance(struct vr_vk *vkfn,
-                    vr_vk_get_instance_proc_cb get_instance_proc_cb,
-                    void *user_data);
+vr_vk_library_free(struct vr_vk_library *library);
+
+struct vr_vk_instance *
+vr_vk_instance_new(vr_vk_get_instance_proc_cb get_instance_proc_cb,
+                   void *user_data);
 
 void
-vr_vk_init_device(struct vr_vk *vkfn,
-                  VkDevice device);
+vr_vk_instance_free(struct vr_vk_instance *instance);
+
+struct vr_vk_device *
+vr_vk_device_new(struct vr_vk_instance *instance, VkDevice device);
 
 void
-vr_vk_unload_libvulkan(struct vr_vk *vkfn);
+vr_vk_device_free(struct vr_vk_device *device);
 
 #endif /* VR_VK_H */
