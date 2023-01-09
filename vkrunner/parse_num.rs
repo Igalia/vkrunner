@@ -58,6 +58,12 @@ struct NumAnalysis<'a> {
     tail: &'a str,
 }
 
+fn is_octal_prefix(prefix: &str) -> bool {
+    prefix.starts_with("0")
+        && prefix.len() > 1
+        && prefix.as_bytes()[1].is_ascii_digit()
+}
+
 fn analyse_num(mut s: &str) -> NumAnalysis {
     // skip only ASCII spaces and tabs
     while !s.is_empty() &&
@@ -77,7 +83,7 @@ fn analyse_num(mut s: &str) -> NumAnalysis {
 
     let (radix, num_start) = if prefix.starts_with("0x") {
         (16, 2)
-    } else if prefix.starts_with("0") && prefix.len() > 1 {
+    } else if is_octal_prefix(prefix) {
         (8, 1)
     } else {
         (10, 0)
@@ -193,6 +199,11 @@ mod test {
         ));
 
         assert_eq!(
+            parse_i8("  0 12"),
+            Ok((0, " 12")),
+        );
+
+        assert_eq!(
             parse_u8("   0x42  after"),
             Ok((66, "  after")),
         );
@@ -248,6 +259,11 @@ mod test {
         assert_eq!(
             parse_i8("-0"),
             Ok((0, "")),
+        );
+
+        assert_eq!(
+            parse_i8("  -0 0"),
+            Ok((0, " 0")),
         );
 
         assert!(matches!(
