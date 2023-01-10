@@ -487,10 +487,10 @@ mod test {
     #[test]
     fn test_wrappers() {
         let str = "12.0\0";
-        let mut tail = 0 as *const c_char;
+        let mut tail = std::ptr::null::<c_char>();
 
         let value = vr_hex_strtof(
-            0 as *const i32,
+            std::ptr::null(),
             str.as_ptr() as *const c_char,
             &mut tail as *mut *const c_char
         );
@@ -502,10 +502,10 @@ mod test {
         );
 
         let str = "420.0\0";
-        let mut tail = 0 as *const c_char;
+        let mut tail = std::ptr::null::<c_char>();
 
         let value = vr_hex_strtod(
-            0 as *const i32,
+            std::ptr::null(),
             str.as_ptr() as *const c_char,
             &mut tail as *mut *const c_char
         );
@@ -517,10 +517,10 @@ mod test {
         );
 
         let str = "-2 potato\0";
-        let mut tail = 0 as *const c_char;
+        let mut tail = std::ptr::null::<c_char>();
 
         let value = vr_hex_strtohf(
-            0 as *const i32,
+            std::ptr::null(),
             str.as_ptr() as *const c_char,
             &mut tail as *mut *const c_char
         );
@@ -532,10 +532,10 @@ mod test {
         );
 
         let str = "junk\0";
-        let mut tail = 0 as *const c_char;
+        let mut tail = std::ptr::null::<c_char>();
 
         let value = vr_hex_strtohf(
-            0 as *const i32,
+            std::ptr::null(),
             str.as_ptr() as *const c_char,
             &mut tail as *mut *const c_char
         );
@@ -550,10 +550,10 @@ mod test {
         ));
 
         let str = "0xffff1\0";
-        let mut tail = 0 as *const c_char;
+        let mut tail = std::ptr::null::<c_char>();
 
         let value = vr_hex_strtohf(
-            0 as *const i32,
+            std::ptr::null(),
             str.as_ptr() as *const c_char,
             &mut tail as *mut *const c_char
         );
