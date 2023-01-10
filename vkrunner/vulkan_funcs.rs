@@ -159,3 +159,60 @@ pub extern "C" fn vr_vk_device_free(device: *mut Device) {
     unsafe { Box::from_raw(device) };
 }
 
+// Helper function for unit tests in other modules that want to create
+// a fake Vulkan library to help testing. The tests can override
+// functions in the structs to implement tests.
+#[cfg(test)]
+pub fn make_fake_vulkan() -> (Library, Instance, Device) {
+    use std::ffi::CStr;
+
+    extern "C" fn get_instance_proc_addr(
+        _instance: vk::VkInstance,
+        _name: *const c_char,
+    ) -> vk::PFN_vkVoidFunction {
+        None
+    }
+
+    extern "C" fn get_instance_proc_cb(
+        func_name: *const u8,
+        _user_data: *const c_void,
+    ) -> *const c_void {
+        let name = unsafe { CStr::from_ptr(func_name.cast()) };
+        let name = match name.to_str() {
+            Err(_) => return std::ptr::null(),
+            Ok(n) => n,
+        };
+
+        if name == "vkGetDeviceProcAddr" {
+            unsafe {
+                std::mem::transmute(
+                    vk::PFN_vkGetDeviceProcAddr::Some(get_device_proc_addr)
+                )
+            }
+        } else {
+            std::ptr::null()
+        }
+    }
+
+    extern "C" fn get_device_proc_addr(
+        _device: vk::VkDevice,
+        _name: *const c_char,
+    ) -> vk::PFN_vkVoidFunction {
+        None
+    }
+
+    let vklib = Library {
+        lib_vulkan: std::ptr::null(),
+
+        vkGetInstanceProcAddr: Some(get_instance_proc_addr),
+        vkCreateInstance: None,
+        vkEnumerateInstanceExtensionProperties: None,
+    };
+
+    let vkinst = unsafe {
+        Instance::new(get_instance_proc_cb, std::ptr::null())
+    };
+    let vkdev = Device::new(&vkinst, std::ptr::null_mut());
+
+    (vklib, vkinst, vkdev)
+}
