@@ -31,8 +31,6 @@ vkrunner_source_files = [
    'vr-error-message.h',
    'vr-errno.c',
    'vr-executor.c',
-   'vr-feature.c',
-   'vr-feature.h',
    'vr-flush-memory.c',
    'vr-flush-memory.h',
    'vr-format-private.h',
