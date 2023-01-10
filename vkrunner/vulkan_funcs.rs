@@ -100,6 +100,18 @@ impl Library {
     }
 }
 
+impl Drop for Library {
+    fn drop(&mut self) {
+        extern "C" {
+            fn dlclose(lib: *const c_void) -> *const c_void;
+        }
+
+        if !self.lib_vulkan.is_null() {
+            unsafe { dlclose(self.lib_vulkan) };
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn vr_vk_library_new(
     config: *const c_void
