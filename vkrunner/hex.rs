@@ -486,7 +486,7 @@ mod test {
 
     #[test]
     fn test_wrappers() {
-        let str = "12.0";
+        let str = "12.0\0";
         let mut tail = 0 as *const c_char;
 
         let value = vr_hex_strtof(
@@ -501,7 +501,7 @@ mod test {
             4
         );
 
-        let str = "420.0";
+        let str = "420.0\0";
         let mut tail = 0 as *const c_char;
 
         let value = vr_hex_strtod(
@@ -516,7 +516,7 @@ mod test {
             5
         );
 
-        let str = "-2 potato";
+        let str = "-2 potato\0";
         let mut tail = 0 as *const c_char;
 
         let value = vr_hex_strtohf(
@@ -531,7 +531,7 @@ mod test {
             2
         );
 
-        let str = "junk";
+        let str = "junk\0";
         let mut tail = 0 as *const c_char;
 
         let value = vr_hex_strtohf(
@@ -549,7 +549,7 @@ mod test {
             std::io::ErrorKind::InvalidData | std::io::ErrorKind::InvalidInput
         ));
 
-        let str = "0xffff1";
+        let str = "0xffff1\0";
         let mut tail = 0 as *const c_char;
 
         let value = vr_hex_strtohf(
