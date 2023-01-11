@@ -45,6 +45,15 @@ impl Tolerance {
     }
 }
 
+impl Default for Tolerance {
+    fn default() -> Tolerance {
+        Tolerance {
+            value: [0.01; 4],
+            is_percent: false,
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn vr_tolerance_equal(
     tolerance: &Tolerance,
