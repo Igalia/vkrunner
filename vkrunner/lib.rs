@@ -9,3 +9,4 @@ mod vbo;
 mod vk;
 mod vulkan_funcs;
 mod requirements;
+mod slot;
