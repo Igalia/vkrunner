@@ -119,6 +119,17 @@ vr_box_base_type_size(enum vr_box_base_type type)
         vr_fatal("Unknown base type");
 }
 
+static enum vr_box_major_axis
+get_effective_major_axis(const struct vr_box_type_info *info,
+                         const struct vr_box_layout *layout)
+{
+        /* The major axis setting only affects matrix types */
+        if (info->columns > 1)
+                return layout->major;
+        else
+                return VR_BOX_MAJOR_AXIS_COLUMN;
+}
+
 static void
 get_major_minor(enum vr_box_type type,
                 const struct vr_box_layout *layout,
@@ -127,7 +138,7 @@ get_major_minor(enum vr_box_type type,
 {
         const struct vr_box_type_info *info = type_infos + type;
 
-        switch (layout->major) {
+        switch (get_effective_major_axis(info, layout)) {
         case VR_BOX_MAJOR_AXIS_COLUMN:
                 *major = info->columns;
                 *minor = info->rows;
@@ -210,7 +221,7 @@ get_axis_offsets(enum vr_box_type type,
         size_t stride = vr_box_type_matrix_stride(type, layout);
         size_t base_size = vr_box_base_type_size(info->base_type);
 
-        switch (layout->major) {
+        switch (get_effective_major_axis(info, layout)) {
         case VR_BOX_MAJOR_AXIS_COLUMN:
                 *column_offset = stride - base_size * info->rows;
                 *row_offset = base_size;
