@@ -29,7 +29,6 @@
 #include <stdbool.h>
 #include "vr-config.h"
 #include "vr-callback.h"
-#include "vr-strtof.h"
 
 struct vr_config {
         bool show_disassembly;
@@ -38,8 +37,6 @@ struct vr_config {
         vr_callback_error error_cb;
         vr_callback_inspect inspect_cb;
         void *user_data;
-
-        struct vr_strtof_data strtof_data;
 };
 
 #endif /* VR_CONFIG_PRIVATE_H */

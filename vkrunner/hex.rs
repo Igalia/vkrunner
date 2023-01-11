@@ -252,7 +252,6 @@ fn set_errno(e: &ParseError) {
 
 #[no_mangle]
 pub extern "C" fn vr_hex_strtof(
-    _: *const i32, // ignored vr_strtof_data pointer
     nptr: *const c_char,
     endptr: *mut *const c_char,
 ) -> f32 {
@@ -284,7 +283,6 @@ pub extern "C" fn vr_hex_strtof(
 
 #[no_mangle]
 pub extern "C" fn vr_hex_strtod(
-    _: *const i32, // ignored vr_strtof_data pointer
     nptr: *const c_char,
     endptr: *mut *const c_char,
 ) -> f64 {
@@ -316,7 +314,6 @@ pub extern "C" fn vr_hex_strtod(
 
 #[no_mangle]
 pub extern "C" fn vr_hex_strtohf(
-    _: *const i32, // ignored vr_strtof_data pointer
     nptr: *const c_char,
     endptr: *mut *const c_char,
 ) -> u16 {
@@ -490,7 +487,6 @@ mod test {
         let mut tail = std::ptr::null::<c_char>();
 
         let value = vr_hex_strtof(
-            std::ptr::null(),
             str.as_ptr() as *const c_char,
             &mut tail as *mut *const c_char
         );
@@ -505,7 +501,6 @@ mod test {
         let mut tail = std::ptr::null::<c_char>();
 
         let value = vr_hex_strtod(
-            std::ptr::null(),
             str.as_ptr() as *const c_char,
             &mut tail as *mut *const c_char
         );
@@ -520,7 +515,6 @@ mod test {
         let mut tail = std::ptr::null::<c_char>();
 
         let value = vr_hex_strtohf(
-            std::ptr::null(),
             str.as_ptr() as *const c_char,
             &mut tail as *mut *const c_char
         );
@@ -535,7 +529,6 @@ mod test {
         let mut tail = std::ptr::null::<c_char>();
 
         let value = vr_hex_strtohf(
-            std::ptr::null(),
             str.as_ptr() as *const c_char,
             &mut tail as *mut *const c_char
         );
@@ -553,7 +546,6 @@ mod test {
         let mut tail = std::ptr::null::<c_char>();
 
         let value = vr_hex_strtohf(
-            std::ptr::null(),
             str.as_ptr() as *const c_char,
             &mut tail as *mut *const c_char
         );

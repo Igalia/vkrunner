@@ -31,7 +31,6 @@ struct vr_config *
 vr_config_new(void)
 {
         struct vr_config *config = vr_calloc(sizeof(struct vr_config));
-        vr_strtof_init(&config->strtof_data);
         config->device_id = -1;
         return config;
 }
@@ -40,7 +39,6 @@ vr_config_new(void)
 void
 vr_config_free(struct vr_config *config)
 {
-        vr_strtof_destroy(&config->strtof_data);
         vr_free(config);
 }
 

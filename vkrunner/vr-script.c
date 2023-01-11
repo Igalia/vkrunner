@@ -288,9 +288,7 @@ parse_float16s(struct load_state *data,
                         (*p)++;
 
                 errno = 0;
-                *(out++) = vr_hex_strtohf(&data->config->strtof_data,
-                                          *p,
-                                          &tail);
+                *(out++) = vr_hex_strtohf(*p, &tail);
                 if (errno != 0 || tail == *p)
                         return false;
                 *p = tail;
@@ -320,7 +318,7 @@ parse_floats(struct load_state *data,
                         (*p)++;
 
                 errno = 0;
-                *(out++) = vr_hex_strtof(&data->config->strtof_data, *p, &tail);
+                *(out++) = vr_hex_strtof(*p, &tail);
                 if (errno != 0 || tail == *p)
                         return false;
                 *p = tail;
@@ -350,7 +348,7 @@ parse_doubles(struct load_state *data,
                         (*p)++;
 
                 errno = 0;
-                *(out++) = vr_hex_strtod(&data->config->strtof_data, *p, &tail);
+                *(out++) = vr_hex_strtod(*p, &tail);
                 if (errno != 0 || tail == *p)
                         return false;
                 *p = tail;
