@@ -136,12 +136,6 @@ enum vr_box_comparison {
         VR_BOX_COMPARISON_LESS_EQUAL
 };
 
-struct vr_box_type_info {
-        enum vr_box_base_type base_type;
-        int columns;
-        int rows;
-};
-
 typedef bool
 (* vr_box_for_each_component_cb_t)(enum vr_box_base_type type,
                                    size_t offset,
@@ -162,25 +156,11 @@ vr_box_compare(enum vr_box_comparison comparison,
                const void *b);
 
 size_t
-vr_box_base_type_size(enum vr_box_base_type type);
-
-size_t
-vr_box_type_base_alignment(enum vr_box_type type,
-                           const struct vr_box_layout *layout);
-
-size_t
-vr_box_type_matrix_stride(enum vr_box_type type,
-                          const struct vr_box_layout *layout);
-
-size_t
 vr_box_type_array_stride(enum vr_box_type type,
                          const struct vr_box_layout *layout);
 
 size_t
 vr_box_type_size(enum vr_box_type type,
                  const struct vr_box_layout *layout);
-
-const struct vr_box_type_info *
-vr_box_type_get_info(enum vr_box_type type);
 
 #endif /* VR_BOX_H */

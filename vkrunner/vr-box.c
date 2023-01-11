@@ -33,6 +33,12 @@
 #include "vr-tolerance.h"
 #include "vr-half-float.h"
 
+struct vr_box_type_info {
+        enum vr_box_base_type base_type;
+        int columns;
+        int rows;
+};
+
 static const struct vr_box_type_info
 type_infos[] = {
         [VR_BOX_TYPE_INT] = { VR_BOX_BASE_TYPE_INT, 1, 1 },
@@ -99,7 +105,7 @@ type_infos[] = {
         [VR_BOX_TYPE_DMAT4] = { VR_BOX_BASE_TYPE_DOUBLE, 4, 4 },
 };
 
-size_t
+static size_t
 vr_box_base_type_size(enum vr_box_base_type type)
 {
         switch (type) {
@@ -152,7 +158,7 @@ get_major_minor(enum vr_box_type type,
         vr_fatal("Unexpected matrix major axis");
 }
 
-size_t
+static size_t
 vr_box_type_base_alignment(enum vr_box_type type,
                            const struct vr_box_layout *layout)
 {
@@ -168,7 +174,7 @@ vr_box_type_base_alignment(enum vr_box_type type,
                 return component_size * minor;
 }
 
-size_t
+static size_t
 vr_box_type_matrix_stride(enum vr_box_type type,
                           const struct vr_box_layout *layout)
 {
@@ -445,11 +451,4 @@ vr_box_compare(enum vr_box_comparison comparison,
 
         vr_box_for_each_component(type, layout, compare_cb, &data);
         return data.result;
-}
-
-const struct vr_box_type_info *
-vr_box_type_get_info(enum vr_box_type type)
-{
-        assert(type >= 0 && type < VR_N_ELEMENTS(type_infos));
-        return type_infos + type;
 }
