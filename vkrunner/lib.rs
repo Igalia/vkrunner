@@ -12,3 +12,4 @@ mod requirements;
 mod slot;
 mod result;
 mod shader_stage;
+mod pipeline_key;

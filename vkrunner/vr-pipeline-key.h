@@ -98,9 +98,19 @@ vr_pipeline_key_set(struct vr_pipeline_key *key,
                     const char *name,
                     const char *value);
 
+/* This awkward struct is to make freeing the create info from Rust a
+ * bit easier.
+ */
+struct vr_pipeline_key_create_info {
+        VkGraphicsPipelineCreateInfo *create_info;
+        size_t len;
+};
+
 void
 vr_pipeline_key_to_create_info(const struct vr_pipeline_key *key,
-                               VkGraphicsPipelineCreateInfo *create_info);
+                               struct vr_pipeline_key_create_info *ci);
+void
+vr_pipeline_key_destroy_create_info(struct vr_pipeline_key_create_info *ci);
 
 void
 vr_pipeline_key_free(struct vr_pipeline_key *key);

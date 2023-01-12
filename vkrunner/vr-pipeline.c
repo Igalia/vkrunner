@@ -472,6 +472,10 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
         VkResult res;
         int num_stages = 0;
 
+        struct vr_pipeline_key_create_info create_info_data;
+
+        vr_pipeline_key_to_create_info(key, &create_info_data);
+
         VkPipelineShaderStageCreateInfo stages[VR_SHADER_STAGE_N_STAGES];
         memset(&stages, 0, sizeof stages);
 
@@ -487,11 +491,6 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                         vr_pipeline_key_get_entrypoint(key, i);
                 num_stages++;
         }
-
-        VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {
-                .sType =
-                VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO
-        };
 
         VkViewport viewports[] = {
                 {
@@ -515,74 +514,38 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                 .pScissors = scissors
         };
 
-        VkPipelineRasterizationStateCreateInfo rasterization_state = {
-                .sType =
-                VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO
-        };
-
         VkPipelineVertexInputStateCreateInfo vertex_input_state;
         set_vertex_input_state(script, &vertex_input_state, key);
 
-        VkPipelineTessellationStateCreateInfo tessellation_state = {
-                .sType =
-                VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO
-        };
+        VkGraphicsPipelineCreateInfo *info = create_info_data.create_info;
 
-        VkPipelineColorBlendAttachmentState blend_attachments[] = {
-                {
-                        .blendEnable = false,
-                }
-        };
+        info->pViewportState = &viewport_state;
+        info->pMultisampleState = &base_multisample_state;
+        info->subpass = 0;
+        info->basePipelineHandle = parent_pipeline;
+        info->basePipelineIndex = -1;
 
-        VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {
-                .sType =
-                VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        };
-
-        VkPipelineColorBlendStateCreateInfo color_blend_state = {
-                .sType =
-                VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-                .attachmentCount = VR_N_ELEMENTS(blend_attachments),
-                .pAttachments = blend_attachments
-        };
-
-        VkGraphicsPipelineCreateInfo info = {
-                .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-                .pViewportState = &viewport_state,
-                .pRasterizationState = &rasterization_state,
-                .pMultisampleState = &base_multisample_state,
-                .pDepthStencilState = &depth_stencil_state,
-                .pColorBlendState = &color_blend_state,
-                .pTessellationState = &tessellation_state,
-                .subpass = 0,
-                .basePipelineHandle = parent_pipeline,
-                .basePipelineIndex = -1,
-
-                .stageCount = num_stages,
-                .pStages = stages,
-                .pVertexInputState = &vertex_input_state,
-                .pInputAssemblyState = &input_assembly_state,
-                .layout = pipeline->layout,
-                .renderPass = window->render_pass[0],
-        };
-
-        vr_pipeline_key_to_create_info(key, &info);
+        info->stageCount = num_stages;
+        info->pStages = stages;
+        info->pVertexInputState = &vertex_input_state;
+        info->layout = pipeline->layout;
+        info->renderPass = window->render_pass[0];
 
         if (allow_derivatives)
-                info.flags |= VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT;
+                info->flags |= VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT;
         if (parent_pipeline)
-                info.flags |= VK_PIPELINE_CREATE_DERIVATIVE_BIT;
+                info->flags |= VK_PIPELINE_CREATE_DERIVATIVE_BIT;
 
         if (!(pipeline->stages & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
                                   VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)))
-                info.pTessellationState = NULL;
+                info->pTessellationState = NULL;
 
         VkPipeline vk_pipeline;
 
         res = vkfn->vkCreateGraphicsPipelines(window->device,
                                               pipeline->pipeline_cache,
                                               1, /* nCreateInfos */
-                                              &info,
+                                              info,
                                               NULL, /* allocator */
                                               &vk_pipeline);
 
@@ -591,6 +554,8 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
 
         vr_free((void *) vertex_input_state.pVertexBindingDescriptions);
         vr_free((void *) vertex_input_state.pVertexAttributeDescriptions);
+
+        vr_pipeline_key_destroy_create_info(&create_info_data);
 
         if (res != VK_SUCCESS) {
                 vr_error_message(window->config, "Error creating VkPipeline");
