@@ -1127,14 +1127,14 @@ process_draw_rect_command(struct load_state *data,
                 ortho = true;
 
         struct vr_pipeline_key *key = vr_pipeline_key_copy(data->current_key);
-        key->type = VR_PIPELINE_KEY_TYPE_GRAPHICS;
-        key->source = VR_PIPELINE_KEY_SOURCE_RECTANGLE;
+        vr_pipeline_key_set_type(key, VR_PIPELINE_KEY_TYPE_GRAPHICS);
+        vr_pipeline_key_set_source(key, VR_PIPELINE_KEY_SOURCE_RECTANGLE);
 
-        if (looking_at(&p, "patch "))
-                key->topology.i = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
-        else
-                key->topology.i = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-        key->patchControlPoints.i = 4;
+        vr_pipeline_key_set_topology(key,
+                                     looking_at(&p, "patch ") ?
+                                     VK_PRIMITIVE_TOPOLOGY_PATCH_LIST :
+                                     VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP);
+        vr_pipeline_key_set_patch_control_points(key, 4);
 
         command->draw_rect.pipeline_key = add_pipeline_key(data, key);
 
@@ -1470,9 +1470,9 @@ found_topology:
         }
 
         struct vr_pipeline_key *key = vr_pipeline_key_copy(data->current_key);
-        key->type = VR_PIPELINE_KEY_TYPE_GRAPHICS;
-        key->source = VR_PIPELINE_KEY_SOURCE_VERTEX_DATA;
-        key->topology.i = topology;
+        vr_pipeline_key_set_type(key, VR_PIPELINE_KEY_TYPE_GRAPHICS);
+        vr_pipeline_key_set_source(key, VR_PIPELINE_KEY_SOURCE_VERTEX_DATA);
+        vr_pipeline_key_set_topology(key, topology);
 
         command->op = VR_SCRIPT_OP_DRAW_ARRAYS;
         command->draw_arrays.first_vertex = args[0];
@@ -1507,7 +1507,8 @@ process_compute_command(struct load_state *data,
         command->dispatch_compute.y = parts[1];
         command->dispatch_compute.z = parts[2];
 
-        data->current_key->type = VR_PIPELINE_KEY_TYPE_COMPUTE;
+        vr_pipeline_key_set_type(data->current_key,
+                                 VR_PIPELINE_KEY_TYPE_COMPUTE);
         command->op = VR_SCRIPT_OP_DISPATCH_COMPUTE;
         command->dispatch_compute.pipeline_key =
                 add_pipeline_key(data, data->current_key);
@@ -1809,11 +1810,14 @@ process_patch_parameter_vertices(struct load_state *data,
                 return PARSE_RESULT_NON_MATCHED;
 
         struct vr_pipeline_key *key = data->current_key;
-        if (!parse_ints(&p, &key->patchControlPoints.i, 1, NULL) ||
+        int patch_control_points;
+        if (!parse_ints(&p, &patch_control_points, 1, NULL) ||
             !is_end(p)) {
                 error_at_line(data, "Invalid patch parameter vertices command");
                 return PARSE_RESULT_ERROR;
         }
+
+        vr_pipeline_key_set_patch_control_points(key, patch_control_points);
 
         return PARSE_RESULT_OK;
 }

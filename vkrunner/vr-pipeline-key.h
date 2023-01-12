@@ -35,42 +35,12 @@ enum vr_pipeline_key_type {
         VR_PIPELINE_KEY_TYPE_COMPUTE
 };
 
-union vr_pipeline_key_value {
-        int i;
-        float f;
-};
-
-enum vr_pipeline_key_value_type {
-        VR_PIPELINE_KEY_VALUE_TYPE_BOOL,
-        VR_PIPELINE_KEY_VALUE_TYPE_INT,
-        VR_PIPELINE_KEY_VALUE_TYPE_FLOAT
-};
-
 enum vr_pipeline_key_source {
         VR_PIPELINE_KEY_SOURCE_RECTANGLE,
         VR_PIPELINE_KEY_SOURCE_VERTEX_DATA
 };
 
-struct vr_pipeline_key {
-        enum vr_pipeline_key_type type;
-        enum vr_pipeline_key_source source;
-
-#define VR_PIPELINE_STRUCT_BEGIN(m)
-#define VR_PIPELINE_STRUCT_BEGIN2(m1, s2, m2)
-#define VR_PIPELINE_PROP(t, s, n) union vr_pipeline_key_value n;
-#define VR_PIPELINE_PROP_NAME(t, s, m, n) VR_PIPELINE_PROP(t, s, n)
-#define VR_PIPELINE_STRUCT_END()
-#include "vr-pipeline-properties.h"
-#undef VR_PIPELINE_STRUCT_BEGIN
-#undef VR_PIPELINE_STRUCT_BEGIN2
-#undef VR_PIPELINE_PROP
-#undef VR_PIPELINE_PROP_NAME
-#undef VR_PIPELINE_STRUCT_END
-
-        /* This must be the last entry so that the rest can be
-         * compared with a simple memcmp in vr_pipeline_key_equal */
-        char *entrypoints[VR_SHADER_STAGE_N_STAGES];
-};
+struct vr_pipeline_key;
 
 enum vr_pipeline_key_set_result {
         /* The property was successfully changed */
@@ -83,6 +53,28 @@ enum vr_pipeline_key_set_result {
 
 struct vr_pipeline_key *
 vr_pipeline_key_new(void);
+
+void
+vr_pipeline_key_set_type(struct vr_pipeline_key *key,
+                         enum vr_pipeline_key_type type);
+
+enum vr_pipeline_key_type
+vr_pipeline_key_get_type(const struct vr_pipeline_key *key);
+
+void
+vr_pipeline_key_set_source(struct vr_pipeline_key *key,
+                           enum vr_pipeline_key_source source);
+
+enum vr_pipeline_key_source
+vr_pipeline_key_get_source(const struct vr_pipeline_key *key);
+
+void
+vr_pipeline_key_set_topology(struct vr_pipeline_key *key,
+                             VkPrimitiveTopology topology);
+
+void
+vr_pipeline_key_set_patch_control_points(struct vr_pipeline_key *key,
+                                         int patch_control_points);
 
 bool
 vr_pipeline_key_equal(const struct vr_pipeline_key *a,

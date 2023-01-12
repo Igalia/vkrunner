@@ -605,8 +605,10 @@ bind_pipeline(struct test_data *data,
                 return;
 
         VkPipeline pipeline = data->pipeline->pipelines[pipeline_num];
+        const struct vr_pipeline_key *key =
+                data->script->pipeline_keys[pipeline_num];
 
-        switch (data->script->pipeline_keys[pipeline_num]->type) {
+        switch (vr_pipeline_key_get_type(key)) {
         case VR_PIPELINE_KEY_TYPE_GRAPHICS:
                 vkfn->vkCmdBindPipeline(context->command_buffer,
                                         VK_PIPELINE_BIND_POINT_GRAPHICS,

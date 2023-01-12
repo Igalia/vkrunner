@@ -414,8 +414,10 @@ set_vertex_input_state(const struct vr_script *script,
 
         state->sType =
                 VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        enum vr_pipeline_key_source key_source =
+                vr_pipeline_key_get_source(key);
 
-        if (key->source == VR_PIPELINE_KEY_SOURCE_VERTEX_DATA &&
+        if (key_source == VR_PIPELINE_KEY_SOURCE_VERTEX_DATA &&
             script->vertex_data == NULL)
                 return;
 
@@ -428,7 +430,7 @@ set_vertex_input_state(const struct vr_script *script,
         state->vertexBindingDescriptionCount = 1;
         state->pVertexBindingDescriptions = input_binding;
 
-        if (key->source == VR_PIPELINE_KEY_SOURCE_RECTANGLE) {
+        if (key_source == VR_PIPELINE_KEY_SOURCE_RECTANGLE) {
                 VkVertexInputAttributeDescription *attrib =
                         vr_calloc(sizeof *attrib);
                 state->vertexAttributeDescriptionCount = 1;
@@ -901,7 +903,7 @@ vr_pipeline_create(const struct vr_config *config,
         VkPipeline first_graphics_pipeline = VK_NULL_HANDLE;
 
         for (int i = 0; i < pipeline->n_pipelines; i++) {
-                switch (keys[i]->type) {
+                switch (vr_pipeline_key_get_type(keys[i])) {
                 case VR_PIPELINE_KEY_TYPE_GRAPHICS: {
                         bool allow_derivatives = (pipeline->n_pipelines > 1 &&
                                                   first_graphics_pipeline ==

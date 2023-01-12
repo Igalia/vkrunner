@@ -35,6 +35,38 @@
 #include <stddef.h>
 #include <errno.h>
 
+union vr_pipeline_key_value {
+        int i;
+        float f;
+};
+
+enum vr_pipeline_key_value_type {
+        VR_PIPELINE_KEY_VALUE_TYPE_BOOL,
+        VR_PIPELINE_KEY_VALUE_TYPE_INT,
+        VR_PIPELINE_KEY_VALUE_TYPE_FLOAT
+};
+
+struct vr_pipeline_key {
+        enum vr_pipeline_key_type type;
+        enum vr_pipeline_key_source source;
+
+#define VR_PIPELINE_STRUCT_BEGIN(m)
+#define VR_PIPELINE_STRUCT_BEGIN2(m1, s2, m2)
+#define VR_PIPELINE_PROP(t, s, n) union vr_pipeline_key_value n;
+#define VR_PIPELINE_PROP_NAME(t, s, m, n) VR_PIPELINE_PROP(t, s, n)
+#define VR_PIPELINE_STRUCT_END()
+#include "vr-pipeline-properties.h"
+#undef VR_PIPELINE_STRUCT_BEGIN
+#undef VR_PIPELINE_STRUCT_BEGIN2
+#undef VR_PIPELINE_PROP
+#undef VR_PIPELINE_PROP_NAME
+#undef VR_PIPELINE_STRUCT_END
+
+        /* This must be the last entry so that the rest can be
+         * compared with a simple memcmp in vr_pipeline_key_equal */
+        char *entrypoints[VR_SHADER_STAGE_N_STAGES];
+};
+
 static const struct vr_pipeline_key
 base_key = {
         .type = VR_PIPELINE_KEY_TYPE_GRAPHICS,
@@ -143,6 +175,46 @@ vr_pipeline_key_copy(const struct vr_pipeline_key *src)
         }
 
         return dest;
+}
+
+void
+vr_pipeline_key_set_type(struct vr_pipeline_key *key,
+                         enum vr_pipeline_key_type type)
+{
+        key->type = type;
+}
+
+enum vr_pipeline_key_type
+vr_pipeline_key_get_type(const struct vr_pipeline_key *key)
+{
+        return key->type;
+}
+
+void
+vr_pipeline_key_set_source(struct vr_pipeline_key *key,
+                           enum vr_pipeline_key_source source)
+{
+        key->source = source;
+}
+
+enum vr_pipeline_key_source
+vr_pipeline_key_get_source(const struct vr_pipeline_key *key)
+{
+        return key->source;
+}
+
+void
+vr_pipeline_key_set_topology(struct vr_pipeline_key *key,
+                             VkPrimitiveTopology topology)
+{
+        key->topology.i = topology;
+}
+
+void
+vr_pipeline_key_set_patch_control_points(struct vr_pipeline_key *key,
+                                         int patch_control_points)
+{
+        key->patchControlPoints.i = patch_control_points;
 }
 
 bool
