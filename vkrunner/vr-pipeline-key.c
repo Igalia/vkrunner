@@ -27,10 +27,13 @@
 
 #include "vr-pipeline-key.h"
 #include "vr-util.h"
+#include "vr-char.h"
+#include "vr-hex.h"
 
 #include <string.h>
 #include <limits.h>
 #include <stddef.h>
+#include <errno.h>
 
 static const struct vr_pipeline_key
 base_key = {
@@ -177,10 +180,10 @@ vr_pipeline_key_equal(const struct vr_pipeline_key *a,
         vr_fatal("Unexpected shader stage");
 }
 
-union vr_pipeline_key_value *
-vr_pipeline_key_lookup(struct vr_pipeline_key *key,
-                       const char *name,
-                       enum vr_pipeline_key_value_type *type_out)
+static union vr_pipeline_key_value *
+find_prop(struct vr_pipeline_key *key,
+          const char *name,
+          enum vr_pipeline_key_value_type *type_out)
 {
         for (int struct_num = 0;
              struct_num < VR_N_ELEMENTS(structs);
@@ -198,6 +201,192 @@ vr_pipeline_key_lookup(struct vr_pipeline_key *key,
         }
 
         return NULL;
+}
+
+static bool
+is_end(const char *p)
+{
+        while (*p && vr_char_is_space(*p))
+                p++;
+
+        return *p == '\0';
+}
+
+static bool
+parse_int(const char **p,
+          int *out)
+{
+        while (vr_char_is_space(**p))
+                (*p)++;
+
+        errno = 0;
+        char *tail;
+        long v = strtol(*p, &tail, 10);
+        if (errno != 0 || tail == *p || v < INT_MIN || v > INT_MAX)
+                return false;
+
+        *out = (int) v;
+        *p = tail;
+
+        return true;
+}
+
+static bool
+parse_float(const char **p,
+            float *out)
+{
+        char *tail;
+
+        while (vr_char_is_space(**p))
+                (*p)++;
+
+        errno = 0;
+        *out = vr_hex_strtof(*p, &tail);
+        if (errno != 0 || tail == *p)
+                return false;
+
+        *p = tail;
+
+        return true;
+}
+
+static bool
+looking_at(const char **p,
+           const char *string)
+{
+        int len = strlen(string);
+
+        if (strncmp(*p, string, len) == 0) {
+                *p += len;
+                return true;
+        }
+
+        return false;
+}
+
+static bool
+process_bool_property(union vr_pipeline_key_value *value,
+                      const char *p)
+{
+        if (looking_at(&p, "true"))
+                value->i = true;
+        else if (looking_at(&p, "false"))
+                value->i = false;
+        else if (!parse_int(&p, &value->i))
+                return false;
+
+        return is_end(p);
+}
+
+static bool
+lookup_enum(const char *name,
+            int *value)
+{
+        int begin = 0, end = VR_N_ELEMENTS(enums);
+
+        while (end > begin) {
+                int mid = (begin + end) / 2;
+                int comp = strcmp(name, enums[mid].name);
+
+                if (comp > 0) {
+                        begin = mid + 1;
+                } else if (comp < 0) {
+                        end = mid;
+                } else {
+                        *value = enums[mid].value;
+                        return true;
+                }
+        }
+
+        return false;
+}
+
+static bool
+process_int_property(union vr_pipeline_key_value *value,
+                     const char *p)
+{
+        value->i = 0;
+
+        while (true) {
+                int this_int;
+
+                while (vr_char_is_space(*p))
+                        p++;
+
+                if (parse_int(&p, &this_int)) {
+                        value->i |= this_int;
+                } else if (vr_char_is_alnum(*p)) {
+                        const char *end = p + 1;
+                        while (vr_char_is_alnum(*end) || *end == '_')
+                                end++;
+                        char *enum_name = vr_strndup(p, end - p);
+                        bool is_enum = lookup_enum(enum_name, &this_int);
+                        free(enum_name);
+
+                        if (!is_enum)
+                                return false;
+
+                        value->i |= this_int;
+                        p = end;
+                } else {
+                        return false;
+                }
+
+                if (is_end(p))
+                        break;
+
+                while (vr_char_is_space(*p))
+                        p++;
+
+                if (*p != '|')
+                        return false;
+                p++;
+        }
+
+        return true;
+}
+
+static bool
+process_float_property(union vr_pipeline_key_value *value,
+                       const char *p)
+{
+        while (vr_char_is_space(*p))
+                p++;
+
+        return parse_float(&p, &value->f) && is_end(p);
+}
+
+enum vr_pipeline_key_set_result
+vr_pipeline_key_set(struct vr_pipeline_key *key,
+                    const char *name,
+                    const char *value)
+{
+        enum vr_pipeline_key_value_type type;
+        union vr_pipeline_key_value *key_value = find_prop(key, name, &type);
+
+        if (key_value == NULL)
+                return VR_PIPELINE_KEY_SET_RESULT_NOT_FOUND;
+
+        bool process_result = false;
+
+        switch (type) {
+        case VR_PIPELINE_KEY_VALUE_TYPE_BOOL:
+                process_result = process_bool_property(key_value, value);
+                goto found_type;
+        case VR_PIPELINE_KEY_VALUE_TYPE_INT:
+                process_result = process_int_property(key_value, value);
+                goto found_type;
+        case VR_PIPELINE_KEY_VALUE_TYPE_FLOAT:
+                process_result = process_float_property(key_value, value);
+                goto found_type;
+        }
+
+        vr_fatal("Unknown pipeline property type");
+
+found_type:
+        return (process_result ?
+                VR_PIPELINE_KEY_SET_RESULT_OK :
+                VR_PIPELINE_KEY_SET_RESULT_INVALID_VALUE);
 }
 
 void
@@ -258,29 +447,6 @@ vr_pipeline_key_to_create_info(const struct vr_pipeline_key *key,
                                type_size(prop->type));
                 }
         }
-}
-
-bool
-vr_pipeline_key_lookup_enum(const char *name,
-                            int *value)
-{
-        int begin = 0, end = VR_N_ELEMENTS(enums);
-
-        while (end > begin) {
-                int mid = (begin + end) / 2;
-                int comp = strcmp(name, enums[mid].name);
-
-                if (comp > 0) {
-                        begin = mid + 1;
-                } else if (comp < 0) {
-                        end = mid;
-                } else {
-                        *value = enums[mid].value;
-                        return true;
-                }
-        }
-
-        return false;
 }
 
 void

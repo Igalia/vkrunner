@@ -1606,95 +1606,6 @@ process_indices_line(struct load_state *data)
 }
 
 static enum parse_result
-process_bool_property(struct load_state *data,
-                      union vr_pipeline_key_value *value,
-                      const char *p)
-{
-        if (looking_at(&p, "true"))
-                value->i = true;
-        else if (looking_at(&p, "false"))
-                value->i = false;
-        else if (!parse_ints(&p, &value->i, 1, NULL))
-                goto error;
-
-        if (!is_end(p))
-                goto error;
-
-        return PARSE_RESULT_OK;
-
-error:
-        error_at_line(data, "Invalid boolean value");
-        return PARSE_RESULT_ERROR;
-}
-
-static enum parse_result
-process_int_property(struct load_state *data,
-                     union vr_pipeline_key_value *value,
-                     const char *p)
-{
-        value->i = 0;
-
-        while (true) {
-                int this_int;
-
-                while (vr_char_is_space(*p))
-                        p++;
-
-                if (parse_ints(&p, &this_int, 1, NULL)) {
-                        value->i |= this_int;
-                } else if (vr_char_is_alnum(*p)) {
-                        const char *end = p + 1;
-                        while (vr_char_is_alnum(*end) || *end == '_')
-                                end++;
-                        char *enum_name = vr_strndup(p, end - p);
-                        bool is_enum = vr_pipeline_key_lookup_enum(enum_name,
-                                                                   &this_int);
-                        free(enum_name);
-
-                        if (!is_enum)
-                                goto error;
-
-                        value->i |= this_int;
-                        p = end;
-                } else {
-                        goto error;
-                }
-
-                if (is_end(p))
-                        break;
-
-                while (vr_char_is_space(*p))
-                        p++;
-
-                if (*p != '|')
-                        goto error;
-                p++;
-        }
-
-        return PARSE_RESULT_OK;
-
-error:
-        error_at_line(data, "Invalid int value");
-        return PARSE_RESULT_ERROR;
-}
-
-static enum parse_result
-process_float_property(struct load_state *data,
-                       union vr_pipeline_key_value *value,
-                       const char *p)
-{
-        while (vr_char_is_space(*p))
-                p++;
-
-        if (!parse_floats(data, &p, &value->f, 1, NULL) || !is_end(p)) {
-                error_at_line(data, "Invalid float value");
-                return PARSE_RESULT_ERROR;
-        }
-
-        return PARSE_RESULT_OK;
-}
-
-static enum parse_result
 process_pipeline_property(struct load_state *data,
                           const char *p)
 {
@@ -1706,29 +1617,26 @@ process_pipeline_property(struct load_state *data,
                 end++;
         char *prop_name = vr_strndup(p, end - p);
 
-        enum vr_pipeline_key_value_type key_value_type;
-        union vr_pipeline_key_value *key_value =
-                vr_pipeline_key_lookup(data->current_key,
-                                       prop_name,
-                                       &key_value_type);
+        const char *value = end;
+
+        while (*value && vr_char_is_space(*value))
+                value++;
+
+        enum vr_pipeline_key_set_result result =
+                vr_pipeline_key_set(data->current_key,
+                                    prop_name,
+                                    value);
 
         vr_free(prop_name);
 
-        if (key_value == NULL)
+        switch (result) {
+        case VR_PIPELINE_KEY_SET_RESULT_OK:
+                return PARSE_RESULT_OK;
+        case VR_PIPELINE_KEY_SET_RESULT_NOT_FOUND:
                 return PARSE_RESULT_NON_MATCHED;
-
-        p = end;
-
-        while (*p && vr_char_is_space(*p))
-                p++;
-
-        switch (key_value_type) {
-        case VR_PIPELINE_KEY_VALUE_TYPE_BOOL:
-                return process_bool_property(data, key_value, p);
-        case VR_PIPELINE_KEY_VALUE_TYPE_INT:
-                return process_int_property(data, key_value, p);
-        case VR_PIPELINE_KEY_VALUE_TYPE_FLOAT:
-                return process_float_property(data, key_value, p);
+        case VR_PIPELINE_KEY_SET_RESULT_INVALID_VALUE:
+                error_at_line(data, "Invalid property value");
+                return PARSE_RESULT_ERROR;
         }
 
         vr_fatal("Unknown pipeline property type");

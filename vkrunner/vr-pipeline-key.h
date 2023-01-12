@@ -72,6 +72,15 @@ struct vr_pipeline_key {
         char *entrypoints[VR_SHADER_STAGE_N_STAGES];
 };
 
+enum vr_pipeline_key_set_result {
+        /* The property was successfully changed */
+        VR_PIPELINE_KEY_SET_RESULT_OK,
+        /* The key was not found */
+        VR_PIPELINE_KEY_SET_RESULT_NOT_FOUND,
+        /* The value was invalid */
+        VR_PIPELINE_KEY_SET_RESULT_INVALID_VALUE,
+};
+
 struct vr_pipeline_key *
 vr_pipeline_key_new(void);
 
@@ -91,14 +100,10 @@ const char *
 vr_pipeline_key_get_entrypoint(const struct vr_pipeline_key *key,
                                enum vr_shader_stage stage);
 
-union vr_pipeline_key_value *
-vr_pipeline_key_lookup(struct vr_pipeline_key *key,
-                       const char *name,
-                       enum vr_pipeline_key_value_type *type_out);
-
-bool
-vr_pipeline_key_lookup_enum(const char *name,
-                            int *value);
+enum vr_pipeline_key_set_result
+vr_pipeline_key_set(struct vr_pipeline_key *key,
+                    const char *name,
+                    const char *value);
 
 void
 vr_pipeline_key_to_create_info(const struct vr_pipeline_key *key,
