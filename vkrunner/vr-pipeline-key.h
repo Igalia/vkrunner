@@ -72,20 +72,15 @@ struct vr_pipeline_key {
         char *entrypoints[VR_SHADER_STAGE_N_STAGES];
 };
 
-void
-vr_pipeline_key_init(struct vr_pipeline_key *key);
+struct vr_pipeline_key *
+vr_pipeline_key_new(void);
 
 bool
 vr_pipeline_key_equal(const struct vr_pipeline_key *a,
                       const struct vr_pipeline_key *b);
 
-/* Copies the src into dest. Assumes that dest is an unitialised
- * struct. It should be destroyed later with
- * vr_pipeline_key_destroy.
- */
-void
-vr_pipeline_key_copy(struct vr_pipeline_key *dest,
-                     const struct vr_pipeline_key *src);
+struct vr_pipeline_key *
+vr_pipeline_key_copy(const struct vr_pipeline_key *src);
 
 void
 vr_pipeline_key_set_entrypoint(struct vr_pipeline_key *key,
@@ -110,6 +105,6 @@ vr_pipeline_key_to_create_info(const struct vr_pipeline_key *key,
                                VkGraphicsPipelineCreateInfo *create_info);
 
 void
-vr_pipeline_key_destroy(struct vr_pipeline_key *key);
+vr_pipeline_key_free(struct vr_pipeline_key *key);
 
 #endif /* VR_PIPELINE_KEY_H */

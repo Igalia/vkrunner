@@ -142,7 +142,7 @@ struct vr_script {
         size_t n_commands;
         struct vr_script_command *commands;
         size_t n_pipeline_keys;
-        struct vr_pipeline_key *pipeline_keys;
+        struct vr_pipeline_key **pipeline_keys;
         struct vr_requirements *requirements;
         struct vr_window_format window_format;
         struct vr_vbo *vertex_data;

@@ -892,7 +892,7 @@ vr_pipeline_create(const struct vr_config *config,
         if (pipeline->layout == VK_NULL_HANDLE)
                 goto error;
 
-        const struct vr_pipeline_key *keys = script->pipeline_keys;
+        struct vr_pipeline_key * const *keys = script->pipeline_keys;
 
         pipeline->n_pipelines = script->n_pipeline_keys;
         pipeline->pipelines = vr_calloc(sizeof (VkPipeline) *
@@ -901,7 +901,7 @@ vr_pipeline_create(const struct vr_config *config,
         VkPipeline first_graphics_pipeline = VK_NULL_HANDLE;
 
         for (int i = 0; i < pipeline->n_pipelines; i++) {
-                switch (keys[i].type) {
+                switch (keys[i]->type) {
                 case VR_PIPELINE_KEY_TYPE_GRAPHICS: {
                         bool allow_derivatives = (pipeline->n_pipelines > 1 &&
                                                   first_graphics_pipeline ==
@@ -909,7 +909,7 @@ vr_pipeline_create(const struct vr_config *config,
                         pipeline->pipelines[i] =
                                 create_vk_pipeline(pipeline,
                                                    script,
-                                                   keys + i,
+                                                   keys[i],
                                                    allow_derivatives,
                                                    first_graphics_pipeline);
                         if (first_graphics_pipeline == VK_NULL_HANDLE) {
@@ -920,7 +920,7 @@ vr_pipeline_create(const struct vr_config *config,
                 }
                 case VR_PIPELINE_KEY_TYPE_COMPUTE:
                         pipeline->pipelines[i] =
-                                create_compute_pipeline(pipeline, keys + i);
+                                create_compute_pipeline(pipeline, keys[i]);
                         break;
                 }
 

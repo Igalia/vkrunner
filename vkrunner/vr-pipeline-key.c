@@ -123,22 +123,23 @@ structs[] = {
 #undef VR_PIPELINE_STRUCT_END
 };
 
-void
-vr_pipeline_key_init(struct vr_pipeline_key *key)
+struct vr_pipeline_key *
+vr_pipeline_key_new(void)
 {
-        *key = base_key;
+        return vr_memdup(&base_key, sizeof base_key);
 }
 
-void
-vr_pipeline_key_copy(struct vr_pipeline_key *dest,
-                     const struct vr_pipeline_key *src)
+struct vr_pipeline_key *
+vr_pipeline_key_copy(const struct vr_pipeline_key *src)
 {
-        *dest = *src;
+        struct vr_pipeline_key *dest = vr_memdup(src, sizeof *src);
 
         for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
                 if (src->entrypoints[i])
                         dest->entrypoints[i] = vr_strdup(src->entrypoints[i]);
         }
+
+        return dest;
 }
 
 bool
@@ -283,8 +284,10 @@ vr_pipeline_key_lookup_enum(const char *name,
 }
 
 void
-vr_pipeline_key_destroy(struct vr_pipeline_key *key)
+vr_pipeline_key_free(struct vr_pipeline_key *key)
 {
         for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++)
                 vr_free(key->entrypoints[i]);
+
+        vr_free(key);
 }

@@ -85,7 +85,7 @@ struct load_state {
         struct vr_buffer commands;
         struct vr_buffer pipeline_keys;
         struct vr_buffer buffers;
-        struct vr_pipeline_key current_key;
+        struct vr_pipeline_key *current_key;
         struct vr_buffer indices;
         float clear_color[4];
         float clear_depth;
@@ -1077,21 +1077,18 @@ add_pipeline_key(struct load_state *data,
                  const struct vr_pipeline_key *key)
 {
         unsigned n_keys = (data->pipeline_keys.length /
-                           sizeof (struct vr_pipeline_key));
-        const struct vr_pipeline_key *keys =
-                (const struct vr_pipeline_key *) data->pipeline_keys.data;
+                           sizeof (struct vr_pipeline_key *));
+        const struct vr_pipeline_key **keys =
+                (const struct vr_pipeline_key **) data->pipeline_keys.data;
 
         for (unsigned i = 0; i < n_keys; i++) {
-                if (vr_pipeline_key_equal(keys + i, key))
+                if (vr_pipeline_key_equal(keys[i], key))
                         return i;
         }
 
-        vr_buffer_set_length(&data->pipeline_keys,
-                             data->pipeline_keys.length + sizeof *key);
-        vr_pipeline_key_copy((struct vr_pipeline_key *)
-                             data->pipeline_keys.data +
-                             n_keys,
-                             key);
+        struct vr_pipeline_key *copy = vr_pipeline_key_copy(key);
+
+        vr_buffer_append(&data->pipeline_keys, &copy, sizeof copy);
 
         return n_keys;
 }
@@ -1129,20 +1126,19 @@ process_draw_rect_command(struct load_state *data,
         if (looking_at(&p, "ortho "))
                 ortho = true;
 
-        struct vr_pipeline_key key;
-        vr_pipeline_key_copy(&key, &data->current_key);
-        key.type = VR_PIPELINE_KEY_TYPE_GRAPHICS;
-        key.source = VR_PIPELINE_KEY_SOURCE_RECTANGLE;
+        struct vr_pipeline_key *key = vr_pipeline_key_copy(data->current_key);
+        key->type = VR_PIPELINE_KEY_TYPE_GRAPHICS;
+        key->source = VR_PIPELINE_KEY_SOURCE_RECTANGLE;
 
         if (looking_at(&p, "patch "))
-                key.topology.i = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+                key->topology.i = VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
         else
-                key.topology.i = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-        key.patchControlPoints.i = 4;
+                key->topology.i = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+        key->patchControlPoints.i = 4;
 
-        command->draw_rect.pipeline_key = add_pipeline_key(data, &key);
+        command->draw_rect.pipeline_key = add_pipeline_key(data, key);
 
-        vr_pipeline_key_destroy(&key);
+        vr_pipeline_key_free(key);
 
         float parts[4];
 
@@ -1473,20 +1469,19 @@ found_topology:
                 return PARSE_RESULT_ERROR;
         }
 
-        struct vr_pipeline_key key;
-        vr_pipeline_key_copy(&key, &data->current_key);
-        key.type = VR_PIPELINE_KEY_TYPE_GRAPHICS;
-        key.source = VR_PIPELINE_KEY_SOURCE_VERTEX_DATA;
-        key.topology.i = topology;
+        struct vr_pipeline_key *key = vr_pipeline_key_copy(data->current_key);
+        key->type = VR_PIPELINE_KEY_TYPE_GRAPHICS;
+        key->source = VR_PIPELINE_KEY_SOURCE_VERTEX_DATA;
+        key->topology.i = topology;
 
         command->op = VR_SCRIPT_OP_DRAW_ARRAYS;
         command->draw_arrays.first_vertex = args[0];
         command->draw_arrays.vertex_count = args[1];
         command->draw_arrays.first_instance = 0;
         command->draw_arrays.instance_count = args[2];
-        command->draw_arrays.pipeline_key = add_pipeline_key(data, &key);
+        command->draw_arrays.pipeline_key = add_pipeline_key(data, key);
 
-        vr_pipeline_key_destroy(&key);
+        vr_pipeline_key_free(key);
 
         return PARSE_RESULT_OK;
 }
@@ -1512,10 +1507,10 @@ process_compute_command(struct load_state *data,
         command->dispatch_compute.y = parts[1];
         command->dispatch_compute.z = parts[2];
 
-        data->current_key.type = VR_PIPELINE_KEY_TYPE_COMPUTE;
+        data->current_key->type = VR_PIPELINE_KEY_TYPE_COMPUTE;
         command->op = VR_SCRIPT_OP_DISPATCH_COMPUTE;
         command->dispatch_compute.pipeline_key =
-                add_pipeline_key(data, &data->current_key);
+                add_pipeline_key(data, data->current_key);
 
         return PARSE_RESULT_OK;
 }
@@ -1713,7 +1708,7 @@ process_pipeline_property(struct load_state *data,
 
         enum vr_pipeline_key_value_type key_value_type;
         union vr_pipeline_key_value *key_value =
-                vr_pipeline_key_lookup(&data->current_key,
+                vr_pipeline_key_lookup(data->current_key,
                                        prop_name,
                                        &key_value_type);
 
@@ -1892,7 +1887,7 @@ found_stage:
         }
 
         char *entrypoint = vr_strndup(p, end - p);
-        vr_pipeline_key_set_entrypoint(&data->current_key, stage, entrypoint);
+        vr_pipeline_key_set_entrypoint(data->current_key, stage, entrypoint);
         vr_free(entrypoint);
 
         return PARSE_RESULT_OK;
@@ -1905,7 +1900,7 @@ process_patch_parameter_vertices(struct load_state *data,
         if (!looking_at(&p, "patch parameter vertices "))
                 return PARSE_RESULT_NON_MATCHED;
 
-        struct vr_pipeline_key *key = &data->current_key;
+        struct vr_pipeline_key *key = data->current_key;
         if (!parse_ints(&p, &key->patchControlPoints.i, 1, NULL) ||
             !is_end(p)) {
                 error_at_line(data, "Invalid patch parameter vertices command");
@@ -2556,7 +2551,7 @@ vr_script_load(const struct vr_config *config,
                 .ssbo_layout = default_ssbo_layout,
         };
 
-        vr_pipeline_key_init(&data.current_key);
+        data.current_key = vr_pipeline_key_new();
 
         script->window_format.width = 250;
         script->window_format.height = 250;
@@ -2589,9 +2584,9 @@ vr_script_load(const struct vr_config *config,
         script->n_commands = (data.commands.length /
                               sizeof (struct vr_script_command));
         script->pipeline_keys =
-                (struct vr_pipeline_key *) data.pipeline_keys.data;
+                (struct vr_pipeline_key **) data.pipeline_keys.data;
         script->n_pipeline_keys = (data.pipeline_keys.length /
-                                   sizeof (struct vr_pipeline_key));
+                                   sizeof (struct vr_pipeline_key *));
         script->indices = (uint16_t *) data.indices.data;
         script->n_indices =
                 data.indices.length / sizeof (uint16_t);
@@ -2606,7 +2601,7 @@ vr_script_load(const struct vr_config *config,
 
         vr_buffer_destroy(&data.buffer);
         vr_buffer_destroy(&data.line);
-        vr_pipeline_key_destroy(&data.current_key);
+        vr_pipeline_key_free(data.current_key);
 
         if (res) {
                 return script;
@@ -2651,7 +2646,7 @@ vr_script_free(struct vr_script *script)
         vr_free(script->commands);
 
         for (int i = 0; i < script->n_pipeline_keys; i++)
-                vr_pipeline_key_destroy(script->pipeline_keys + i);
+                vr_pipeline_key_free(script->pipeline_keys[i]);
         vr_free(script->pipeline_keys);
 
         vr_free(script->buffers);
