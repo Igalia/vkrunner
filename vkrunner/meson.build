@@ -62,7 +62,6 @@ vkrunner_source_files = [
    'vr-vbo.h',
    'vr-window.c',
    'vr-window.h',
-   'vr-window-format.c',
    'vr-window-format.h',
 ] + vkrunner_public_headers
 
