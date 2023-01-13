@@ -80,6 +80,19 @@ free_token_replacements(struct vr_source *source)
         }
 }
 
+char *
+vr_source_get_filename(const struct vr_source *source)
+{
+        switch (source->type) {
+        case VR_SOURCE_TYPE_FILE:
+                return vr_strdup(source->string);
+        case VR_SOURCE_TYPE_STRING:
+                return vr_strdup("(string source)");
+        }
+
+        vr_fatal("unexpected source type");
+}
+
 void
 vr_source_free(struct vr_source *source)
 {

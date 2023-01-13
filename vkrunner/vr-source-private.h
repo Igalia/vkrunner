@@ -46,4 +46,12 @@ struct vr_source {
         char string[];
 };
 
+/* Returns the filename. If the source is a string then the filename
+ * will be "(string source)". The caller is responsible for freeing
+ * the string. This is mostly to make it easier to add a terminating
+ * null byte during the transition to Rust.
+ */
+char *
+vr_source_get_filename(const struct vr_source *source);
+
 #endif /* VR_SOURCE_PRIVATE_H */
