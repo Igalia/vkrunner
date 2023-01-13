@@ -73,11 +73,12 @@ enum parse_result {
 struct load_state {
         const struct vr_config *config;
         const struct vr_source *source;
-        const char *filename;
+        char *filename;
         int line_num;
         struct vr_script *script;
         struct vr_buffer buffer;
-        struct vr_buffer line;
+        const char *line;
+        size_t line_length;
         enum vr_shader_stage current_stage;
         enum vr_script_source_type current_source_type;
         enum section current_section;
@@ -1002,7 +1003,7 @@ error:
 static bool
 process_none_line(struct load_state *data)
 {
-        const char *start = (char *) data->line.data;
+        const char *start = data->line;
 
         while (*start && vr_char_is_space(*start))
                 start++;
@@ -1018,7 +1019,7 @@ process_none_line(struct load_state *data)
 static bool
 process_require_line(struct load_state *data)
 {
-        const char *start = (char *) data->line.data, *p = start;
+        const char *start = data->line, *p = start;
 
         while (*start && vr_char_is_space(*start))
                 start++;
@@ -1576,7 +1577,7 @@ process_clear_command(struct load_state *data,
 static bool
 process_indices_line(struct load_state *data)
 {
-        const char *p = (char *) data->line.data;
+        const char *p = data->line;
 
         while (true) {
                 while (*p && vr_char_is_space(*p))
@@ -1995,7 +1996,7 @@ process_tolerance(struct load_state *data,
 static bool
 process_test_line(struct load_state *data)
 {
-        const char *p = (char *) data->line.data;
+        const char *p = data->line;
 
         while (*p && vr_char_is_space(*p))
                 p++;
@@ -2119,7 +2120,7 @@ process_section_header(struct load_state *data)
         if (!end_section(data))
                 return false;
 
-        const char *start = (char *) data->line.data + 1;
+        const char *start = data->line + 1;
         const char *end = strchr(start, ']');
         if (end == NULL) {
                 error_at_line(data, "Missing ']'");
@@ -2257,7 +2258,7 @@ decode_binary(struct load_state *data,
 static bool
 process_line(struct load_state *data)
 {
-        if (*data->line.data == '[')
+        if (*data->line == '[')
                 return process_section_header(data);
 
         switch (data->current_section) {
@@ -2273,20 +2274,20 @@ process_line(struct load_state *data)
         case SECTION_SHADER:
                 if (data->current_source_type == VR_SCRIPT_SOURCE_TYPE_BINARY) {
                         if (!decode_binary(data,
-                                           (const char *) data->line.data,
-                                           data->line.length))
+                                           data->line,
+                                           data->line_length))
                                 return false;
                 } else {
                         vr_buffer_append(&data->buffer,
-                                         data->line.data,
-                                         data->line.length);
+                                         data->line,
+                                         data->line_length);
                 }
                 return true;
 
         case SECTION_VERTEX_DATA:
                 vr_buffer_append(&data->buffer,
-                                 data->line.data,
-                                 data->line.length);
+                                 data->line,
+                                 data->line_length);
                 return true;
 
         case SECTION_INDICES:
@@ -2313,119 +2314,24 @@ compare_buffer_set_and_binding(const void *a,
 }
 
 static bool
-find_replacement(const struct vr_list *replacements,
-                 struct vr_buffer *line,
-                 int pos)
-{
-        const struct vr_source_token_replacement *tr;
-
-        vr_list_for_each(tr, replacements, link) {
-                int len = strlen(tr->token);
-
-                if (pos + len <= line->length &&
-                    !memcmp(line->data + pos, tr->token, len)) {
-                        int repl_len = strlen(tr->replacement);
-                        int new_line_len = line->length + repl_len - len;
-                        /* The extra “1” is to preserve the null terminator */
-                        vr_buffer_ensure_size(line, new_line_len + 1);
-                        memmove(line->data + pos + repl_len,
-                                line->data + pos + len,
-                                line->length - pos - len + 1);
-                        memcpy(line->data + pos, tr->replacement, repl_len);
-
-                        vr_buffer_set_length(line, new_line_len);
-
-                        return true;
-                }
-        }
-
-        return false;
-}
-
-static bool
-process_token_replacements(struct load_state *data)
-{
-        int count = 0;
-
-        for (int i = 0; i < data->line.length; i++) {
-                while (find_replacement(&data->source->token_replacements,
-                                        &data->line,
-                                        i)) {
-                        count++;
-
-                        if (count > 1000) {
-                                fprintf(stderr,
-                                        "%s:%i: infinite recursion suspected "
-                                        "while replacing tokens\n",
-                                        data->filename,
-                                        data->line_num);
-                                return false;
-                        }
-                }
-        }
-
-        return true;
-}
-
-static bool
 load_script_from_stream(struct load_state *data,
                         struct vr_stream *stream)
 {
         bool res = true;
 
         do {
-                int lines_consumed = vr_stream_read_line(stream, &data->line);
-
-                if (lines_consumed == 0)
+                if (!vr_stream_read_line(stream,
+                                         &data->line,
+                                         &data->line_length))
                         break;
 
-                if (!process_token_replacements(data)) {
-                        res = false;
-                        break;
-                }
+                data->line_num = vr_stream_get_line_num(stream);
 
                 res = process_line(data);
-
-                data->line_num += lines_consumed;
         } while (res);
 
         if (res)
                 res = end_section(data);
-
-        return res;
-}
-
-static bool
-load_script_from_file(struct load_state *data,
-                      const char *filename)
-{
-        FILE *f = fopen(filename, "r");
-
-        if (f == NULL) {
-                vr_error_message(data->config,
-                                 "%s: %s",
-                                 filename,
-                                 strerror(errno));
-                return false;
-        }
-
-        struct vr_stream stream;
-
-        vr_stream_init_file(&stream, f);
-        bool res = load_script_from_stream(data, &stream);
-        fclose(f);
-
-        return res;
-}
-
-static bool
-load_script_from_string(struct load_state *data,
-                        const char *string)
-{
-        struct vr_stream stream;
-
-        vr_stream_init_string(&stream, string);
-        bool res = load_script_from_stream(data, &stream);
 
         return res;
 }
@@ -2443,7 +2349,6 @@ vr_script_load(const struct vr_config *config,
                 .current_stage = -1,
                 .current_section = SECTION_NONE,
                 .clear_depth = 1.0f,
-                .line = VR_BUFFER_STATIC_INIT,
                 .buffer = VR_BUFFER_STATIC_INIT,
                 .commands = VR_BUFFER_STATIC_INIT,
                 .pipeline_keys = VR_BUFFER_STATIC_INIT,
@@ -2477,18 +2382,17 @@ vr_script_load(const struct vr_config *config,
 
         bool res = false;
 
-        switch (source->type) {
-        case VR_SOURCE_TYPE_FILE:
-                data.filename = source->string;
-                script->filename = vr_strdup(data.filename);
-                res = load_script_from_file(&data, source->string);
-                break;
+        data.filename = vr_source_get_filename(source);
 
-        case VR_SOURCE_TYPE_STRING:
-                data.filename = "(string script)";
-                script->filename = vr_strdup(data.filename);
-                res = load_script_from_string(&data, source->string);
-                break;
+        struct vr_stream *stream = vr_stream_new(source);
+
+        if (stream == NULL) {
+                vr_error_message(data.config,
+                                 "Error opening “%s”",
+                                 data.filename);
+        } else {
+                res = load_script_from_stream(&data, stream);
+                vr_stream_free(stream);
         }
 
         script->commands = (struct vr_script_command *) data.commands.data;
@@ -2511,8 +2415,9 @@ vr_script_load(const struct vr_config *config,
               compare_buffer_set_and_binding);
 
         vr_buffer_destroy(&data.buffer);
-        vr_buffer_destroy(&data.line);
         vr_pipeline_key_free(data.current_key);
+
+        vr_free(data.filename);
 
         if (res) {
                 return script;

@@ -30,37 +30,22 @@
 #include <stdbool.h>
 
 #include "vr-buffer.h"
+#include "vr-source.h"
 
-enum vr_stream_type {
-        VR_STREAM_TYPE_STRING,
-        VR_STREAM_TYPE_FILE
-};
+struct vr_stream;
 
-struct vr_stream {
-        enum vr_stream_type type;
-        union {
-                FILE *file;
-                struct {
-                        const char *string;
-                        const char *end;
-                };
-        };
-};
+struct vr_stream *
+vr_stream_new(const struct vr_source *source);
 
-void
-vr_stream_init_string(struct vr_stream *stream,
-                      const char *string);
-
-void
-vr_stream_init_file(struct vr_stream *stream,
-                    FILE *file);
-
-/* Returns the number of physical lines conusmed or 0 at the end of
- * the stream. Each returned line can consume multiple physical lines
- * if backslashes are used to combine them into one.
- */
 int
+vr_stream_get_line_num(const struct vr_stream *stream);
+
+bool
 vr_stream_read_line(struct vr_stream *stream,
-                    struct vr_buffer *buffer);
+                    const char **line_out,
+                    size_t *line_length_out);
+
+void
+vr_stream_free(struct vr_stream *stream);
 
 #endif /* VR_STREAM_H */

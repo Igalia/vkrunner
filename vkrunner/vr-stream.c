@@ -27,24 +27,73 @@
 
 #include "vr-stream.h"
 #include "vr-util.h"
+#include "vr-buffer.h"
+#include "vr-source-private.h"
 
 #include <string.h>
 
-void
-vr_stream_init_string(struct vr_stream *stream,
-                      const char *string)
+enum vr_stream_type {
+        VR_STREAM_TYPE_STRING,
+        VR_STREAM_TYPE_FILE
+};
+
+struct vr_stream {
+        enum vr_stream_type type;
+
+        const struct vr_source *source;
+
+        union {
+                FILE *file;
+                struct {
+                        const char *string;
+                        const char *end;
+                };
+        };
+
+        struct vr_buffer buffer;
+
+        int line_num;
+        int next_line_num;
+};
+
+struct vr_stream *
+vr_stream_new(const struct vr_source *source)
 {
-        stream->type = VR_STREAM_TYPE_STRING;
-        stream->string = string;
-        stream->end = string + strlen(string);
+        struct vr_stream *stream = vr_calloc(sizeof *stream);
+
+        switch (source->type) {
+        case VR_SOURCE_TYPE_FILE:
+                stream->type = VR_STREAM_TYPE_FILE;
+
+                char *filename = vr_source_get_filename(source);
+                stream->file = fopen(filename, "rt");
+                vr_free(filename);
+
+                if (stream->file == NULL) {
+                        vr_free(stream);
+                        return NULL;
+                }
+
+                break;
+
+        case VR_SOURCE_TYPE_STRING:
+                stream->type = VR_STREAM_TYPE_STRING;
+                stream->string = source->string;
+                stream->end = source->string + strlen(source->string);
+                break;
+        }
+
+        stream->source = source;
+        vr_buffer_init(&stream->buffer);
+        stream->next_line_num = 1;
+
+        return stream;
 }
 
-void
-vr_stream_init_file(struct vr_stream *stream,
-                    FILE *file)
+int
+vr_stream_get_line_num(const struct vr_stream *stream)
 {
-        stream->type = VR_STREAM_TYPE_FILE;
-        stream->file = file;
+        return stream->line_num;
 }
 
 static bool
@@ -112,34 +161,97 @@ raw_read_line(struct vr_stream *stream,
         vr_fatal("Unexpected stream type");
 }
 
-int
-vr_stream_read_line(struct vr_stream *stream,
-                    struct vr_buffer *buffer)
+static bool
+find_replacement(const struct vr_list *replacements,
+                 struct vr_buffer *line,
+                 int pos)
 {
-        int lines_consumed = 0;
+        const struct vr_source_token_replacement *tr;
 
-        buffer->length = 0;
+        vr_list_for_each(tr, replacements, link) {
+                int len = strlen(tr->token);
+
+                if (pos + len <= line->length &&
+                    !memcmp(line->data + pos, tr->token, len)) {
+                        int repl_len = strlen(tr->replacement);
+                        int new_line_len = line->length + repl_len - len;
+                        /* The extra “1” is to preserve the null terminator */
+                        vr_buffer_ensure_size(line, new_line_len + 1);
+                        memmove(line->data + pos + repl_len,
+                                line->data + pos + len,
+                                line->length - pos - len + 1);
+                        memcpy(line->data + pos, tr->replacement, repl_len);
+
+                        vr_buffer_set_length(line, new_line_len);
+
+                        return true;
+                }
+        }
+
+        return false;
+}
+
+static bool
+process_token_replacements(struct vr_stream *stream)
+{
+        int count = 0;
+
+        for (int i = 0; i < stream->buffer.length; i++) {
+                while (find_replacement(&stream->source->token_replacements,
+                                        &stream->buffer,
+                                        i)) {
+                        count++;
+
+                        if (count > 1000) {
+                                char *filename =
+                                        vr_source_get_filename(stream->source);
+                                fprintf(stderr,
+                                        "%s:%i: infinite recursion suspected "
+                                        "while replacing tokens\n",
+                                        filename,
+                                        stream->line_num);
+                                vr_free(filename);
+                                return false;
+                        }
+                }
+        }
+
+        return true;
+}
+
+bool
+vr_stream_read_line(struct vr_stream *stream,
+                    const char **line_out,
+                    size_t *line_length_out)
+{
+        stream->line_num = stream->next_line_num;
+
+        stream->buffer.length = 0;
 
         while (true) {
-                size_t old_length = buffer->length;
+                size_t old_length = stream->buffer.length;
 
-                if (!raw_read_line(stream, buffer))
+                if (!raw_read_line(stream, &stream->buffer))
                         break;
 
-                lines_consumed++;
+                stream->next_line_num++;
 
-                if (buffer->length >= old_length + 2) {
-                        if (!memcmp(buffer->data + buffer->length - 2,
+                if (stream->buffer.length >= old_length + 2) {
+                        if (!memcmp(stream->buffer.data +
+                                    stream->buffer.length -
+                                    2,
                                     "\\\n",
                                     2)) {
-                                buffer->length -= 2;
+                                stream->buffer.length -= 2;
                                 continue;
                         }
-                        if (buffer->length >= old_length + 3 &&
-                            !memcmp(buffer->data + buffer->length - 3,
+                        if (stream->buffer.length >= old_length + 3 &&
+                            !memcmp(stream->buffer.data +
+                                    stream->buffer.length -
+                                    3,
                                     "\\\r\n",
                                     3)) {
-                                buffer->length -= 3;
+                                stream->buffer.length -= 3;
                                 continue;
                         }
                 }
@@ -147,8 +259,29 @@ vr_stream_read_line(struct vr_stream *stream,
                 break;
         }
 
-        vr_buffer_append_c(buffer, '\0');
-        buffer->length--;
+        if (stream->buffer.length > 0) {
+                if (!process_token_replacements(stream))
+                        return false;
 
-        return lines_consumed;
+                vr_buffer_append_c(&stream->buffer, '\0');
+                stream->buffer.length--;
+
+                *line_out = (const char *) stream->buffer.data;
+                *line_length_out = stream->buffer.length;
+
+                return true;
+        } else {
+                return false;
+        }
+}
+
+void
+vr_stream_free(struct vr_stream *stream)
+{
+        if (stream->type == VR_STREAM_TYPE_FILE)
+                fclose(stream->file);
+
+        vr_buffer_destroy(&stream->buffer);
+
+        vr_free(stream);
 }
