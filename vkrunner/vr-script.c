@@ -38,7 +38,6 @@
 #include "vr-util.h"
 #include "vr-buffer.h"
 #include "vr-error-message.h"
-#include "vr-window.h"
 #include "vr-format-private.h"
 #include "vr-source-private.h"
 #include "vr-tolerance.h"
