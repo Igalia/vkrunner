@@ -1,13 +1,2 @@
-/Makefile
-/CMakeCache.txt
-/CMakeFiles
-/cmake_install.cmake
 /build
 /build-win32
-/config.h
-/src/Makefile
-/src/CMakeFiles
-/src/cmake_install.cmake
-/src/vkrunner
-*.o
-.deps
