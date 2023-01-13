@@ -88,7 +88,8 @@ vr_pipeline_key_set_entrypoint(struct vr_pipeline_key *key,
                                enum vr_shader_stage stage,
                                const char *entrypoint);
 
-const char *
+/* Caller should free the string */
+char *
 vr_pipeline_key_get_entrypoint(const struct vr_pipeline_key *key,
                                enum vr_shader_stage stage);
 

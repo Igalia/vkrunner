@@ -586,6 +586,9 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                                               NULL, /* allocator */
                                               &vk_pipeline);
 
+        for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++)
+                vr_free((char *) stages[i].pName);
+
         vr_free((void *) vertex_input_state.pVertexBindingDescriptions);
         vr_free((void *) vertex_input_state.pVertexAttributeDescriptions);
 
@@ -603,7 +606,7 @@ create_compute_pipeline(struct vr_pipeline *pipeline,
 {
         struct vr_window *window = pipeline->window;
         struct vr_vk_device *vkfn = window->vkdev;
-        const char *entrypoint =
+        char *entrypoint =
                 vr_pipeline_key_get_entrypoint(key, VR_SHADER_STAGE_COMPUTE);
         VkResult res;
 
@@ -631,6 +634,8 @@ create_compute_pipeline(struct vr_pipeline *pipeline,
                                              &info,
                                              NULL, /* allocator */
                                              &vk_pipeline);
+
+        vr_free(entrypoint);
 
         if (res != VK_SUCCESS) {
                 vr_error_message(window->config, "Error creating VkPipeline");

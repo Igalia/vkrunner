@@ -217,6 +217,16 @@ vr_pipeline_key_set_patch_control_points(struct vr_pipeline_key *key,
         key->patchControlPoints.i = patch_control_points;
 }
 
+static const char *
+get_entrypoint(const struct vr_pipeline_key *key,
+               enum vr_shader_stage stage)
+{
+        if (key->entrypoints[stage])
+                return key->entrypoints[stage];
+        else
+                return "main";
+}
+
 bool
 vr_pipeline_key_equal(const struct vr_pipeline_key *a,
                       const struct vr_pipeline_key *b)
@@ -232,8 +242,7 @@ vr_pipeline_key_equal(const struct vr_pipeline_key *a,
                 for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
                         if (i == VR_SHADER_STAGE_COMPUTE)
                                 continue;
-                        if (strcmp(vr_pipeline_key_get_entrypoint(a, i),
-                                   vr_pipeline_key_get_entrypoint(b, i)))
+                        if (strcmp(get_entrypoint(a, i), get_entrypoint(b, i)))
                                 return false;
                 }
 
@@ -242,8 +251,7 @@ vr_pipeline_key_equal(const struct vr_pipeline_key *a,
         case VR_PIPELINE_KEY_TYPE_COMPUTE: {
                 const enum vr_shader_stage stage = VR_SHADER_STAGE_COMPUTE;
 
-                if (strcmp(vr_pipeline_key_get_entrypoint(a, stage),
-                           vr_pipeline_key_get_entrypoint(b, stage)))
+                if (strcmp(get_entrypoint(a, stage), get_entrypoint(b, stage)))
                         return false;
                 return true;
         }
@@ -470,14 +478,11 @@ vr_pipeline_key_set_entrypoint(struct vr_pipeline_key *key,
         key->entrypoints[stage] = vr_strdup(entrypoint);
 }
 
-const char *
+char *
 vr_pipeline_key_get_entrypoint(const struct vr_pipeline_key *key,
                                enum vr_shader_stage stage)
 {
-        if (key->entrypoints[stage])
-                return key->entrypoints[stage];
-        else
-                return "main";
+        return vr_strdup(get_entrypoint(key, stage));
 }
 
 static size_t
