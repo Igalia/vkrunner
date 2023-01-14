@@ -27,24 +27,6 @@
 #define VR_SOURCE_PRIVATE_H
 
 #include "vr-source.h"
-#include "vr-list.h"
-
-enum vr_source_type {
-        VR_SOURCE_TYPE_FILE,
-        VR_SOURCE_TYPE_STRING
-};
-
-struct vr_source_token_replacement {
-        struct vr_list link;
-        char *token;
-        char *replacement;
-};
-
-struct vr_source {
-        enum vr_source_type type;
-        struct vr_list token_replacements;
-        char string[];
-};
 
 /* Returns the filename. If the source is a string then the filename
  * will be "(string source)". The caller is responsible for freeing
