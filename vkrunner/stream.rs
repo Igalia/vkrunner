@@ -46,9 +46,6 @@ pub struct Stream<'a> {
     source: &'a source::Source,
     reader: Reader<'a>,
 
-    // A buffer where the current line is built up
-    line: String,
-
     line_num: usize,
     next_line_num: usize,
     reached_eof: bool,
@@ -99,28 +96,30 @@ impl<'a> Stream<'a> {
         Ok(Stream {
             source,
             reader,
-            line: String::new(),
             line_num: 0,
             next_line_num: 1,
             reached_eof: false,
         })
     }
 
-    /// Read a line from the stream and return a string slice pointing
-    /// to it. This will handle the line continuation characters (`\`)
-    /// and the token replacements set on the [Source].
+    /// Read a line from the stream and append it to the given String.
+    /// This will handle the line continuation characters (`\`) and
+    /// the token replacements set on the [Source].
     ///
-    /// If the end of the source is reached then the returned string
-    /// will be empty.
-    pub fn read_line(&mut self) -> Result<&str, StreamError> {
-        self.line.clear();
+    /// The length of the data appended to the string is returned. If
+    /// the end of the source is reached then it will return 0.
+    pub fn read_line(
+        &mut self,
+        line: &mut String
+    ) -> Result<usize, StreamError> {
+        let start_length = line.len();
 
         self.line_num = self.next_line_num;
 
         while !self.reached_eof {
             let length = match &mut self.reader {
-                Reader::File(r) => r.read_line(&mut self.line)?,
-                Reader::String(r) => r.read_line(&mut self.line)?,
+                Reader::File(r) => r.read_line(line)?,
+                Reader::String(r) => r.read_line(line)?,
             };
 
             if length == 0 {
@@ -131,11 +130,11 @@ impl<'a> Stream<'a> {
             self.next_line_num += 1;
 
             if length >= 2 {
-                if self.line.ends_with("\\\n") {
-                    self.line.truncate(self.line.len() - 2);
+                if line.ends_with("\\\n") {
+                    line.truncate(line.len() - 2);
                     continue;
-                } else if length >= 3 && self.line.ends_with("\\\r\n") {
-                    self.line.truncate(self.line.len() - 3);
+                } else if length >= 3 && line.ends_with("\\\r\n") {
+                    line.truncate(line.len() - 3);
                     continue;
                 }
             }
@@ -143,8 +142,9 @@ impl<'a> Stream<'a> {
             break;
         }
 
-        self.process_token_replacements()?;
-        Ok(&self.line[..])
+        self.process_token_replacements(line, start_length)?;
+
+        Ok(line.len() - start_length)
     }
 
     /// Returns the line number in the source data of the start of the
@@ -158,7 +158,7 @@ impl<'a> Stream<'a> {
     /// continuation of line two.
     /// ```
     ///
-    /// then the second time [read_line] is called it will return
+    /// then the second time [read_line] is called it will append
     /// “line two continuation of line two” and [line_num] will report
     /// 3 because the line starts on the third line of the source
     /// data.
@@ -166,18 +166,22 @@ impl<'a> Stream<'a> {
         self.line_num
     }
 
-    fn process_token_replacements(&mut self) -> Result<(), StreamError> {
+    fn process_token_replacements(
+        &self,
+        line: &mut String,
+        start_pos: usize
+    ) -> Result<(), StreamError> {
         let mut count = 0usize;
 
         // Loop through each valid position in the line string. We
         // can’t safely use an iterator because we’re going to modify
         // the string as we iterate
-        let mut pos = 0usize;
+        let mut pos = start_pos;
 
-        while pos < self.line.len() {
+        while pos < line.len() {
             'token_loop: loop {
                 for token_replacement in self.source.token_replacements() {
-                    if self.line[pos..].starts_with(&token_replacement.token) {
+                    if line[pos..].starts_with(&token_replacement.token) {
                         count += 1;
 
                         // If we’ve replaced at least 1000 tokens then
@@ -187,7 +191,7 @@ impl<'a> Stream<'a> {
                             return Err(StreamError::TokenReplacementLoop);
                         }
 
-                        self.line.replace_range(
+                        line.replace_range(
                             pos..pos + token_replacement.token.len(),
                             &token_replacement.replacement,
                         );
@@ -206,33 +210,45 @@ impl<'a> Stream<'a> {
             // could do this by just looking at the first byte of the
             // UTF-8 sequence but there doesn’t seem to be a handy
             // Rust API for that.
-            pos += self.line[pos..].chars().next().unwrap().len_utf8();
+            pos += line[pos..].chars().next().unwrap().len_utf8();
         }
 
         Ok(())
     }
 }
 
+// Temporary struct used for the C bindings that combines a source
+// with a buffer for the line. This is so we can return a pointer to a
+// line that is owned by the struct.
+pub struct CStream<'a> {
+    stream: Stream<'a>,
+    line: String,
+}
+
 #[no_mangle]
-pub extern "C" fn vr_stream_new(source: &source::Source) -> *mut Stream {
+pub extern "C" fn vr_stream_new(source: &source::Source) -> *mut CStream {
     match Stream::new(source) {
-        Ok(s) => Box::into_raw(Box::new(s)),
+        Ok(stream) => {
+            Box::into_raw(Box::new(CStream { stream, line: String::new() }))
+        },
         Err(_) => std::ptr::null_mut(),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn vr_stream_get_line_num(stream: &Stream) -> i32 {
-    stream.line_num() as i32
+pub extern "C" fn vr_stream_get_line_num(stream: &CStream) -> i32 {
+    stream.stream.line_num() as i32
 }
 
 #[no_mangle]
 pub extern "C" fn vr_stream_read_line(
-    stream: &mut Stream,
+    stream: &mut CStream,
     line_out: *mut *const u8,
     line_length_out: *mut usize,
 ) -> u8 {
-    match stream.read_line() {
+    stream.line.clear();
+
+    match stream.stream.read_line(&mut stream.line) {
         Err(_) => false as u8,
         Ok(_) => {
             let real_len = stream.line.len();
@@ -251,7 +267,7 @@ pub extern "C" fn vr_stream_read_line(
 }
 
 #[no_mangle]
-pub extern "C" fn vr_stream_free(stream: *mut Stream) {
+pub extern "C" fn vr_stream_free(stream: *mut CStream) {
     unsafe { Box::from_raw(stream) };
 }
 
@@ -271,11 +287,14 @@ mod test {
         );
         let mut stream = Stream::new(&source).unwrap();
 
-        assert_eq!(stream.read_line().unwrap(), "line one more line one\n");
+        let mut line = String::new();
+        assert_eq!(stream.read_line(&mut line).unwrap(), 23);
+        assert_eq!(line, "line one more line one\n");
         assert_eq!(stream.line_num(), 1);
 
+        assert_eq!(stream.read_line(&mut line).unwrap(), 50);
         assert_eq!(
-            stream.read_line().unwrap(),
+            &line[23..],
             "line three is really long and even has blank lines",
         );
         assert_eq!(stream.line_num(), 3);
@@ -287,14 +306,15 @@ mod test {
              line three \r what".to_string()
         );
         let mut stream = Stream::new(&source).unwrap();
+        let mut line = String::new();
 
-        assert_eq!(stream.read_line().unwrap(), "line one more line one\n");
+        assert_eq!(stream.read_line(&mut line).unwrap(), 23);
+        assert_eq!(line, "line one more line one\n");
         assert_eq!(stream.line_num(), 1);
 
-        assert_eq!(
-            stream.read_line().unwrap(),
-            "line three \r what",
-        );
+        line.clear();
+        assert_eq!(stream.read_line(&mut line).unwrap(), 17);
+        assert_eq!(line, "line three \r what");
         assert_eq!(stream.line_num(), 3);
 
         // Backslashes in the middle of the string should just be left alone
@@ -302,7 +322,9 @@ mod test {
             "I am happy \\o//".to_string()
         );
         let mut stream = Stream::new(&source).unwrap();
-        assert_eq!(stream.read_line().unwrap(), "I am happy \\o//");
+        let mut line = String::new();
+        assert_eq!(stream.read_line(&mut line).unwrap(), 15);
+        assert_eq!(line, "I am happy \\o//");
     }
 
     #[test]
@@ -324,12 +346,14 @@ mod test {
 
         let source = source::Source::from_file(filename);
         let mut stream = Stream::new(&source).unwrap();
-        assert_eq!(stream.read_line().unwrap(), "my source code");
+        let mut line = String::new();
+        assert_eq!(stream.read_line(&mut line).unwrap(), 14);
+        assert_eq!(line, "my source code");
 
-        // EOF should return an empty string
-        assert_eq!(stream.read_line().unwrap(), "");
+        // EOF should return 0
+        assert_eq!(stream.read_line(&mut line).unwrap(), 0);
         // It should also work a second time
-        assert_eq!(stream.read_line().unwrap(), "");
+        assert_eq!(stream.read_line(&mut line).unwrap(), 0);
     }
 
     #[test]
@@ -367,8 +391,10 @@ mod test {
             )*;
 
             let mut stream = Stream::new(&source).unwrap();
+            let mut line = String::new();
 
-            assert_eq!(stream.read_line().unwrap(), $expected);
+            assert_eq!(stream.read_line(&mut line).unwrap(), $expected.len());
+            assert_eq!(line, $expected);
         };
     }
 
@@ -414,7 +440,8 @@ mod test {
             "recursion".to_string(),
         );
         let mut stream = Stream::new(&source).unwrap();
-        let e = stream.read_line().unwrap_err();
+        let mut line = String::new();
+        let e = stream.read_line(&mut line).unwrap_err();
         assert!(matches!(e, StreamError::TokenReplacementLoop));
         assert_eq!(
             e.to_string(),
@@ -430,7 +457,8 @@ mod test {
             "ever longer".to_string(),
         );
         let mut stream = Stream::new(&source).unwrap();
-        let e = stream.read_line().unwrap_err();
+        let mut line = String::new();
+        let e = stream.read_line(&mut line).unwrap_err();
         assert!(matches!(e, StreamError::TokenReplacementLoop));
     }
 }
