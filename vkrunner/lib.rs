@@ -16,3 +16,4 @@ mod pipeline_key;
 mod window_format;
 mod source;
 mod stream;
+mod script;
