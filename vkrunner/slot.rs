@@ -76,7 +76,7 @@ pub struct Layout {
 /// An enum representing all of the types that can be stored in a
 /// slot. These correspond to the types in GLSL.
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Type {
     Int = 0,
     UInt,
