@@ -163,7 +163,7 @@ pub enum BaseType {
 /// a slot with the chosen criteria. Use the [compare] method to
 /// perform the comparison.
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Comparison {
     /// The comparison passes if the values are exactly equal.
     Equal,
