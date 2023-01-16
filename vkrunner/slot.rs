@@ -259,6 +259,79 @@ static TYPE_INFOS: [TypeInfo; 62] = [
     TypeInfo { base_type: BaseType::Double, columns: 4, rows: 4 }, // DMat4
 ];
 
+// Mapping from GLSL type name to slot type. Sorted alphabetically so
+// we can do a binary search.
+static GLSL_TYPE_NAMES: [(&'static str, Type); 68] = [
+    ("dmat2", Type::DMat2),
+    ("dmat2x2", Type::DMat2),
+    ("dmat2x3", Type::DMat2x3),
+    ("dmat2x4", Type::DMat2x4),
+    ("dmat3", Type::DMat3),
+    ("dmat3x2", Type::DMat3x2),
+    ("dmat3x3", Type::DMat3),
+    ("dmat3x4", Type::DMat3x4),
+    ("dmat4", Type::DMat4),
+    ("dmat4x2", Type::DMat4x2),
+    ("dmat4x3", Type::DMat4x3),
+    ("dmat4x4", Type::DMat4),
+    ("double", Type::Double),
+    ("dvec2", Type::DVec2),
+    ("dvec3", Type::DVec3),
+    ("dvec4", Type::DVec4),
+    ("f16vec2", Type::F16Vec2),
+    ("f16vec3", Type::F16Vec3),
+    ("f16vec4", Type::F16Vec4),
+    ("float", Type::Float),
+    ("float16_t", Type::Float16),
+    ("i16vec2", Type::I16Vec2),
+    ("i16vec3", Type::I16Vec3),
+    ("i16vec4", Type::I16Vec4),
+    ("i64vec2", Type::I64Vec2),
+    ("i64vec3", Type::I64Vec3),
+    ("i64vec4", Type::I64Vec4),
+    ("i8vec2", Type::I8Vec2),
+    ("i8vec3", Type::I8Vec3),
+    ("i8vec4", Type::I8Vec4),
+    ("int", Type::Int),
+    ("int16_t", Type::Int16),
+    ("int64_t", Type::Int64),
+    ("int8_t", Type::Int8),
+    ("ivec2", Type::IVec2),
+    ("ivec3", Type::IVec3),
+    ("ivec4", Type::IVec4),
+    ("mat2", Type::Mat2),
+    ("mat2x2", Type::Mat2),
+    ("mat2x3", Type::Mat2x3),
+    ("mat2x4", Type::Mat2x4),
+    ("mat3", Type::Mat3),
+    ("mat3x2", Type::Mat3x2),
+    ("mat3x3", Type::Mat3),
+    ("mat3x4", Type::Mat3x4),
+    ("mat4", Type::Mat4),
+    ("mat4x2", Type::Mat4x2),
+    ("mat4x3", Type::Mat4x3),
+    ("mat4x4", Type::Mat4),
+    ("u16vec2", Type::U16Vec2),
+    ("u16vec3", Type::U16Vec3),
+    ("u16vec4", Type::U16Vec4),
+    ("u64vec2", Type::U64Vec2),
+    ("u64vec3", Type::U64Vec3),
+    ("u64vec4", Type::U64Vec4),
+    ("u8vec2", Type::U8Vec2),
+    ("u8vec3", Type::U8Vec3),
+    ("u8vec4", Type::U8Vec4),
+    ("uint", Type::UInt),
+    ("uint16_t", Type::UInt16),
+    ("uint64_t", Type::UInt64),
+    ("uint8_t", Type::UInt8),
+    ("uvec2", Type::UVec2),
+    ("uvec3", Type::UVec3),
+    ("uvec4", Type::UVec4),
+    ("vec2", Type::Vec2),
+    ("vec3", Type::Vec3),
+    ("vec4", Type::Vec4),
+];
+
 impl BaseType {
     /// Returns the size in bytes of a variable of this base type.
     pub fn size(self) -> usize {
@@ -383,6 +456,18 @@ impl Type {
     /// the major axis setting in the layout.
     pub fn offsets(self, layout: Layout) -> OffsetsIter {
         OffsetsIter::new(self, layout)
+    }
+
+    /// Returns a [Type] given the GLSL type name, for example `dmat2`
+    /// or `i64vec3`. `None` will be returned if the type name isn’t
+    /// recognised.
+    pub fn from_glsl_type(type_name: &str) -> Option<Type> {
+        match GLSL_TYPE_NAMES.binary_search_by(
+            |&(name, _)| name.cmp(type_name)
+        ) {
+            Ok(pos) => Some(GLSL_TYPE_NAMES[pos].1),
+            Err(_) => None,
+        }
     }
 }
 
@@ -1178,5 +1263,20 @@ mod test {
             &[5, 6, 7, 8],
             &[5, 6, 7, 9],
         ));
+    }
+
+    #[test]
+    fn test_from_glsl_type() {
+        assert_eq!(Type::from_glsl_type("vec3"), Some(Type::Vec3));
+        assert_eq!(Type::from_glsl_type("dvec4"), Some(Type::DVec4));
+        assert_eq!(Type::from_glsl_type("i64vec4"), Some(Type::I64Vec4));
+        assert_eq!(Type::from_glsl_type("uint"), Some(Type::UInt));
+        assert_eq!(Type::from_glsl_type("uint16_t"), Some(Type::UInt16));
+        assert_eq!(Type::from_glsl_type("dvec5"), None);
+
+        // Check that all types can be found with the binary search
+        for &(type_name, slot_type) in GLSL_TYPE_NAMES.iter() {
+            assert_eq!(Type::from_glsl_type(type_name), Some(slot_type));
+        }
     }
 }
