@@ -332,6 +332,18 @@ static GLSL_TYPE_NAMES: [(&'static str, Type); 68] = [
     ("vec4", Type::Vec4),
 ];
 
+// Mapping from operator name to Comparison. Sorted by ASCII values so
+// we can do a binary search.
+static COMPARISON_NAMES: [(&'static str, Comparison); 7] = [
+    ("!=", Comparison::NotEqual),
+    ("<", Comparison::Less),
+    ("<=", Comparison::LessEqual),
+    ("==", Comparison::Equal),
+    (">", Comparison::Greater),
+    (">=", Comparison::GreaterEqual),
+    ("~=", Comparison::FuzzyEqual),
+];
+
 impl BaseType {
     /// Returns the size in bytes of a variable of this base type.
     pub fn size(self) -> usize {
@@ -700,6 +712,19 @@ impl Comparison {
         }
 
         true
+    }
+
+    /// Get the comparison operator given the name in GLSL like `"<"`
+    /// or `">="`. It also accepts `"~="` to return the fuzzy equal
+    /// comparison. If the operator isn’t recognised then it will
+    /// return `None`.
+    pub fn from_operator(operator: &str) -> Option<Comparison> {
+        match COMPARISON_NAMES.binary_search_by(
+            |&(probe, _value)| probe.cmp(operator)
+        ) {
+            Ok(pos) => Some(COMPARISON_NAMES[pos].1),
+            Err(_) => None,
+        }
     }
 }
 
@@ -1278,5 +1303,41 @@ mod test {
         for &(type_name, slot_type) in GLSL_TYPE_NAMES.iter() {
             assert_eq!(Type::from_glsl_type(type_name), Some(slot_type));
         }
+    }
+
+    #[test]
+    fn test_comparison_from_operator() {
+        // If a comparison is added then please add it to this test too
+        assert_eq!(COMPARISON_NAMES.len(), 7);
+        assert_eq!(
+            Comparison::from_operator("!="),
+            Some(Comparison::NotEqual),
+        );
+        assert_eq!(
+            Comparison::from_operator("<"),
+            Some(Comparison::Less),
+        );
+        assert_eq!(
+            Comparison::from_operator("<="),
+            Some(Comparison::LessEqual),
+        );
+        assert_eq!(
+            Comparison::from_operator("=="),
+            Some(Comparison::Equal),
+        );
+        assert_eq!(
+            Comparison::from_operator(">"),
+            Some(Comparison::Greater),
+        );
+        assert_eq!(
+            Comparison::from_operator(">="),
+            Some(Comparison::GreaterEqual),
+        );
+        assert_eq!(
+            Comparison::from_operator("~="),
+            Some(Comparison::FuzzyEqual),
+        );
+
+        assert_eq!(Comparison::from_operator("<=>"), None);
     }
 }
