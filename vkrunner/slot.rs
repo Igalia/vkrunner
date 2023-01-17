@@ -39,7 +39,7 @@ use std::ffi::c_void;
 /// between elements of the minor axis of a matrix is rounded up to be
 /// a multiple of 16 bytes.
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutStd {
     Std140,
     Std430,
@@ -57,7 +57,7 @@ pub enum LayoutStd {
 /// [2 5 8]          [6 7 8]
 /// ```
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MajorAxis {
     Column,
     Row
@@ -67,7 +67,7 @@ pub enum MajorAxis {
 /// description of the layout options used for accessing the
 /// components of a type.
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Layout {
     pub std: LayoutStd,
     pub major: MajorAxis,
@@ -144,7 +144,7 @@ pub enum Type {
 
 /// The type of a component of the types in [Type].
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BaseType {
     Int,
     UInt,
