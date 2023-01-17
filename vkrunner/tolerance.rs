@@ -24,7 +24,7 @@
 
 use std::ffi;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[repr(C)]
 pub struct Tolerance {
     value: [f64; 4],
