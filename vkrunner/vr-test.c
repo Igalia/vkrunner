@@ -629,7 +629,7 @@ print_command_fail(const struct vr_config *config,
                    const struct vr_script_command *command)
 {
         vr_error_message(config,
-                         "Command failed at line %i",
+                         "Command failed at line %zu",
                          command->line_num);
 }
 
@@ -1046,9 +1046,10 @@ probe_ssbo(struct test_data *data,
         size_t observed_stride =
                 vr_box_type_array_stride(command->probe_ssbo.type,
                                          &command->probe_ssbo.layout);
+        size_t n_values = command->probe_ssbo.value_size / type_size;
 
         if (command->probe_ssbo.offset +
-            (command->probe_ssbo.n_values - 1) * observed_stride +
+            (n_values - 1) * observed_stride +
             type_size > buffer->size) {
                 print_command_fail(data->window->config, command);
                 vr_error_message(data->window->config,
@@ -1059,7 +1060,7 @@ probe_ssbo(struct test_data *data,
         const uint8_t *observed = ((const uint8_t *) buffer->memory_map +
                                    command->probe_ssbo.offset);
 
-        for (size_t i = 0; i < command->probe_ssbo.n_values; i++) {
+        for (size_t i = 0; i < n_values; i++) {
                 if (vr_box_compare(command->probe_ssbo.comparison,
                                    &command->probe_ssbo.tolerance,
                                    command->probe_ssbo.type,
@@ -1077,7 +1078,7 @@ probe_ssbo(struct test_data *data,
                 append_box(&buf,
                            command->probe_ssbo.type,
                            &command->probe_ssbo.layout,
-                           command->probe_ssbo.n_values,
+                           n_values,
                            type_size,
                            expected);
                 vr_buffer_append_string(&buf,
@@ -1086,7 +1087,7 @@ probe_ssbo(struct test_data *data,
                 append_box(&buf,
                            command->probe_ssbo.type,
                            &command->probe_ssbo.layout,
-                           command->probe_ssbo.n_values,
+                           n_values,
                            observed_stride,
                            observed);
                 vr_error_message(data->window->config,

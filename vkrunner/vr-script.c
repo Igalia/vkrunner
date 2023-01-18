@@ -1377,7 +1377,7 @@ found_comparison:
                 goto error;
         }
 
-        command->probe_ssbo.n_values = value_size / type_size;
+        command->probe_ssbo.value_size = value_size;
         command->op = VR_SCRIPT_OP_PROBE_SSBO;
         command->probe_ssbo.tolerance = data->tolerance;
 

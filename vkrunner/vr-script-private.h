@@ -59,18 +59,18 @@ struct vr_script_shader {
 };
 
 struct vr_script_command {
+        size_t line_num;
         enum vr_script_op op;
-        int line_num;
 
         union {
                 struct {
                         float x, y, w, h;
-                        unsigned pipeline_key;
+                        size_t pipeline_key;
                 } draw_rect;
 
                 struct {
                         unsigned x, y, z;
-                        unsigned pipeline_key;
+                        size_t pipeline_key;
                 } dispatch_compute;
 
                 struct {
@@ -87,8 +87,8 @@ struct vr_script_command {
                         size_t offset;
                         enum vr_box_type type;
                         struct vr_box_layout layout;
-                        size_t n_values;
                         void *value;
+                        size_t value_size;
                         struct vr_tolerance tolerance;
                 } probe_ssbo;
 
@@ -96,14 +96,14 @@ struct vr_script_command {
                         unsigned desc_set;
                         unsigned binding;
                         size_t offset;
-                        size_t size;
                         void *data;
+                        size_t size;
                 } set_buffer_subdata;
 
                 struct {
                         size_t offset;
-                        size_t size;
                         void *data;
+                        size_t size;
                 } set_push_constant;
 
                 struct {
@@ -119,7 +119,7 @@ struct vr_script_command {
                         uint32_t instance_count;
                         uint32_t first_vertex;
                         uint32_t first_instance;
-                        unsigned pipeline_key;
+                        size_t pipeline_key;
                 } draw_arrays;
         };
 };
