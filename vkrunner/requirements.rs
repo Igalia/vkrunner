@@ -171,11 +171,17 @@ const FIRST_BOOL_OFFSET: usize = util::align(
     mem::align_of::<vk::VkBool32>(),
 );
 
-const fn make_version(major: u32, minor: u32, patch: u32) -> u32 {
+/// Convert a decomposed Vulkan version into an integer. This is the
+/// same as the `VK_MAKE_VERSION` macro in the Vulkan headers.
+pub const fn make_version(major: u32, minor: u32, patch: u32) -> u32 {
     (major << 22) | (minor << 12) | patch
 }
 
-const fn extract_version(version: u32) -> (u32, u32, u32) {
+/// Decompose a Vulkan version into its component major, minor and
+/// patch parts. This is the equivalent of the `VK_VERSION_MAJOR`,
+/// `VK_VERSION_MINOR` and `VK_VERSION_PATCH` macros in the Vulkan
+/// header.
+pub const fn extract_version(version: u32) -> (u32, u32, u32) {
     (version >> 22, (version >> 12) & 0x3ff, version & 0xfff)
 }
 
