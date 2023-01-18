@@ -68,7 +68,7 @@ base_multisample_state = {
 
 static char *
 create_file_for_shader(const struct vr_config *config,
-                       const struct vr_script_shader *shader)
+                       const struct vr_script_shader_code *shader)
 {
         char *filename;
         FILE *out;
@@ -76,7 +76,7 @@ create_file_for_shader(const struct vr_config *config,
         if (!vr_temp_file_create_named(config, &out, &filename))
                 return NULL;
 
-        fwrite(shader->source, 1, shader->length, out);
+        fwrite(shader->source, 1, shader->source_length, out);
 
         fclose(out);
 
@@ -137,22 +137,31 @@ static VkShaderModule
 compile_stage(const struct vr_config *config,
               struct vr_window *window,
               const struct vr_script *script,
-              enum vr_shader_stage stage)
+              enum vr_shader_stage stage,
+              const struct vr_script_shader_code *shaders,
+              size_t total_n_shaders)
 {
         struct vr_vk_device *vkfn = window->vkdev;
         const int n_base_args = 8;
-        int n_shaders = vr_list_length(&script->stages[stage]);
-        char **args = alloca((n_base_args + n_shaders + 1) * sizeof args[0]);
-        const struct vr_script_shader *shader;
         VkShaderModule module = VK_NULL_HANDLE;
         FILE *module_stream = NULL;
         char *module_filename;
         uint8_t *module_binary = NULL;
         size_t module_size;
         bool res;
-        int i;
         char version_str[64];
-        uint32_t version = vr_requirements_get_version(script->requirements);
+        const struct vr_requirements *requirements =
+                vr_script_get_requirements(script);
+        uint32_t version = vr_requirements_get_version(requirements);
+
+        int n_shaders = 0;
+
+        for (unsigned i = 0; i < total_n_shaders; i++) {
+                if (shaders[i].stage == stage)
+                        n_shaders++;
+        }
+
+        char **args = alloca((n_base_args + n_shaders + 1) * sizeof args[0]);
 
         sprintf(version_str, "vulkan%u.%u", VK_VERSION_MAJOR(version),
                 VK_VERSION_MINOR(version));
@@ -176,9 +185,14 @@ compile_stage(const struct vr_config *config,
         args[6] = "-o";
         args[7] = module_filename;
 
-        i = n_base_args;
-        vr_list_for_each(shader, &script->stages[stage], link) {
-                args[i] = create_file_for_shader(config, shader);
+        int i = n_base_args;
+        for (unsigned shader_num = 0;
+             shader_num < total_n_shaders;
+             shader_num++) {
+                if (shaders[shader_num].stage != stage)
+                        continue;
+
+                args[i] = create_file_for_shader(config, shaders + shader_num);
                 if (args[i] == 0)
                         goto out;
                 i++;
@@ -238,7 +252,7 @@ static VkShaderModule
 assemble_stage(const struct vr_config *config,
                struct vr_window *window,
                const struct vr_script *script,
-               const struct vr_script_shader *shader)
+               const struct vr_script_shader_code *shader)
 {
         struct vr_vk_device *vkfn = window->vkdev;
         FILE *module_stream = NULL;
@@ -249,7 +263,9 @@ assemble_stage(const struct vr_config *config,
         size_t module_size;
         bool res;
         char version_str[64];
-        uint32_t version = vr_requirements_get_version(script->requirements);
+        const struct vr_requirements *requirements =
+                vr_script_get_requirements(script);
+        uint32_t version = vr_requirements_get_version(requirements);
 
         sprintf(version_str, "vulkan%u.%u", VK_VERSION_MAJOR(version),
                 VK_VERSION_MINOR(version));
@@ -325,7 +341,7 @@ out:
 static VkShaderModule
 load_binary_stage(const struct vr_config *config,
                   struct vr_window *window,
-                  const struct vr_script_shader *shader)
+                  const struct vr_script_shader_code *shader)
 {
         struct vr_vk_device *vkfn = window->vkdev;
         VkShaderModule module = VK_NULL_HANDLE;
@@ -339,7 +355,7 @@ load_binary_stage(const struct vr_config *config,
                                               &module_stream,
                                               &module_filename)) {
                         fwrite(shader->source,
-                               1, shader->length,
+                               1, shader->source_length,
                                module_stream);
                         fclose(module_stream);
 
@@ -352,7 +368,7 @@ load_binary_stage(const struct vr_config *config,
 
         VkShaderModuleCreateInfo shader_module_create_info = {
                         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                        .codeSize = shader->length,
+                        .codeSize = shader->source_length,
                         .pCode = (const uint32_t *) shader->source
         };
         res = vkfn->vkCreateShaderModule(window->device,
@@ -369,22 +385,33 @@ static VkShaderModule
 build_stage(const struct vr_config *config,
             struct vr_window *window,
             const struct vr_script *script,
-            enum vr_shader_stage stage)
+            enum vr_shader_stage stage,
+            const struct vr_script_shader_code *shaders,
+            size_t total_n_shaders)
 {
-        assert(!vr_list_empty(&script->stages[stage]));
+        const struct vr_script_shader_code *first_shader = NULL;
 
-        struct vr_script_shader *shader =
-                vr_container_of(script->stages[stage].next,
-                                struct vr_script_shader,
-                                link);
+        for (unsigned i = 0; i < total_n_shaders; i++) {
+                if (shaders[i].stage == stage) {
+                        first_shader = shaders + i;
+                        break;
+                }
+        }
 
-        switch (shader->source_type) {
+        assert(first_shader != NULL);
+
+        switch (first_shader->source_type) {
         case VR_SCRIPT_SOURCE_TYPE_GLSL:
-                return compile_stage(config, window, script, stage);
+                return compile_stage(config,
+                                     window,
+                                     script,
+                                     stage,
+                                     shaders,
+                                     total_n_shaders);
         case VR_SCRIPT_SOURCE_TYPE_SPIRV:
-                return assemble_stage(config, window, script, shader);
+                return assemble_stage(config, window, script, first_shader);
         case VR_SCRIPT_SOURCE_TYPE_BINARY:
-                return load_binary_stage(config, window, shader);
+                return load_binary_stage(config, window, first_shader);
         }
 
         vr_fatal("should not be reached");
@@ -417,8 +444,10 @@ set_vertex_input_state(const struct vr_script *script,
         enum vr_pipeline_key_source key_source =
                 vr_pipeline_key_get_source(key);
 
+        const struct vr_vbo *vertex_data = vr_script_get_vertex_data(script);
+
         if (key_source == VR_PIPELINE_KEY_SOURCE_VERTEX_DATA &&
-            script->vertex_data == NULL)
+            vertex_data == NULL)
                 return;
 
         VkVertexInputBindingDescription *input_binding =
@@ -447,15 +476,15 @@ set_vertex_input_state(const struct vr_script *script,
                 return;
         }
 
-        int n_attribs = vr_vbo_get_num_attribs(script->vertex_data);
+        int n_attribs = vr_vbo_get_num_attribs(vertex_data);
         VkVertexInputAttributeDescription *attrib_desc =
                 vr_calloc((sizeof *attrib_desc) * n_attribs);
 
         state->vertexAttributeDescriptionCount = n_attribs;
         state->pVertexAttributeDescriptions = attrib_desc;
-        input_binding[0].stride = vr_vbo_get_stride(script->vertex_data);
+        input_binding[0].stride = vr_vbo_get_stride(vertex_data);
 
-        vr_vbo_for_each_attrib(script->vertex_data,
+        vr_vbo_for_each_attrib(vertex_data,
                                set_up_attrib_cb,
                                &attrib_desc);
 }
@@ -615,9 +644,13 @@ get_push_constant_size(const struct vr_script *script)
 {
         size_t max = 0;
 
-        for (int i = 0; i < script->n_commands; i++) {
-                const struct vr_script_command *command =
-                        script->commands + i;
+        const struct vr_script_command *commands;
+        size_t n_commands;
+
+        vr_script_get_commands(script, &commands, &n_commands);
+
+        for (int i = 0; i < n_commands; i++) {
+                const struct vr_script_command *command = commands + i;
                 if (command->op != VR_SCRIPT_OP_SET_PUSH_CONSTANT)
                         continue;
 
@@ -629,19 +662,6 @@ get_push_constant_size(const struct vr_script *script)
         }
 
         return max;
-}
-
-static VkShaderStageFlags
-get_script_stages(const struct vr_script *script)
-{
-        VkShaderStageFlags flags = 0;
-
-        for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
-                if (!vr_list_empty(script->stages + i))
-                        flags |= VK_SHADER_STAGE_VERTEX_BIT << i;
-        }
-
-        return flags;
 }
 
 static VkPipelineLayout
@@ -694,9 +714,12 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
         struct vr_vk_device *vkfn = pipeline->window->vkdev;
         VkResult res;
         bool ret = false;
-        size_t n_buffers = script->n_buffers;
+        const struct vr_script_buffer *buffers;
+        size_t n_buffers;
 
-        assert(n_buffers);
+        vr_script_get_buffers(script, &buffers, &n_buffers);
+
+        assert(n_buffers && buffers);
 
         VkDescriptorSetLayoutBinding *bindings =
                 vr_calloc(sizeof (*bindings) * n_buffers);
@@ -709,7 +732,7 @@ create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
         unsigned n_ssbo = 0;
 
         for (unsigned i = 0; i < n_buffers; i++) {
-                const struct vr_script_buffer *buffer = script->buffers + i;
+                const struct vr_script_buffer *buffer = buffers + i;
                 VkDescriptorType descriptor_type;
                 switch (buffer->type) {
                 case VR_SCRIPT_BUFFER_TYPE_UBO:
@@ -821,6 +844,15 @@ error:
         return ret;
 }
 
+static void
+free_shader_code(struct vr_script_shader_code *shaders,
+                 size_t n_shaders)
+{
+        for (unsigned i = 0; i < n_shaders; i++)
+                free(shaders[i].source);
+        vr_free(shaders);
+}
+
 struct vr_pipeline *
 vr_pipeline_create(const struct vr_config *config,
                    struct vr_window *window,
@@ -832,12 +864,31 @@ vr_pipeline_create(const struct vr_config *config,
 
         pipeline->window = window;
 
-        for (int i = 0; i < VR_SHADER_STAGE_N_STAGES; i++) {
-                if (vr_list_empty(&script->stages[i]))
+        size_t n_shaders = vr_script_get_num_shaders(script);
+        struct vr_script_shader_code *shaders =
+                vr_calloc(sizeof *shaders * n_shaders);
+        vr_script_get_shaders(script, NULL /* source */, shaders);
+
+        VkShaderStageFlags script_stages = 0;
+
+        for (unsigned i = 0; i < n_shaders; i++) {
+                const struct vr_script_shader_code *shader = shaders + i;
+                VkShaderStageFlags shader_bit =
+                        VK_SHADER_STAGE_VERTEX_BIT << shader->stage;
+
+                if ((script_stages & shader_bit))
                         continue;
 
-                pipeline->modules[i] = build_stage(config, window, script, i);
-                if (pipeline->modules[i] == VK_NULL_HANDLE)
+                script_stages |= shader_bit;
+
+                pipeline->modules[shader->stage] =
+                        build_stage(config,
+                                    window,
+                                    script,
+                                    shader->stage,
+                                    shaders,
+                                    n_shaders);
+                if (pipeline->modules[shader->stage] == VK_NULL_HANDLE)
                         goto error;
         }
 
@@ -853,9 +904,14 @@ vr_pipeline_create(const struct vr_config *config,
                 goto error;
         }
 
-        pipeline->stages = get_script_stages(script);
+        pipeline->stages = script_stages;
 
-        if (script->n_buffers > 0) {
+        const struct vr_script_buffer *buffers;
+        size_t n_buffers;
+
+        vr_script_get_buffers(script, &buffers, &n_buffers);
+
+        if (n_buffers > 0) {
                 if (!create_vk_descriptor_set_layout(pipeline, script))
                         goto error;
         }
@@ -864,16 +920,20 @@ vr_pipeline_create(const struct vr_config *config,
         if (pipeline->layout == VK_NULL_HANDLE)
                 goto error;
 
-        struct vr_pipeline_key * const *keys = script->pipeline_keys;
+        size_t n_keys;
 
-        pipeline->n_pipelines = script->n_pipeline_keys;
+        n_keys = vr_script_get_n_pipeline_keys(script);
+
+        pipeline->n_pipelines = n_keys;
         pipeline->pipelines = vr_calloc(sizeof (VkPipeline) *
                                         MAX(1, pipeline->n_pipelines));
 
         VkPipeline first_graphics_pipeline = VK_NULL_HANDLE;
 
         for (int i = 0; i < pipeline->n_pipelines; i++) {
-                switch (vr_pipeline_key_get_type(keys[i])) {
+                const struct vr_pipeline_key *key =
+                        vr_script_get_pipeline_key(script, i);
+                switch (vr_pipeline_key_get_type(key)) {
                 case VR_PIPELINE_KEY_TYPE_GRAPHICS: {
                         bool allow_derivatives = (pipeline->n_pipelines > 1 &&
                                                   first_graphics_pipeline ==
@@ -881,7 +941,7 @@ vr_pipeline_create(const struct vr_config *config,
                         pipeline->pipelines[i] =
                                 create_vk_pipeline(pipeline,
                                                    script,
-                                                   keys[i],
+                                                   key,
                                                    allow_derivatives,
                                                    first_graphics_pipeline);
                         if (first_graphics_pipeline == VK_NULL_HANDLE) {
@@ -892,7 +952,7 @@ vr_pipeline_create(const struct vr_config *config,
                 }
                 case VR_PIPELINE_KEY_TYPE_COMPUTE:
                         pipeline->pipelines[i] =
-                                create_compute_pipeline(pipeline, keys[i]);
+                                create_compute_pipeline(pipeline, key);
                         break;
                 }
 
@@ -900,10 +960,15 @@ vr_pipeline_create(const struct vr_config *config,
                         goto error;
         }
 
+        free_shader_code(shaders, n_shaders);
+
         return pipeline;
 
 error:
+        free_shader_code(shaders, n_shaders);
+
         vr_pipeline_free(pipeline);
+
         return NULL;
 }
 

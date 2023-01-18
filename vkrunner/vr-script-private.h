@@ -51,13 +51,6 @@ enum vr_script_op {
         VR_SCRIPT_OP_CLEAR
 };
 
-struct vr_script_shader {
-        struct vr_list link;
-        enum vr_script_source_type source_type;
-        size_t length;
-        char source[];
-};
-
 struct vr_script_command {
         size_t line_num;
         enum vr_script_op op;
@@ -136,20 +129,38 @@ struct vr_script_buffer {
         size_t size;
 };
 
-struct vr_script {
-        char *filename;
-        struct vr_list stages[VR_SHADER_STAGE_N_STAGES];
-        size_t n_commands;
-        struct vr_script_command *commands;
-        size_t n_pipeline_keys;
-        struct vr_pipeline_key **pipeline_keys;
-        struct vr_requirements *requirements;
-        struct vr_window_format window_format;
-        struct vr_vbo *vertex_data;
-        uint16_t *indices;
-        size_t n_indices;
-        struct vr_script_buffer *buffers;
-        size_t n_buffers;
-};
+char *
+vr_script_get_filename(const struct vr_script *script);
+
+void
+vr_script_get_commands(const struct vr_script *script,
+                       const struct vr_script_command **commands_out,
+                       size_t *n_commands_out);
+
+size_t
+vr_script_get_n_pipeline_keys(const struct vr_script *script);
+
+const struct vr_pipeline_key *
+vr_script_get_pipeline_key(const struct vr_script *script,
+                           size_t key_num);
+
+const struct vr_requirements *
+vr_script_get_requirements(const struct vr_script *script);
+
+const struct vr_window_format *
+vr_script_get_window_format(const struct vr_script *script);
+
+const struct vr_vbo *
+vr_script_get_vertex_data(const struct vr_script *script);
+
+void
+vr_script_get_indices(const struct vr_script *script,
+                      const uint16_t **indices_out,
+                      size_t *n_indices_out);
+
+void
+vr_script_get_buffers(const struct vr_script *script,
+                      const struct vr_script_buffer **buffers_out,
+                      size_t *n_buffers_out);
 
 #endif /* VR_SCRIPT_PRIVATE_H */

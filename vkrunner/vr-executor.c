@@ -93,8 +93,11 @@ context_is_compatible(struct vr_executor *executor,
         if (executor->context->device_is_external)
                 return true;
 
+        const struct vr_requirements *script_requirements =
+                vr_script_get_requirements(script);
+
         if (!vr_requirements_equal(executor->requirements,
-                                   script->requirements))
+                                   script_requirements))
                 return false;
 
         return true;
@@ -155,10 +158,15 @@ vr_executor_execute_script(struct vr_executor *executor,
         if (executor->context && !context_is_compatible(executor, script))
                 free_context(executor);
 
+        const struct vr_window_format *script_window_format =
+                vr_script_get_window_format(script);
+        const struct vr_requirements *script_requirements =
+                vr_script_get_requirements(script);
+
         /* Recreate the window if the framebuffer format is different */
         if (executor->window &&
             !vr_window_format_equal(&executor->window->format,
-                                    &script->window_format))
+                                    script_window_format))
                 free_window(executor);
 
         if (executor->context == NULL) {
@@ -168,29 +176,31 @@ vr_executor_execute_script(struct vr_executor *executor,
                                 goto out;
                 } else {
                         res = vr_context_new(executor->config,
-                                             script->requirements,
+                                             script_requirements,
                                              &executor->context);
 
                         if (res != VR_RESULT_PASS)
                                 goto out;
 
                         executor->requirements =
-                                vr_requirements_copy(script->requirements);
+                                vr_requirements_copy(script_requirements);
                 }
         }
 
         if (executor->use_external) {
                 struct vr_context *context = executor->context;
 
-                if (!vr_requirements_check(script->requirements,
+                if (!vr_requirements_check(script_requirements,
                                            context->vklib,
                                            context->vkinst,
                                            context->vk_instance,
                                            context->physical_device)) {
+                        char *filename = vr_script_get_filename(script);
                         vr_error_message(executor->config,
                                          "%s: A required feature or extension "
                                          "is missing",
-                                         script->filename);
+                                         filename);
+                        vr_free(filename);
                         res = VR_RESULT_SKIP;
                         goto out;
                 }
@@ -198,7 +208,7 @@ vr_executor_execute_script(struct vr_executor *executor,
 
         if (executor->window == NULL) {
                 res = vr_window_new(executor->context,
-                                    &script->window_format,
+                                    script_window_format,
                                     &executor->window);
                 if (res != VR_RESULT_PASS)
                         goto out;

@@ -47,6 +47,29 @@
 
 #define DEFAULT_TOLERANCE 0.01
 
+struct vr_script_shader {
+        struct vr_list link;
+        enum vr_script_source_type source_type;
+        size_t length;
+        char source[];
+};
+
+struct vr_script {
+        char *filename;
+        struct vr_list stages[VR_SHADER_STAGE_N_STAGES];
+        size_t n_commands;
+        struct vr_script_command *commands;
+        size_t n_pipeline_keys;
+        struct vr_pipeline_key **pipeline_keys;
+        struct vr_requirements *requirements;
+        struct vr_window_format window_format;
+        struct vr_vbo *vertex_data;
+        uint16_t *indices;
+        size_t n_indices;
+        struct vr_script_buffer *buffers;
+        size_t n_buffers;
+};
+
 enum section {
         SECTION_NONE,
         SECTION_COMMENT,
@@ -2470,6 +2493,70 @@ vr_script_free(struct vr_script *script)
         vr_requirements_free(script->requirements);
 
         vr_free(script);
+}
+
+char *
+vr_script_get_filename(const struct vr_script *script)
+{
+        return vr_strdup(script->filename);
+}
+
+void
+vr_script_get_commands(const struct vr_script *script,
+                       const struct vr_script_command **commands_out,
+                       size_t *n_commands_out)
+{
+        *commands_out = script->commands;
+        *n_commands_out = script->n_commands;
+}
+
+size_t
+vr_script_get_n_pipeline_keys(const struct vr_script *script)
+{
+        return script->n_pipeline_keys;
+}
+
+const struct vr_pipeline_key *
+vr_script_get_pipeline_key(const struct vr_script *script,
+                           size_t key_num)
+{
+        return script->pipeline_keys[key_num];
+}
+
+const struct vr_requirements *
+vr_script_get_requirements(const struct vr_script *script)
+{
+        return script->requirements;
+}
+
+const struct vr_window_format *
+vr_script_get_window_format(const struct vr_script *script)
+{
+        return &script->window_format;
+}
+
+const struct vr_vbo *
+vr_script_get_vertex_data(const struct vr_script *script)
+{
+        return script->vertex_data;
+}
+
+void
+vr_script_get_indices(const struct vr_script *script,
+                      const uint16_t **indices_out,
+                      size_t *n_indices_out)
+{
+        *indices_out = script->indices;
+        *n_indices_out = script->n_indices;
+}
+
+void
+vr_script_get_buffers(const struct vr_script *script,
+                      const struct vr_script_buffer **buffers_out,
+                      size_t *n_buffers_out)
+{
+        *buffers_out = script->buffers;
+        *n_buffers_out = script->n_buffers;
 }
 
 int

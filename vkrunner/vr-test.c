@@ -197,13 +197,17 @@ add_ssbo_barriers(struct test_data *data)
         size_t n_barriers = 0;
         VkBufferMemoryBarrier *barriers = NULL;
 
-        for (unsigned i = 0; i < data->script->n_buffers; i++) {
-                if (data->script->buffers[i].type != VR_SCRIPT_BUFFER_TYPE_SSBO)
+        const struct vr_script_buffer *buffers;
+        size_t n_buffers;
+
+        vr_script_get_buffers(data->script, &buffers, &n_buffers);
+
+        for (unsigned i = 0; i < n_buffers; i++) {
+                if (buffers[i].type != VR_SCRIPT_BUFFER_TYPE_SSBO)
                         continue;
 
                 if (barriers == NULL) {
-                        barriers = vr_calloc(data->script->n_buffers *
-                                             sizeof *barriers);
+                        barriers = vr_calloc(n_buffers * sizeof *barriers);
                 }
 
                 VkBufferMemoryBarrier *barrier = barriers + n_barriers++;
@@ -240,8 +244,13 @@ invalidate_ssbos(struct test_data *data)
 {
         struct vr_vk_device *vkfn = data->window->vkdev;
 
-        for (unsigned i = 0; i < data->script->n_buffers; i++) {
-                if (data->script->buffers[i].type != VR_SCRIPT_BUFFER_TYPE_SSBO)
+        const struct vr_script_buffer *buffers;
+        size_t n_buffers;
+
+        vr_script_get_buffers(data->script, &buffers, &n_buffers);
+
+        for (unsigned i = 0; i < n_buffers; i++) {
+                if (buffers[i].type != VR_SCRIPT_BUFFER_TYPE_SSBO)
                         continue;
 
                 const struct test_buffer *buffer = data->ubo_buffers[i];
@@ -271,7 +280,12 @@ invalidate_ssbos(struct test_data *data)
 static void
 flush_buffers(struct test_data *data)
 {
-        for (unsigned i = 0; i < data->script->n_buffers; i++) {
+        const struct vr_script_buffer *buffers;
+        size_t n_buffers;
+
+        vr_script_get_buffers(data->script, &buffers, &n_buffers);
+
+        for (unsigned i = 0; i < n_buffers; i++) {
                 struct test_buffer *buffer = data->ubo_buffers[i];
 
                 if (!buffer->pending_write)
@@ -605,8 +619,9 @@ bind_pipeline(struct test_data *data,
                 return;
 
         VkPipeline pipeline = data->pipeline->pipelines[pipeline_num];
+
         const struct vr_pipeline_key *key =
-                data->script->pipeline_keys[pipeline_num];
+                vr_script_get_pipeline_key(data->script, pipeline_num);
 
         switch (vr_pipeline_key_get_type(key)) {
         case VR_PIPELINE_KEY_TYPE_GRAPHICS:
@@ -638,9 +653,14 @@ get_ubo_buffer(struct test_data *data,
                int desc_set,
                int binding)
 {
-        for (unsigned i = 0; i < data->script->n_buffers; i++) {
-                if (data->script->buffers[i].binding == binding &&
-                    data->script->buffers[i].desc_set == desc_set)
+        const struct vr_script_buffer *buffers;
+        size_t n_buffers;
+
+        vr_script_get_buffers(data->script, &buffers, &n_buffers);
+
+        for (unsigned i = 0; i < n_buffers; i++) {
+                if (buffers[i].binding == binding &&
+                    buffers[i].desc_set == desc_set)
                         return data->ubo_buffers[i];
         }
 
@@ -714,17 +734,21 @@ ensure_index_buffer(struct test_data *data)
         if (data->index_buffer)
                 return true;
 
+        const uint16_t *indices;
+        size_t n_indices;
+
+        vr_script_get_indices(data->script, &indices, &n_indices);
+
         data->index_buffer =
                 allocate_test_buffer(data,
-                                     data->script->n_indices *
-                                     sizeof data->script->indices[0],
+                                     n_indices * sizeof indices[0],
                                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
         if (data->index_buffer == NULL)
                 return false;
 
         memcpy(data->index_buffer->memory_map,
-               data->script->indices,
-               data->script->n_indices * sizeof data->script->indices[0]);
+               indices,
+               n_indices * sizeof indices[0]);
 
         vr_flush_memory(data->window->context,
                         data->index_buffer->memory_type_index,
@@ -738,7 +762,7 @@ ensure_index_buffer(struct test_data *data)
 static bool
 ensure_vbo_buffer(struct test_data *data)
 {
-        struct vr_vbo *vbo = data->script->vertex_data;
+        const struct vr_vbo *vbo = vr_script_get_vertex_data(data->script);
 
         if (vbo == NULL || data->vbo_buffer)
                 return true;
@@ -777,7 +801,7 @@ draw_arrays(struct test_data *data,
         if (!set_state(data, TEST_STATE_RENDER_PASS))
                 return false;
 
-        struct vr_vbo *vbo = data->script->vertex_data;
+        const struct vr_vbo *vbo = vr_script_get_vertex_data(data->script);
 
         if (vbo) {
                 if (!ensure_vbo_buffer(data))
@@ -1148,12 +1172,15 @@ allocate_ubo_buffers(struct test_data *data)
                 }
         }
 
-        data->ubo_buffers = vr_alloc(sizeof *data->ubo_buffers *
-                                     data->script->n_buffers);
+        const struct vr_script_buffer *buffers;
+        size_t n_buffers;
 
-        for (unsigned i = 0; i < data->script->n_buffers; i++) {
-                const struct vr_script_buffer *script_buffer =
-                        data->script->buffers + i;
+        vr_script_get_buffers(data->script, &buffers, &n_buffers);
+
+        data->ubo_buffers = vr_alloc(sizeof *data->ubo_buffers * n_buffers);
+
+        for (unsigned i = 0; i < n_buffers; i++) {
+                const struct vr_script_buffer *script_buffer = buffers + i;
 
                 unsigned desc_set = script_buffer->desc_set;
 
@@ -1303,8 +1330,13 @@ run_commands(struct test_data *data)
         const struct vr_script *script = data->script;
         bool ret = true;
 
-        for (int i = 0; i < script->n_commands; i++) {
-                const struct vr_script_command *command = script->commands + i;
+        const struct vr_script_command *commands;
+        size_t n_commands;
+
+        vr_script_get_commands(script, &commands, &n_commands);
+
+        for (int i = 0; i < n_commands; i++) {
+                const struct vr_script_command *command = commands + i;
 
                 switch (command->op) {
                 case VR_SCRIPT_OP_DRAW_RECT:
@@ -1352,7 +1384,12 @@ call_inspect(struct test_data *data)
 
         memset(&inspect_data, 0, sizeof inspect_data);
 
-        inspect_data.n_buffers = data->script->n_buffers;
+        const struct vr_script_buffer *buffers;
+        size_t n_buffers;
+
+        vr_script_get_buffers(data->script, &buffers, &n_buffers);
+
+        inspect_data.n_buffers = n_buffers;
 
         if (inspect_data.n_buffers > 0) {
                 struct vr_inspect_buffer *buffers =
@@ -1360,7 +1397,7 @@ call_inspect(struct test_data *data)
                                inspect_data.n_buffers);
 
                 for (size_t i = 0; i < inspect_data.n_buffers; i++) {
-                        buffers[i].binding = data->script->buffers[i].binding;
+                        buffers[i].binding = buffers[i].binding;
                         buffers[i].size = data->ubo_buffers[i]->size;
                         buffers[i].data = data->ubo_buffers[i]->memory_map;
                 }
@@ -1399,7 +1436,12 @@ vr_test_run(struct vr_window *window,
 
         vr_list_init(&data.buffers);
 
-        if (script->n_buffers > 0 && !allocate_ubo_buffers(&data)) {
+        const struct vr_script_buffer *buffers;
+        size_t n_buffers;
+
+        vr_script_get_buffers(script, &buffers, &n_buffers);
+
+        if (n_buffers > 0 && !allocate_ubo_buffers(&data)) {
                 ret = false;
         } else {
                 if (!run_commands(&data))
