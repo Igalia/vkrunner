@@ -42,61 +42,16 @@ enum vr_pipeline_key_source {
 
 struct vr_pipeline_key;
 
-enum vr_pipeline_key_set_result {
-        /* The property was successfully changed */
-        VR_PIPELINE_KEY_SET_RESULT_OK,
-        /* The key was not found */
-        VR_PIPELINE_KEY_SET_RESULT_NOT_FOUND,
-        /* The value was invalid */
-        VR_PIPELINE_KEY_SET_RESULT_INVALID_VALUE,
-};
-
-struct vr_pipeline_key *
-vr_pipeline_key_new(void);
-
-void
-vr_pipeline_key_set_type(struct vr_pipeline_key *key,
-                         enum vr_pipeline_key_type type);
-
 enum vr_pipeline_key_type
 vr_pipeline_key_get_type(const struct vr_pipeline_key *key);
 
-void
-vr_pipeline_key_set_source(struct vr_pipeline_key *key,
-                           enum vr_pipeline_key_source source);
-
 enum vr_pipeline_key_source
 vr_pipeline_key_get_source(const struct vr_pipeline_key *key);
-
-void
-vr_pipeline_key_set_topology(struct vr_pipeline_key *key,
-                             VkPrimitiveTopology topology);
-
-void
-vr_pipeline_key_set_patch_control_points(struct vr_pipeline_key *key,
-                                         int patch_control_points);
-
-bool
-vr_pipeline_key_equal(const struct vr_pipeline_key *a,
-                      const struct vr_pipeline_key *b);
-
-struct vr_pipeline_key *
-vr_pipeline_key_copy(const struct vr_pipeline_key *src);
-
-void
-vr_pipeline_key_set_entrypoint(struct vr_pipeline_key *key,
-                               enum vr_shader_stage stage,
-                               const char *entrypoint);
 
 /* Caller should free the string */
 char *
 vr_pipeline_key_get_entrypoint(const struct vr_pipeline_key *key,
                                enum vr_shader_stage stage);
-
-enum vr_pipeline_key_set_result
-vr_pipeline_key_set(struct vr_pipeline_key *key,
-                    const char *name,
-                    const char *value);
 
 /* This awkward struct is to make freeing the create info from Rust a
  * bit easier.
@@ -111,8 +66,5 @@ vr_pipeline_key_to_create_info(const struct vr_pipeline_key *key,
                                struct vr_pipeline_key_create_info *ci);
 void
 vr_pipeline_key_destroy_create_info(struct vr_pipeline_key_create_info *ci);
-
-void
-vr_pipeline_key_free(struct vr_pipeline_key *key);
 
 #endif /* VR_PIPELINE_KEY_H */

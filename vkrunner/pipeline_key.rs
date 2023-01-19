@@ -28,7 +28,6 @@ use crate::parse_num;
 use crate::hex;
 use crate::util;
 use std::fmt;
-use std::ffi::{c_char, CStr};
 use std::mem;
 
 #[repr(C)]
@@ -498,66 +497,13 @@ impl fmt::Debug for Key {
 }
 
 #[no_mangle]
-pub extern "C" fn vr_pipeline_key_new() -> *mut Key {
-    Box::into_raw(Box::new(Key::default()))
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_set_type(key: *mut Key, pipeline_type: Type) {
-    unsafe { (*key).set_pipeline_type(pipeline_type) };
-}
-
-#[no_mangle]
 pub extern "C" fn vr_pipeline_key_get_type(key: *const Key) -> Type {
     unsafe { (*key).pipeline_type() }
 }
 
 #[no_mangle]
-pub extern "C" fn vr_pipeline_key_set_source(key: *mut Key, source: Source) {
-    unsafe { (*key).set_source(source) };
-}
-
-#[no_mangle]
 pub extern "C" fn vr_pipeline_key_get_source(key: *const Key) -> Source {
     unsafe { (*key).source() }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_set_topology(
-    key: *mut Key,
-    topology: vk::VkPrimitiveTopology,
-) {
-    unsafe { (*key).set_topology(topology) };
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_set_patch_control_points(
-    key: *mut Key,
-    patch_control_points: i32,
-) {
-    unsafe { (*key).set_patch_control_points(patch_control_points as u32) };
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_equal(a: *const Key, b: *const Key) -> u8 {
-    unsafe { (*a).eq(&*b) as u8 }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_copy(key: *const Key) -> *mut Key {
-    Box::into_raw(Box::new(unsafe { &*key }.clone()))
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_set_entrypoint(
-    key: *mut Key,
-    stage: shader_stage::Stage,
-    entrypoint: *const c_char,
-) {
-    unsafe {
-        let entrypoint = CStr::from_ptr(entrypoint);
-        (*key).set_entrypoint(stage, entrypoint.to_string_lossy().to_string());
-    }
 }
 
 #[no_mangle]
@@ -573,42 +519,6 @@ pub extern "C" fn vr_pipeline_key_get_entrypoint(
         let entrypoint = (*key).entrypoint(stage);
         vr_strndup(entrypoint.as_ptr(), entrypoint.len())
     }
-}
-
-#[repr(C)]
-pub enum SetResult {
-    Ok,
-    NotFound,
-    InvalidValue,
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_set(
-    key: *mut Key,
-    name: *const c_char,
-    value: *const c_char,
-) -> SetResult {
-    let name = unsafe {
-        CStr::from_ptr(name).to_string_lossy()
-    };
-    let value = unsafe {
-        CStr::from_ptr(value).to_string_lossy()
-    };
-
-    let res = unsafe {
-        (*key).set(&name, &value)
-    };
-
-    match res {
-        Ok(()) => SetResult::Ok,
-        Err(SetPropertyError::NotFound { .. }) => SetResult::NotFound,
-        Err(SetPropertyError::InvalidValue { .. }) => SetResult::InvalidValue,
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_free(key: *mut Key) {
-    unsafe { Box::from_raw(key) };
 }
 
 #[repr(C)]
