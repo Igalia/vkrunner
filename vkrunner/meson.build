@@ -39,7 +39,6 @@ vkrunner_source_files = [
    'vr-script-private.h',
    'vr-small-float.h',
    'vr-source-private.h',
-   'vr-stream.h',
    'vr-temp-file.c',
    'vr-temp-file.h',
    'vr-util.c',

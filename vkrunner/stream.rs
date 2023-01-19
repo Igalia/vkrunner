@@ -217,60 +217,6 @@ impl<'a> Stream<'a> {
     }
 }
 
-// Temporary struct used for the C bindings that combines a source
-// with a buffer for the line. This is so we can return a pointer to a
-// line that is owned by the struct.
-pub struct CStream<'a> {
-    stream: Stream<'a>,
-    line: String,
-}
-
-#[no_mangle]
-pub extern "C" fn vr_stream_new(source: &source::Source) -> *mut CStream {
-    match Stream::new(source) {
-        Ok(stream) => {
-            Box::into_raw(Box::new(CStream { stream, line: String::new() }))
-        },
-        Err(_) => std::ptr::null_mut(),
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_stream_get_line_num(stream: &CStream) -> i32 {
-    stream.stream.line_num() as i32
-}
-
-#[no_mangle]
-pub extern "C" fn vr_stream_read_line(
-    stream: &mut CStream,
-    line_out: *mut *const u8,
-    line_length_out: *mut usize,
-) -> u8 {
-    stream.line.clear();
-
-    match stream.stream.read_line(&mut stream.line) {
-        Err(_) => false as u8,
-        Ok(_) => {
-            let real_len = stream.line.len();
-
-            // Add a null terminator to the line buffer to make C happy
-            stream.line.push('\0');
-
-            unsafe {
-                *line_out = stream.line.as_ptr();
-                *line_length_out = real_len;
-            }
-
-            (real_len > 0) as u8
-        },
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_stream_free(stream: *mut CStream) {
-    unsafe { Box::from_raw(stream) };
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
