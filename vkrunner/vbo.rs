@@ -55,17 +55,15 @@ use std::cell::RefCell;
 use std::ffi::{c_void, c_uint};
 
 #[derive(Debug, Clone)]
-pub struct Error {
-    line: u32,
-    kind: ErrorKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum ErrorKind {
+pub enum Error {
     InvalidHeader(String),
     InvalidData(String),
 }
 
+/// Struct representing a blob of structured data that can be used as
+/// vertex inputs to Vulkan. The Vbo can be constructed either by
+/// parsing an entire string slice with the [str::parse] method or by
+/// parsing the source line-by-line by constructing a [Parser] object.
 #[derive(Debug)]
 pub struct Vbo {
     // Description of each attribute
@@ -88,21 +86,11 @@ pub struct Attrib {
     offset: usize,
 }
 
-impl Error {
-    pub fn line(&self) -> u32 {
-        self.line
-    }
-
-    pub fn kind(&self) -> &ErrorKind {
-        &self.kind
-    }
-}
-
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match &self.kind {
-            ErrorKind::InvalidHeader(s) => write!(f, "{}", s),
-            ErrorKind::InvalidData(s) => write!(f, "{}", s),
+        match &self {
+            Error::InvalidHeader(s) => write!(f, "{}", s),
+            Error::InvalidData(s) => write!(f, "{}", s),
         }
     }
 }
@@ -146,14 +134,18 @@ impl Attrib {
     }
 }
 
-struct ParseData {
+/// Helper struct to construct a Vbo by parsing data line-by-line.
+/// Construct the parser with [Parser::new] and then add each line
+/// with [Parse::parse_line]. When the vbo data is complete call
+/// [Parser::into_vbo] to finish the parsing and convert the parser
+/// into the final Vbo.
+#[derive(Debug)]
+pub struct Parser {
     // None if we haven’t parsed the header line yet, otherwise an
     // array of attribs
     attribs: Option<Box<[Attrib]>>,
 
     raw_data: RefCell<Vec<u8>>,
-
-    line_num: u32,
 
     stride: usize,
 
@@ -162,19 +154,13 @@ struct ParseData {
 
 macro_rules! invalid_header {
     ($data:expr, $($message:expr),+) => {
-        return Err(Error {
-            line: $data.line_num,
-            kind: ErrorKind::InvalidHeader(format!($($message),+)),
-        })
+        return Err(Error::InvalidHeader(format!($($message),+)))
     };
 }
 
 macro_rules! invalid_data {
     ($data:expr, $($message:expr),+) => {
-        return Err(Error {
-            line: $data.line_num,
-            kind: ErrorKind::InvalidData(format!($($message),+)),
-        })
+        return Err(Error::InvalidData(format!($($message),+)))
     };
 }
 
@@ -182,32 +168,21 @@ impl std::str::FromStr for Vbo {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Vbo, Error> {
-        let mut data = ParseData::new();
+        let mut data = Parser::new();
 
         for line in s.lines() {
             data.parse_line(line)?;
         }
 
-        let attribs = match data.attribs.take() {
-            None => invalid_header!(data, "Missing header line"),
-            Some(a) => a,
-        };
-
-        Ok(Vbo {
-            attribs,
-            raw_data: data.raw_data.into_inner().into_boxed_slice(),
-            stride: data.stride,
-            num_rows: data.num_rows,
-        })
+        data.into_vbo()
     }
 }
 
-impl ParseData {
-    fn new() -> ParseData {
-        ParseData {
+impl Parser {
+    pub fn new() -> Parser {
+        Parser {
             raw_data: RefCell::new(Vec::new()),
             stride: 0,
-            line_num: 0,
             attribs: None,
             num_rows: 0,
         }
@@ -390,7 +365,7 @@ impl ParseData {
                     invalid_data!(self, "Couldn’t parse as unsigned byte")
                 },
                 Ok((v, tail)) => {
-                    ParseData::write_bytes(data, &v.to_ne_bytes());
+                    Parser::write_bytes(data, &v.to_ne_bytes());
                     Ok(tail)
                 },
             },
@@ -399,7 +374,7 @@ impl ParseData {
                     invalid_data!(self, "Couldn’t parse as unsigned short")
                 },
                 Ok((v, tail)) => {
-                    ParseData::write_bytes(data, &v.to_ne_bytes());
+                    Parser::write_bytes(data, &v.to_ne_bytes());
                     Ok(tail)
                 },
             },
@@ -408,7 +383,7 @@ impl ParseData {
                     invalid_data!(self, "Couldn’t parse as unsigned int")
                 },
                 Ok((v, tail)) => {
-                    ParseData::write_bytes(data, &v.to_ne_bytes());
+                    Parser::write_bytes(data, &v.to_ne_bytes());
                     Ok(tail)
                 },
             },
@@ -417,7 +392,7 @@ impl ParseData {
                     invalid_data!(self, "Couldn’t parse as unsigned long")
                 },
                 Ok((v, tail)) => {
-                    ParseData::write_bytes(data, &v.to_ne_bytes());
+                    Parser::write_bytes(data, &v.to_ne_bytes());
                     Ok(tail)
                 },
             },
@@ -437,7 +412,7 @@ impl ParseData {
                     invalid_data!(self, "Couldn’t parse as signed byte")
                 },
                 Ok((v, tail)) => {
-                    ParseData::write_bytes(data, &v.to_ne_bytes());
+                    Parser::write_bytes(data, &v.to_ne_bytes());
                     Ok(tail)
                 },
             },
@@ -446,7 +421,7 @@ impl ParseData {
                     invalid_data!(self, "Couldn’t parse as signed short")
                 },
                 Ok((v, tail)) => {
-                    ParseData::write_bytes(data, &v.to_ne_bytes());
+                    Parser::write_bytes(data, &v.to_ne_bytes());
                     Ok(tail)
                 },
             },
@@ -455,7 +430,7 @@ impl ParseData {
                     invalid_data!(self, "Couldn’t parse as signed int")
                 },
                 Ok((v, tail)) => {
-                    ParseData::write_bytes(data, &v.to_ne_bytes());
+                    Parser::write_bytes(data, &v.to_ne_bytes());
                     Ok(tail)
                 },
             },
@@ -464,7 +439,7 @@ impl ParseData {
                     invalid_data!(self, "Couldn’t parse as signed long")
                 },
                 Ok((v, tail)) => {
-                    ParseData::write_bytes(data, &v.to_ne_bytes());
+                    Parser::write_bytes(data, &v.to_ne_bytes());
                     Ok(tail)
                 },
             },
@@ -484,7 +459,7 @@ impl ParseData {
                     invalid_data!(self, "Couldn’t parse as half float")
                 },
                 Ok((v, tail)) => {
-                    ParseData::write_bytes(data, &v.to_ne_bytes());
+                    Parser::write_bytes(data, &v.to_ne_bytes());
                     Ok(tail)
                 },
             },
@@ -493,7 +468,7 @@ impl ParseData {
                     invalid_data!(self, "Couldn’t parse as float")
                 },
                 Ok((v, tail)) => {
-                    ParseData::write_bytes(data, &v.to_ne_bytes());
+                    Parser::write_bytes(data, &v.to_ne_bytes());
                     Ok(tail)
                 },
             },
@@ -502,7 +477,7 @@ impl ParseData {
                     invalid_data!(self, "Couldn’t parse as double")
                 },
                 Ok((v, tail)) => {
-                    ParseData::write_bytes(data, &v.to_ne_bytes());
+                    Parser::write_bytes(data, &v.to_ne_bytes());
                     Ok(tail)
                 },
             },
@@ -587,10 +562,10 @@ impl ParseData {
         Ok(())
     }
 
-    fn parse_line(&mut self, line: &str) -> Result<(), Error> {
-        self.line_num += 1;
-
-        let line = ParseData::trim_line(line);
+    /// Add one line of data to the vbo. Returns an error if the line
+    /// is invalid.
+    pub fn parse_line(&mut self, line: &str) -> Result<(), Error> {
+        let line = Parser::trim_line(line);
 
         // Ignore blank or comment-only lines */
         if line.len() <= 0 {
@@ -604,6 +579,23 @@ impl ParseData {
         }
 
         Ok(())
+    }
+
+    /// Call this at the end of parsing to convert the parser into the
+    /// final Vbo. This can fail if the parser didn’t have enough data
+    /// to complete the vbo.
+    pub fn into_vbo(mut self) -> Result<Vbo, Error> {
+        let attribs = match self.attribs.take() {
+            None => invalid_header!(data, "Missing header line"),
+            Some(a) => a,
+        };
+
+        Ok(Vbo {
+            attribs,
+            raw_data: self.raw_data.into_inner().into_boxed_slice(),
+            stride: self.stride,
+            num_rows: self.num_rows,
+        })
     }
 }
 
@@ -712,8 +704,7 @@ mod test {
     fn test_no_header() {
         let err = "".parse::<Vbo>().unwrap_err();
         assert_eq!(err.to_string(), "Missing header line");
-        assert_eq!(err.line(), 0);
-        assert!(matches!(err.kind(), ErrorKind::InvalidHeader(_)));
+        assert!(matches!(err, Error::InvalidHeader(_)));
     }
 
     #[test]
@@ -771,8 +762,7 @@ mod test {
 
         let err = "1/uverylong/int".parse::<Vbo>().unwrap_err();
         assert_eq!(&err.to_string(), "Unknown GL type: uverylong");
-        assert_eq!(err.line(), 1);
-        assert!(matches!(err.kind, ErrorKind::InvalidHeader(_)));
+        assert!(matches!(err, Error::InvalidHeader(_)));
 
         test_glsl_type("int", "1.0", &[1.0]);
         test_glsl_type("uint", "2.0", &[2.0]);
@@ -787,30 +777,26 @@ mod test {
 
         let err = "1/int/ituple2".parse::<Vbo>().unwrap_err();
         assert_eq!(&err.to_string(), "Unknown GLSL type: ituple2");
-        assert_eq!(err.line(), 1);
-        assert!(matches!(err.kind, ErrorKind::InvalidHeader(_)));
+        assert!(matches!(err, Error::InvalidHeader(_)));
 
         let err = "1/int/ivecfoo".parse::<Vbo>().unwrap_err();
         assert_eq!(&err.to_string(), "Invalid vec size: ivecfoo");
-        assert_eq!(err.line(), 1);
-        assert!(matches!(err.kind, ErrorKind::InvalidHeader(_)));
+        assert!(matches!(err, Error::InvalidHeader(_)));
 
         let err = "1/int/vec1".parse::<Vbo>().unwrap_err();
         assert_eq!(&err.to_string(), "Invalid vec size: vec1");
-        assert_eq!(err.line(), 1);
-        assert!(matches!(err.kind, ErrorKind::InvalidHeader(_)));
+        assert!(matches!(err, Error::InvalidHeader(_)));
 
         let err = "1/int/dvec5".parse::<Vbo>().unwrap_err();
         assert_eq!(&err.to_string(), "Invalid vec size: dvec5");
-        assert_eq!(err.line(), 1);
-        assert!(matches!(err.kind, ErrorKind::InvalidHeader(_)));
+        assert!(matches!(err, Error::InvalidHeader(_)));
     }
 
     #[test]
     fn test_bad_attrib() {
         let err = "foo/int/int".parse::<Vbo>().unwrap_err();
         assert_eq!(&err.to_string(), "Invalid attrib location in foo/int/int");
-        assert!(matches!(err.kind, ErrorKind::InvalidHeader(_)));
+        assert!(matches!(err, Error::InvalidHeader(_)));
 
         assert_eq!(
             "12".parse::<Vbo>().unwrap_err().to_string(),
