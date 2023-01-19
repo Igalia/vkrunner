@@ -28,7 +28,6 @@ use crate::vk;
 use std::convert::TryInto;
 use std::num::NonZeroUsize;
 use std::slice;
-use std::ffi::CStr;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -414,31 +413,6 @@ pub extern "C" fn vr_format_get_name(format: &Format) -> *mut u8 {
     unsafe {
         vr_strndup(format.name.as_ptr(), format.name.len())
     }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_format_lookup_by_name(
-    name: *const i8
-) -> Option<&'static Format> {
-    unsafe {
-        Format::lookup_by_name(CStr::from_ptr(name).to_str().unwrap())
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_format_lookup_by_vk_format(
-    vk_format: vk::VkFormat
-) -> &'static Format {
-    Format::lookup_by_vk_format(vk_format)
-}
-
-#[no_mangle]
-pub extern "C" fn vr_format_lookup_by_details(
-    bit_size: i32,
-    mode: Mode,
-    n_components: i32
-) -> Option<&'static Format> {
-    Format::lookup_by_details(bit_size as usize, mode, n_components as usize)
 }
 
 #[cfg(test)]
