@@ -47,7 +47,7 @@ pub enum Source {
     VertexData,
 }
 
-/// The failure code returned by [Key::set]
+/// The failure code returned by [set](Key::set)
 #[derive(Copy, Clone, Debug)]
 pub enum SetPropertyError<'a> {
     /// The property was not recognised by VkRunner

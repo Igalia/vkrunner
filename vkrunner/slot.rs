@@ -25,7 +25,7 @@
 //! Contains utilities for accessing values stored in a buffer
 //! according to the GLSL layout rules. These are decribed in detail
 //! in the OpenGL specs here:
-//! https://registry.khronos.org/OpenGL/specs/gl/glspec45.core.pdf#page=159
+//! <https://registry.khronos.org/OpenGL/specs/gl/glspec45.core.pdf#page=159>
 
 use crate::util;
 use crate::tolerance::Tolerance;
@@ -35,9 +35,9 @@ use std::convert::TryInto;
 use std::ffi::c_void;
 
 /// Describes which layout standard is being used. The only difference
-/// is that with [Std140] the offset between members of an array or
-/// between elements of the minor axis of a matrix is rounded up to be
-/// a multiple of 16 bytes.
+/// is that with `Std140` the offset between members of an
+/// array or between elements of the minor axis of a matrix is rounded
+/// up to be a multiple of 16 bytes.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutStd {
@@ -50,7 +50,7 @@ pub enum LayoutStd {
 /// example, if the numbers indicate the order in memory of the
 /// components of a matrix, the two orderings would look like this:
 ///
-/// ```
+/// ```text
 /// Column major     Row major
 /// [0 3 6]          [0 1 2]
 /// [1 4 7]          [3 4 5]
@@ -160,8 +160,8 @@ pub enum BaseType {
 }
 
 /// A type of comparison that can be used to compare values stored in
-/// a slot with the chosen criteria. Use the [compare] method to
-/// perform the comparison.
+/// a slot with the chosen criteria. Use the
+/// [compare](Comparison::compare) method to perform the comparison.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Comparison {
@@ -169,7 +169,7 @@ pub enum Comparison {
     Equal,
     /// The comparison passes if the floating-point values are
     /// approximately equal using the given [Tolerance] settings. For
-    /// integer types this is the same as [Equal].
+    /// integer types this is the same as [Equal](Comparison::Equal).
     FuzzyEqual,
     /// The comparison passes if the values are different.
     NotEqual,
@@ -446,11 +446,12 @@ impl Type {
     }
 
     /// Returns the size of the slot type. Note that unlike
-    /// [array_stride], this won’t include the padding to align the
-    /// values in an array according to the GLSL layout rules. It will
-    /// however always have a size that is a multiple of the size of
-    /// the base type so it is suitable as an array stride for packed
-    /// values stored internally that aren’t passed to Vulkan.
+    /// [array_stride](Type::array_stride), this won’t include the
+    /// padding to align the values in an array according to the GLSL
+    /// layout rules. It will however always have a size that is a
+    /// multiple of the size of the base type so it is suitable as an
+    /// array stride for packed values stored internally that aren’t
+    /// passed to Vulkan.
     pub fn size(self, layout: Layout) -> usize {
         let matrix_stride = self.matrix_stride(layout);
         let base_size = self.base_type().size();
@@ -484,7 +485,7 @@ impl Type {
 }
 
 /// Iterator over the offsets into an array to extract the components
-/// of a slot. Created by [Slot::offsets].
+/// of a slot. Created by [Type::offsets].
 #[derive(Debug, Clone)]
 pub struct OffsetsIter {
     slot_type: Type,
@@ -685,11 +686,11 @@ impl Comparison {
         }
     }
 
-    /// Compares the values in [a] with the values in [b] using the
+    /// Compares the values in `a` with the values in `b` using the
     /// chosen criteria. The values are extracted from the two byte
     /// slices using the layout and type provided. The tolerance
     /// parameter is only used if the comparison is
-    /// [Comparison::FuzzyEqual].
+    /// [FuzzyEqual](Comparison::FuzzyEqual).
     pub fn compare(
         self,
         tolerance: &Tolerance,

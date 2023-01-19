@@ -134,11 +134,11 @@ impl Attrib {
     }
 }
 
-/// Helper struct to construct a Vbo by parsing data line-by-line.
-/// Construct the parser with [Parser::new] and then add each line
-/// with [Parse::parse_line]. When the vbo data is complete call
-/// [Parser::into_vbo] to finish the parsing and convert the parser
-/// into the final Vbo.
+/// Helper struct to construct a [Vbo] by parsing data line-by-line.
+/// Construct the parser with [new](Parser::new) and then add each
+/// line with [parse_line](Parser::parse_line). When the vbo data is
+/// complete call [into_vbo](Parser::into_vbo) to finish the parsing
+/// and convert the parser into the final Vbo.
 #[derive(Debug)]
 pub struct Parser {
     // None if we haven’t parsed the header line yet, otherwise an

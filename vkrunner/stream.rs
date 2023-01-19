@@ -38,9 +38,9 @@ enum Reader<'a> {
     String(io::BufReader<&'a [u8]>),
 }
 
-/// A struct used to read lines from a [Source]. This will handle
-/// concatening lines that end with the line continuation character
-/// (`\`) and the token replacements.
+/// A struct used to read lines from a [Source](source::Source). This
+/// will handle concatening lines that end with the line continuation
+/// character (`\`) and the token replacements.
 #[derive(Debug)]
 pub struct Stream<'a> {
     source: &'a source::Source,
@@ -79,9 +79,10 @@ impl std::convert::From<io::Error> for StreamError {
 
 impl<'a> Stream<'a> {
     /// Constructs a new [Stream] that will read lines from the given
-    /// [Source]. The construction can fail if the stream is a file
-    /// source and opening the file fails. In that case the returned
-    /// [StreamError] will contain a [std::io::Error].
+    /// [Source](source::Source). The construction can fail if the
+    /// stream is a file source and opening the file fails. In that
+    /// case the returned [StreamError] will contain an
+    /// [io::Error](std::io::Error).
     pub fn new(source: &source::Source) -> Result<Stream, StreamError> {
         let reader = match source.data() {
             source::Data::File { filename } => {
@@ -104,7 +105,7 @@ impl<'a> Stream<'a> {
 
     /// Read a line from the stream and append it to the given String.
     /// This will handle the line continuation characters (`\`) and
-    /// the token replacements set on the [Source].
+    /// the token replacements set on the [Source](source::Source).
     ///
     /// The length of the data appended to the string is returned. If
     /// the end of the source is reached then it will return 0.
@@ -148,20 +149,20 @@ impl<'a> Stream<'a> {
     }
 
     /// Returns the line number in the source data of the start of the
-    /// last line that was returned by [read_line]. For example, if
-    /// the source file is like this:
+    /// last line that was returned by [read_line](Stream::read_line).
+    /// For example, if the source file is like this:
     ///
-    /// ```
+    /// ```text
     /// line one \
     /// continuation of line one.
     /// line two \
     /// continuation of line two.
     /// ```
     ///
-    /// then the second time [read_line] is called it will append
-    /// “line two continuation of line two” and [line_num] will report
-    /// 3 because the line starts on the third line of the source
-    /// data.
+    /// then the second time `read_line` is called it will append
+    /// “line two continuation of line two” and
+    /// [line_num](Stream::line_num) will report 3 because the line
+    /// starts on the third line of the source data.
     pub fn line_num(&self) -> usize {
         self.line_num
     }

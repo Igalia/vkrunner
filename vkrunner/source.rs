@@ -25,8 +25,8 @@
 use std::ffi::{c_char, CStr};
 
 /// Struct representing the requested source for the data of a
-/// [Source]. This can either be a filename to open and read or
-/// directly a string containing the source code.
+/// [Source]. This can either be a filename to open and read
+/// or directly a string containing the source code.
 #[derive(Clone, Debug)]
 pub enum Data {
     File { filename: String },
@@ -44,7 +44,7 @@ pub struct TokenReplacement {
 
 /// A source for a shader script. The [Source] struct just contains
 /// the details of where the data is stored. To read the actual data,
-/// construct a [Stream] struct using the Source.
+/// construct a [Stream](crate::stream::Stream) struct using the Source.
 #[derive(Clone, Debug)]
 pub struct Source {
     token_replacements: Vec<TokenReplacement>,
@@ -86,7 +86,8 @@ impl Source {
     }
 
     /// Return an iterator over the token replacements that were
-    /// previously set with [Source::add_token_replacement].
+    /// previously set with
+    /// [add_token_replacement](Source::add_token_replacement).
     pub fn token_replacements(&self) -> TokenReplacementIter {
         self.token_replacements.iter()
     }

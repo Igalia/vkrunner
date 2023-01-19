@@ -204,7 +204,7 @@ impl Requirements {
     }
 
     /// Get the required Vulkan version that was previously set with
-    /// [add_version].
+    /// [add_version](Requirements::add_version).
     pub fn version(&self) -> u32 {
         self.version
     }

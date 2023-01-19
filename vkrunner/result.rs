@@ -66,8 +66,8 @@ impl Result {
 
     /// Return either `"fail"`, `"skip"` or `"pass"` to describe the
     /// result. The result is a static string. You can also use the
-    /// [to_string] method to get an owned string because [Result]
-    /// implements [std::fmt::Display].
+    /// [to_string](ToString::to_string) method to get an owned string
+    /// because [Result] implements [Display](std::fmt::Display).
     pub fn name(self) -> &'static str {
         let name = self.name_with_terminator();
         &name[0..name.len() - 1]
