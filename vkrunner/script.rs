@@ -146,7 +146,7 @@ pub struct Command {
 #[derive(Debug)]
 pub enum LoadError {
     Stream(StreamError),
-    Vbo(vbo::Error),
+    Vbo { line_num: usize, detail: vbo::Error },
     Invalid { line_num: usize, message: String },
     Hex { line_num: usize, detail: hex::ParseError },
     Number { line_num: usize, detail: parse_num::ParseError },
@@ -162,7 +162,9 @@ impl fmt::Display for LoadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             LoadError::Stream(e) => e.fmt(f),
-            LoadError::Vbo(e) => e.fmt(f),
+            LoadError::Vbo { line_num, detail } => {
+                write!(f, "line {}: {}", line_num, detail)
+            },
             LoadError::Invalid { line_num, message } => {
                 write!(f, "line {}: {}", line_num, message)
             },
@@ -244,8 +246,8 @@ struct Loader<'a> {
     push_layout: slot::Layout,
     ubo_layout: slot::Layout,
     ssbo_layout: slot::Layout,
-    buffer: String,
     vertex_data: Option<vbo::Vbo>,
+    vbo_parser: Option<vbo::Parser>,
     indices: Vec<u16>,
     requirements: Requirements,
     window_format: WindowFormat,
@@ -433,8 +435,8 @@ impl<'a> Loader<'a> {
             push_layout: DEFAULT_PUSH_LAYOUT,
             ubo_layout: DEFAULT_UBO_LAYOUT,
             ssbo_layout: DEFAULT_SSBO_LAYOUT,
-            buffer: String::new(),
             vertex_data: None,
+            vbo_parser: None,
             indices: Vec::new(),
             requirements: Requirements::new(),
             window_format: Default::default(),
@@ -448,18 +450,15 @@ impl<'a> Loader<'a> {
     }
 
     fn end_vertex_data(&mut self) -> Result<(), LoadError> {
-        match self.buffer.parse::<vbo::Vbo>() {
+        match self.vbo_parser.take().unwrap().into_vbo() {
             Ok(vbo) => {
                 self.vertex_data.replace(vbo);
                 Ok(())
             },
-            Err(e) => {
-                // TODO: The plan is to replace the Vbo parser with a
-                // struct that we can feed one line at a time to
-                // instead of having to build up the buffer. That way
-                // this error could more easily contain a line number.
-                Err(LoadError::Vbo(e))
-            },
+            Err(e) => Err(LoadError::Vbo {
+                line_num: self.stream.line_num(),
+                detail: e,
+            }),
         }
     }
 
@@ -613,7 +612,7 @@ impl<'a> Loader<'a> {
                 ));
             }
             self.set_current_section(Section::VertexData);
-            self.buffer.clear();
+            self.vbo_parser = Some(vbo::Parser::new());
             return Ok(());
         }
 
@@ -988,10 +987,13 @@ impl<'a> Loader<'a> {
         &mut self,
         line: &str
     ) -> Result<(), LoadError> {
-        // TODO: Pass the line directly to the vbo parser instead of
-        // queuing all the line up into a buffer.
-        self.buffer.push_str(line);
-        Ok(())
+        match self.vbo_parser.as_mut().unwrap().parse_line(line) {
+            Ok(()) => Ok(()),
+            Err(e) => Err(LoadError::Vbo {
+                line_num: self.stream.line_num(),
+                detail: e,
+            }),
+        }
     }
 
     fn process_indices_line(
@@ -3533,7 +3535,7 @@ mod test {
             "[vertex data]\n\
              0/R9_UNORM\n\
              12",
-            "Unknown format: R9_UNORM"
+            "line 2: Unknown format: R9_UNORM"
         );
         check_error(
             "[vertex data]\n\
@@ -3547,11 +3549,11 @@ mod test {
         check_error(
             "[vertex data]\n\
              [indices]",
-            "Missing header line",
+            "line 2: Missing header line",
         );
         check_error(
             "[vertex data]",
-            "Missing header line",
+            "line 2: Missing header line",
         );
     }
 
