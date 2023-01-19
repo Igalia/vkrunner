@@ -21,11 +21,9 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 use crate::half_float;
-use std::num::{ParseFloatError, ParseIntError, IntErrorKind};
+use std::num::{ParseFloatError, ParseIntError};
 use std::fmt;
 use std::convert::From;
-use std::ffi::CStr;
-use std::os::raw::c_char;
 
 // Based on functions from piglit-util.c
 
@@ -231,118 +229,6 @@ pub fn parse_half_float(s: &str) -> Result<(u16, &str), ParseError> {
     }
 }
 
-extern "C" {
-    fn vr_errno_set_invalid();
-    fn vr_errno_set_range();
-}
-
-fn set_errno(e: &ParseError) {
-    match e {
-        ParseError::Int(e) => match e.kind() {
-            IntErrorKind::PosOverflow | IntErrorKind::NegOverflow => {
-                unsafe { vr_errno_set_range() };
-            },
-            _ => {
-                unsafe { vr_errno_set_invalid() };
-            },
-        },
-        ParseError::Float(_) => unsafe { vr_errno_set_invalid() },
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_hex_strtof(
-    nptr: *const c_char,
-    endptr: *mut *const c_char,
-) -> f32 {
-    let convert_result = unsafe {
-        CStr::from_ptr(nptr).to_str()
-    };
-
-    match convert_result {
-        Err(_) => {
-            unsafe { vr_errno_set_invalid(); }
-            0.0
-        },
-        Ok(v) => {
-            match parse_f32(v) {
-                Err(e) => {
-                    set_errno(&e);
-                    0.0
-                },
-                Ok((value, tail)) => {
-                    unsafe {
-                        endptr.write(nptr.add(v.len() - tail.len()));
-                    }
-                    value
-                }
-            }
-        }
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_hex_strtod(
-    nptr: *const c_char,
-    endptr: *mut *const c_char,
-) -> f64 {
-    let convert_result = unsafe {
-        CStr::from_ptr(nptr).to_str()
-    };
-
-    match convert_result {
-        Err(_) => {
-            unsafe { vr_errno_set_invalid(); }
-            0.0
-        },
-        Ok(v) => {
-            match parse_f64(v) {
-                Err(e) => {
-                    set_errno(&e);
-                    0.0
-                },
-                Ok((value, tail)) => {
-                    unsafe {
-                        endptr.write(nptr.add(v.len() - tail.len()));
-                    }
-                    value
-                }
-            }
-        }
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_hex_strtohf(
-    nptr: *const c_char,
-    endptr: *mut *const c_char,
-) -> u16 {
-    let convert_result = unsafe {
-        CStr::from_ptr(nptr).to_str()
-    };
-
-    match convert_result {
-        Err(_) => {
-            unsafe { vr_errno_set_invalid(); }
-            0
-        },
-        Ok(v) => {
-            match parse_half_float(v) {
-                Err(e) => {
-                    set_errno(&e);
-                    0
-                },
-                Ok((value, tail)) => {
-                    unsafe {
-                        endptr.write(nptr.add(v.len() - tail.len()));
-                    }
-                    value
-                }
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -478,86 +364,6 @@ mod test {
         assert!(matches!(
             parse_half_float("0xffff1"),
             Err(ParseError::Int(ParseIntError { .. }))
-        ));
-    }
-
-    #[test]
-    fn test_wrappers() {
-        let str = "12.0\0";
-        let mut tail = std::ptr::null::<c_char>();
-
-        let value = vr_hex_strtof(
-            str.as_ptr() as *const c_char,
-            &mut tail as *mut *const c_char
-        );
-
-        assert!((value - 12.0).abs() < 0.0001);
-        assert_eq!(
-            unsafe { tail.offset_from(str.as_ptr() as *const c_char) },
-            4
-        );
-
-        let str = "420.0\0";
-        let mut tail = std::ptr::null::<c_char>();
-
-        let value = vr_hex_strtod(
-            str.as_ptr() as *const c_char,
-            &mut tail as *mut *const c_char
-        );
-
-        assert!((value - 420.0).abs() < 0.0001);
-        assert_eq!(
-            unsafe { tail.offset_from(str.as_ptr() as *const c_char) },
-            5
-        );
-
-        let str = "-2 potato\0";
-        let mut tail = std::ptr::null::<c_char>();
-
-        let value = vr_hex_strtohf(
-            str.as_ptr() as *const c_char,
-            &mut tail as *mut *const c_char
-        );
-
-        assert_eq!(value, 0xc000);
-        assert_eq!(
-            unsafe { tail.offset_from(str.as_ptr() as *const c_char) },
-            2
-        );
-
-        let str = "junk\0";
-        let mut tail = std::ptr::null::<c_char>();
-
-        let value = vr_hex_strtohf(
-            str.as_ptr() as *const c_char,
-            &mut tail as *mut *const c_char
-        );
-
-        // Invalid data should generate the EINVAL error which will
-        // probably get converted to either InvalidData or
-        // InvalidInput.
-        assert_eq!(value, 0);
-        assert!(matches!(
-            std::io::Error::last_os_error().kind(),
-            std::io::ErrorKind::InvalidData | std::io::ErrorKind::InvalidInput
-        ));
-
-        let str = "0xffff1\0";
-        let mut tail = std::ptr::null::<c_char>();
-
-        let value = vr_hex_strtohf(
-            str.as_ptr() as *const c_char,
-            &mut tail as *mut *const c_char
-        );
-
-        // Overflowing the hex value should generate ERANGE. I’m not
-        // sure if there’s a specific ErrorKind for that but we can at
-        // least ensure it’s different.
-        assert_eq!(value, 0);
-        assert!(!matches!(
-            std::io::Error::last_os_error().kind(),
-            std::io::ErrorKind::InvalidData
-                | std::io::ErrorKind::InvalidInput
         ));
     }
 }

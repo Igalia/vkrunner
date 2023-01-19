@@ -33,7 +33,6 @@ vkrunner_source_files = [
    'vr-flush-memory.h',
    'vr-format-private.h',
    'vr-half-float.h',
-   'vr-hex.h',
    'vr-list.c',
    'vr-list.h',
    'vr-pipeline-key.h',
