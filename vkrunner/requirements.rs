@@ -27,7 +27,7 @@ use crate::vulkan_funcs;
 use crate::util;
 use std::mem;
 use std::collections::{HashMap, HashSet};
-use std::ffi::{CStr, c_uint, c_char};
+use std::ffi::CStr;
 use std::convert::TryInto;
 use std::fmt;
 
@@ -783,22 +783,6 @@ pub extern "C" fn vr_requirements_get_version(
 }
 
 #[no_mangle]
-pub extern "C" fn vr_requirements_add_version(
-    reqs: *mut Requirements,
-    major: c_uint,
-    minor: c_uint,
-    patch: c_uint,
-) {
-    unsafe {
-        (*reqs).add_version(
-            major as u32,
-            minor as u32,
-            patch as u32,
-        )
-    }
-}
-
-#[no_mangle]
 pub extern "C" fn vr_requirements_get_extensions(
     reqs: *mut Requirements
 ) -> *const *const u8 {
@@ -832,16 +816,6 @@ pub extern "C" fn vr_requirements_get_base_features(
     unsafe {
         (*reqs).c_base_features()
     }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_requirements_add(
-    reqs: *mut Requirements,
-    name: *const c_char,
-) {
-    let reqs = unsafe { &mut *reqs };
-    let name = unsafe { CStr::from_ptr(name).to_str().unwrap() };
-    reqs.add(name);
 }
 
 #[no_mangle]
@@ -891,6 +865,7 @@ pub extern "C" fn vr_requirements_free(reqs: *mut Requirements) {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::ffi::c_char;
 
     unsafe fn get_struct_type(structure: *const u8) -> vk::VkStructureType {
         let slice = std::slice::from_raw_parts(
