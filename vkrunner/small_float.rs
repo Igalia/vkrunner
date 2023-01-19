@@ -55,24 +55,6 @@ pub fn load_signed(part: u32, e_bits: u32, m_bits: u32) -> f64 {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn vr_small_float_load_unsigned(
-    part: u32,
-    e_bits: i32,
-    m_bits: i32,
-) -> f64 {
-    load_unsigned(part, e_bits as u32, m_bits as u32)
-}
-
-#[no_mangle]
-pub extern "C" fn vr_small_float_load_signed(
-    part: u32,
-    e_bits: i32,
-    m_bits: i32,
-) -> f64 {
-    load_signed(part, e_bits as u32, m_bits as u32)
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
