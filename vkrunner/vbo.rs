@@ -557,6 +557,10 @@ impl Parser {
             }
         }
 
+        if !line.trim_end().is_empty() {
+            invalid_data!(self, "Extra data at end of line");
+        }
+
         self.num_rows += 1;
 
         Ok(())
@@ -887,5 +891,13 @@ mod test {
                       0xfedcba98";
         let vbo = source.parse::<Vbo>().unwrap();
         assert_eq!(vbo.raw_data(), &0xfedcba98u32.to_ne_bytes());
+    }
+
+    #[test]
+    fn test_trailing_data() {
+        let source = "1/R8_UNORM\n\
+                      23 25 ";
+        let err = source.parse::<Vbo>().unwrap_err();
+        assert_eq!(err.to_string(), "Extra data at end of line");
     }
 }
