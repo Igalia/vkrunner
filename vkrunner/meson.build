@@ -1,5 +1,7 @@
 pkg = import('pkgconfig')
 
+rust = import('rust', required : false)
+
 vkrunner_public_headers = [
    'vr-callback.h',
    'vr-config.h',
@@ -79,3 +81,7 @@ install_headers(vkrunner_public_headers, subdir : 'vkrunner')
 
 pkg.generate(vkrunner_lib,
              description : 'Vulkan shader testing script library')
+
+if rust.found()
+    rust.test('rust-unit-tests', rust_parts_lib)
+endif
