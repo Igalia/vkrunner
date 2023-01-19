@@ -52,8 +52,7 @@ use crate::format::{Format, Mode};
 use crate::{util, parse_num, hex};
 use std::fmt;
 use std::cell::RefCell;
-use std::ffi::{CString, c_void, c_uint};
-use std::slice;
+use std::ffi::{c_void, c_uint};
 
 #[derive(Debug, Clone)]
 pub struct Error {
@@ -609,45 +608,6 @@ impl ParseData {
 }
 
 #[no_mangle]
-pub extern "C" fn vr_vbo_parse(
-    config: *const c_void,
-    text: *const u8,
-    text_length: usize
-) -> *const Vbo {
-    extern "C" {
-        fn vr_error_message_string(config: *const c_void, str: *const i8);
-    }
-
-    let convert_result = unsafe {
-        String::from_utf8(slice::from_raw_parts(text, text_length).to_owned())
-    };
-
-    match convert_result {
-        Err(_) => {
-            let message =
-                CString::new("Invalid UTF-8 in vertex data").unwrap();
-
-            unsafe {
-                vr_error_message_string(config, message.as_ptr());
-            }
-            std::ptr::null()
-        },
-        Ok(source) => {
-            match source.parse::<Vbo>() {
-                Err(e) => {
-                    let message = CString::new(e.to_string()).unwrap();
-                    unsafe {
-                        vr_error_message_string(config, message.as_ptr());
-                    }
-                    std::ptr::null()
-                },
-                Ok(vbo) => Box::into_raw(Box::new(vbo)),
-            }
-        },
-    }
-}
-
-#[no_mangle]
 pub extern "C" fn vr_vbo_get_raw_data(vbo: *const Vbo) -> *const u8 {
     unsafe { vbo.as_ref().unwrap().raw_data().as_ptr() }
 }
@@ -701,11 +661,6 @@ pub extern "C" fn vr_vbo_attrib_get_offset(
     attrib: *const Attrib
 ) -> usize {
     unsafe { attrib.as_ref().unwrap().offset() }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vbo_free(vbo: *mut Vbo) {
-    unsafe { Box::from_raw(vbo) };
 }
 
 #[cfg(test)]

@@ -34,11 +34,6 @@
 struct vr_vbo;
 struct vr_vbo_attrib;
 
-struct vr_vbo *
-vr_vbo_parse(const struct vr_config *config,
-             const char *text,
-             size_t text_length);
-
 const uint8_t *
 vr_vbo_get_raw_data(const struct vr_vbo *vbo);
 
@@ -64,8 +59,5 @@ vr_vbo_attrib_get_location(const struct vr_vbo_attrib *attrib);
 
 size_t
 vr_vbo_attrib_get_offset(const struct vr_vbo_attrib *attrib);
-
-void
-vr_vbo_free(struct vr_vbo *vbo);
 
 #endif /* VR_VBO_H */
