@@ -21,7 +21,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-// Align a value, only works on power-of-two alignments
+/// Align a value, only works on power-of-two alignments
 #[inline]
 pub const fn align(value: usize, alignment: usize) -> usize {
     debug_assert!(alignment.is_power_of_two());
