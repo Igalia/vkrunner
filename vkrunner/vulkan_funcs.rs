@@ -33,7 +33,7 @@ pub type GetInstanceProcFunc = unsafe extern "C" fn(
 include!{"vulkan_funcs_data.rs"}
 
 impl Library {
-    fn new() -> Result<Library, String> {
+    pub fn new() -> Result<Library, String> {
         let lib: *const c_void;
         let get_instance_proc_addr: vk::PFN_vkGetInstanceProcAddr;
 
