@@ -102,12 +102,21 @@ impl Library {
 
 impl Drop for Library {
     fn drop(&mut self) {
-        extern "C" {
-            fn dlclose(lib: *const c_void) -> *const c_void;
+        #[cfg(unix)]
+        {
+            extern "C" {
+                fn dlclose(lib: *const c_void) -> *const c_void;
+            }
+
+            if !self.lib_vulkan.is_null() {
+                unsafe { dlclose(self.lib_vulkan) };
+            }
         }
 
-        if !self.lib_vulkan.is_null() {
-            unsafe { dlclose(self.lib_vulkan) };
+        #[cfg(not(unix))]
+        {
+            todo!("library closing on non-Unix platforms is not yet \
+                   implemented");
         }
     }
 }
