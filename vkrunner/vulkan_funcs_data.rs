@@ -5,6 +5,7 @@
 #[repr(C)]
 pub struct Library {
     lib_vulkan: *const c_void,
+    lib_vulkan_is_fake: bool,
 
     pub vkGetInstanceProcAddr: vk::PFN_vkGetInstanceProcAddr,
     pub vkCreateInstance: vk::PFN_vkCreateInstance,

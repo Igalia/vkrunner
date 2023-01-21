@@ -139,6 +139,7 @@ TEMPLATE = """\
 #[repr(C)]
 pub struct Library {
     lib_vulkan: *const c_void,
+    lib_vulkan_is_fake: bool,
 
 % for func in core_funcs:
     pub ${func}: vk::PFN_${func},

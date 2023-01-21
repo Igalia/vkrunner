@@ -32,6 +32,7 @@
 
 struct vr_vk_library {
         void *lib_vulkan;
+        bool lib_vulkan_is_fake;
 
         PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr;
         PFN_vkCreateInstance vkCreateInstance;

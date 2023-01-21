@@ -32,10 +32,31 @@ pub type GetInstanceProcFunc = unsafe extern "C" fn(
 
 include!{"vulkan_funcs_data.rs"}
 
+struct LoaderFunc {
+    lib_vulkan: *const c_void,
+    lib_vulkan_is_fake: bool,
+    get_instance_proc_addr: vk::PFN_vkGetInstanceProcAddr,
+}
+
+// Per-thread override for the get_instance_proc_address function.
+// This is only used in unit tests to implement a fake Vulkan driver.
+#[cfg(test)]
+thread_local! {
+    static LOADER_FUNC_OVERRIDE:
+    std::cell::Cell<Option<LoaderFunc>> = std::cell::Cell::new(None);
+}
+
 impl Library {
-    pub fn new() -> Result<Library, String> {
-        let lib: *const c_void;
-        let get_instance_proc_addr: vk::PFN_vkGetInstanceProcAddr;
+    fn get_loader_func(
+    ) -> Result<LoaderFunc, String> {
+        // Override for unit tests. If an override function is set
+        // then we will return that instead. `take` is called on it so
+        // that it will only be used once and subsequent calls will
+        // revert back to the normal mechanism.
+        #[cfg(test)]
+        if let Some(loader_func) = LOADER_FUNC_OVERRIDE.with(|f| f.take()) {
+            return Ok(loader_func);
+        }
 
         #[cfg(unix)]
         {
@@ -60,7 +81,7 @@ impl Library {
 
             let lib_name_c = CString::new(lib_name).unwrap();
 
-            lib = unsafe {
+            let lib = unsafe {
                 dlopen(lib_name_c.as_ptr(), 1)
             };
 
@@ -68,21 +89,34 @@ impl Library {
                 return Err(format!("Error opening {}", lib_name));
             }
 
-            get_instance_proc_addr = unsafe {
+            let get_instance_proc_addr = unsafe {
                 std::mem::transmute(dlsym(
                     lib,
                     "vkGetInstanceProcAddr\0".as_ptr().cast()
                 ))
             };
-        }
-        #[cfg(not(unix))]
-        {
-            todo!("library opening on non-Unix platforms is not yet \
-                   implemented");
+
+            return Ok(LoaderFunc {
+                lib_vulkan: lib,
+                lib_vulkan_is_fake: false,
+                get_instance_proc_addr
+            });
         }
 
+        #[cfg(not(unix))]
+        todo!("library opening on non-Unix platforms is not yet implemented");
+    }
+
+    pub fn new() -> Result<Library, String> {
+        let LoaderFunc {
+            lib_vulkan,
+            lib_vulkan_is_fake,
+            get_instance_proc_addr,
+        } = Library::get_loader_func()?;
+
         Ok(Library {
-            lib_vulkan: lib,
+            lib_vulkan,
+            lib_vulkan_is_fake,
             vkGetInstanceProcAddr: get_instance_proc_addr,
             vkCreateInstance: unsafe {
                 std::mem::transmute(get_instance_proc_addr.unwrap()(
@@ -108,7 +142,7 @@ impl Drop for Library {
                 fn dlclose(lib: *const c_void) -> *const c_void;
             }
 
-            if !self.lib_vulkan.is_null() {
+            if !self.lib_vulkan_is_fake {
                 unsafe { dlclose(self.lib_vulkan) };
             }
         }
@@ -180,6 +214,26 @@ pub extern "C" fn vr_vk_device_free(device: *mut Device) {
     unsafe { Box::from_raw(device) };
 }
 
+/// Helper function to temporarily replace the `vkGetInstanceProcAddr`
+/// function that will be used for the next call to [Library::new].
+/// The override will only be used once and subsequent calls to
+/// [Library::new] will revert back to trying to open the Vulkan
+/// library. The override is per-thread so it is safe to use in a
+/// multi-threaded testing environment. This function is only
+/// available in test build configs and it is intended to help make a
+/// fake Vulkan driver for unit tests.
+#[cfg(test)]
+pub fn override_get_instance_proc_addr(
+    lib: *const c_void,
+    proc: vk::PFN_vkGetInstanceProcAddr,
+) {
+    LOADER_FUNC_OVERRIDE.with(|f| f.replace(Some(LoaderFunc {
+        lib_vulkan: lib,
+        lib_vulkan_is_fake: true,
+        get_instance_proc_addr: proc,
+    })));
+}
+
 /// Helper function for unit tests in other modules that want to
 /// create a fake Vulkan library to help testing. The tests can
 /// override functions in the structs to implement tests. This is only
@@ -223,13 +277,12 @@ pub fn make_fake_vulkan() -> (Library, Instance, Device) {
         None
     }
 
-    let vklib = Library {
-        lib_vulkan: std::ptr::null(),
+    override_get_instance_proc_addr(
+        std::ptr::null(), // lib
+        Some(get_instance_proc_addr),
+    );
 
-        vkGetInstanceProcAddr: Some(get_instance_proc_addr),
-        vkCreateInstance: None,
-        vkEnumerateInstanceExtensionProperties: None,
-    };
+    let vklib = Library::new().unwrap();
 
     let vkinst = unsafe {
         Instance::new(get_instance_proc_cb, std::ptr::null())
