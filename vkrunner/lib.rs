@@ -18,6 +18,7 @@ mod source;
 mod config;
 mod stream;
 mod script;
+mod context;
 
 #[cfg(test)]
 mod fake_vulkan;
