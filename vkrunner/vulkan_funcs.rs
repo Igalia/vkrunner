@@ -180,9 +180,10 @@ pub extern "C" fn vr_vk_device_free(device: *mut Device) {
     unsafe { Box::from_raw(device) };
 }
 
-// Helper function for unit tests in other modules that want to create
-// a fake Vulkan library to help testing. The tests can override
-// functions in the structs to implement tests.
+/// Helper function for unit tests in other modules that want to
+/// create a fake Vulkan library to help testing. The tests can
+/// override functions in the structs to implement tests. This is only
+/// provided in the test build config.
 #[cfg(test)]
 pub fn make_fake_vulkan() -> (Library, Instance, Device) {
     use std::ffi::CStr;
