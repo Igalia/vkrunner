@@ -852,7 +852,8 @@ pub extern "C" fn vr_requirements_free(reqs: *mut Requirements) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::ffi::c_char;
+    use std::ffi::c_void;
+    use crate::fake_vulkan;
 
     unsafe fn get_struct_type(structure: *const u8) -> vk::VkStructureType {
         let slice = std::slice::from_raw_parts(
@@ -1117,230 +1118,89 @@ mod test {
         assert_eq!(reqs, empty);
     }
 
-    type ExtensionName = [c_char; vk::VK_MAX_EXTENSION_NAME_SIZE as usize];
-
-    struct FakeVulkan {
-        base_features: vk::VkPhysicalDeviceFeatures,
-        properties: vk::VkPhysicalDeviceProperties,
-        has_enumerate_instance_version: bool,
-        n_extensions: usize,
-        extension_names: [ExtensionName; 3],
-        // Two random extension feature sets to report when asked
-        shader_atomic: vk::VkPhysicalDeviceShaderAtomicInt64FeaturesKHR,
-        multiview: vk::VkPhysicalDeviceMultiviewFeaturesKHR,
+    struct FakeVulkanData {
+        fake_vulkan: Box<fake_vulkan::FakeVulkan>,
         vklib: vulkan_funcs::Library,
         vkinst: vulkan_funcs::Instance,
+        instance: vk::VkInstance,
+        device: vk::VkPhysicalDevice,
     }
 
-    const ATOMIC_TYPE: vk::VkStructureType =
-        vk::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR;
-    const MULTIVIEW_TYPE: vk::VkStructureType =
-        vk::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
+    impl FakeVulkanData {
+        fn new() -> FakeVulkanData {
+            let mut fake_vulkan = fake_vulkan::FakeVulkan::new();
 
-    impl FakeVulkan {
-        fn new() -> Box<FakeVulkan> {
-            let (mut vklib, mut vkinst, _) =
-                vulkan_funcs::make_fake_vulkan();
+            fake_vulkan.physical_devices.push(Default::default());
 
-            vklib.vkGetInstanceProcAddr =
-                Some(FakeVulkan::get_instance_proc_addr);
-            vkinst.vkGetPhysicalDeviceProperties =
-                Some(FakeVulkan::get_physical_device_properties);
-            vkinst.vkGetPhysicalDeviceFeatures =
-                Some(FakeVulkan::get_physical_device_features);
-            vkinst.vkEnumerateDeviceExtensionProperties =
-                Some(FakeVulkan::enumerate_device_extension_properties);
+            fake_vulkan.set_override();
+            let vklib = vulkan_funcs::Library::new().unwrap();
 
-            let mut fv = Box::new(FakeVulkan {
-                base_features: Default::default(),
-                properties: Default::default(),
-                has_enumerate_instance_version: false,
-                n_extensions: 0,
-                extension_names: [
-                    [0; vk::VK_MAX_EXTENSION_NAME_SIZE as usize];
-                    3
-                ],
-                shader_atomic: Default::default(),
-                multiview: Default::default(),
+            let mut instance = std::ptr::null_mut();
+
+            unsafe {
+                let res = vklib.vkCreateInstance.unwrap()(
+                    std::ptr::null(), // pCreateInfo
+                    std::ptr::null(), // pAllocator
+                    std::ptr::addr_of_mut!(instance),
+                );
+                assert_eq!(res, vk::VK_SUCCESS);
+            }
+
+            extern "C" fn get_instance_proc(
+                func_name: *const u8,
+                user_data: *const c_void,
+            ) -> *const c_void {
+                unsafe {
+                    let fake_vulkan =
+                        &*user_data.cast::<fake_vulkan::FakeVulkan>();
+                    std::mem::transmute(
+                        fake_vulkan.get_function(func_name.cast())
+                    )
+                }
+            }
+
+            let vkinst = unsafe {
+                vulkan_funcs::Instance::new(
+                    get_instance_proc,
+                    fake_vulkan.as_ref()
+                        as *const fake_vulkan::FakeVulkan
+                        as *const c_void,
+                )
+            };
+
+            let mut device = std::ptr::null_mut();
+
+            unsafe {
+                let mut count = 1;
+                let res = vkinst.vkEnumeratePhysicalDevices.unwrap()(
+                    instance,
+                    std::ptr::addr_of_mut!(count),
+                    std::ptr::addr_of_mut!(device),
+                );
+
+                assert_eq!(res, vk::VK_SUCCESS);
+            }
+
+            FakeVulkanData {
+                fake_vulkan,
                 vklib,
                 vkinst,
-            });
-
-            fv.as_mut().properties.apiVersion = make_version(1, 0, 0);
-
-            fv
-        }
-
-        fn instance(&mut self) -> vk::VkInstance {
-            (self as *mut FakeVulkan).cast()
-        }
-
-        fn device(&mut self) -> vk::VkPhysicalDevice {
-            (self as *mut FakeVulkan).cast()
-        }
-
-        extern "C" fn get_instance_proc_addr(
-            instance: vk::VkInstance,
-            name: *const c_char,
-        ) -> vk::PFN_vkVoidFunction {
-            let name = unsafe { CStr::from_ptr(name).to_str().unwrap() };
-
-            match name {
-                "vkGetPhysicalDeviceFeatures2KHR" => unsafe {
-                    mem::transmute::<vk::PFN_vkGetPhysicalDeviceFeatures2, _>(
-                        Some(FakeVulkan::get_physical_device_features2)
-                    )
-                },
-                "vkEnumerateInstanceVersion" => unsafe {
-                    let fake_vulkan = &*(instance as *mut FakeVulkan);
-
-                    if fake_vulkan.has_enumerate_instance_version {
-                        mem::transmute::<vk::PFN_vkEnumerateInstanceVersion, _>(
-                            Some(FakeVulkan::enumerate_instance_version)
-                        )
-                    } else {
-                        None
-                    }
-                },
-                _ => None,
+                instance,
+                device,
             }
         }
+    }
 
-        extern "C" fn get_physical_device_properties(
-            physical_device: vk::VkPhysicalDevice,
-            properties: *mut vk::VkPhysicalDeviceProperties,
-        ) {
-            let fake_vulkan =
-                unsafe { &*(physical_device as *mut FakeVulkan) };
-            unsafe {
-                *properties = fake_vulkan.properties;
-            }
-        }
-
-        extern "C" fn get_physical_device_features(
-            physical_device: vk::VkPhysicalDevice,
-            features: *mut vk::VkPhysicalDeviceFeatures,
-        ) {
-            let fake_vulkan =
-                unsafe { &*(physical_device as *mut FakeVulkan) };
-            unsafe {
-                *features = fake_vulkan.base_features;
-            }
-        }
-
-        fn extract_struct_data(
-            ptr: *mut u8
-        ) -> (vk::VkStructureType, *mut u8) {
-            let mut type_bytes =
-                [0u8; mem::size_of::<vk::VkStructureType>()];
-            unsafe {
-                ptr.copy_to(type_bytes.as_mut_ptr(), type_bytes.len());
-            }
-            let mut next_bytes =
-                [0u8; mem::size_of::<*mut u8>()];
-            unsafe {
-                ptr.add(NEXT_PTR_OFFSET).copy_to(
-                    next_bytes.as_mut_ptr(), next_bytes.len()
-                );
-            }
-
-            (
-                vk::VkStructureType::from_ne_bytes(type_bytes),
-                usize::from_ne_bytes(next_bytes) as *mut u8,
-            )
-        }
-
-        extern "C" fn get_physical_device_features2(
-            physical_device: vk::VkPhysicalDevice,
-            features: *mut vk::VkPhysicalDeviceFeatures2,
-        ) {
-            let fake_vulkan =
-                unsafe { &*(physical_device as *mut FakeVulkan) };
-
-            let (struct_type, mut struct_ptr) =
-                FakeVulkan::extract_struct_data(features.cast());
-
-            assert_eq!(
-                struct_type,
-                vk::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2
-            );
-
-            while !struct_ptr.is_null() {
-                let (struct_type, next_ptr) =
-                    FakeVulkan::extract_struct_data(struct_ptr);
-
-                let to_copy = match struct_type {
-                    ATOMIC_TYPE => vec![
-                        fake_vulkan.shader_atomic.shaderBufferInt64Atomics,
-                        fake_vulkan.shader_atomic.shaderSharedInt64Atomics,
-                    ],
-                    MULTIVIEW_TYPE => vec![
-                        fake_vulkan.multiview.multiview,
-                        fake_vulkan.multiview.multiviewGeometryShader,
-                        fake_vulkan.multiview.multiviewTessellationShader,
-                    ],
-                    _ => unreachable!("unexpected struct type {}", struct_type),
-                };
-
+    impl Drop for FakeVulkanData {
+        fn drop(&mut self) {
+            if !std::thread::panicking() {
                 unsafe {
-                    std::ptr::copy(
-                        to_copy.as_ptr(),
-                        struct_ptr.add(FIRST_FEATURE_OFFSET).cast(),
-                        to_copy.len(),
+                    self.vkinst.vkDestroyInstance.unwrap()(
+                        self.instance,
+                        std::ptr::null(), // allocator
                     );
                 }
-
-                struct_ptr = next_ptr;
             }
-        }
-
-        extern "C" fn enumerate_instance_version(
-            api_version: *mut u32
-        ) -> vk::VkResult {
-            unsafe { *api_version = make_version(1, 1, 0) }
-            vk::VK_SUCCESS
-        }
-
-        extern "C" fn enumerate_device_extension_properties(
-            physical_device: vk::VkPhysicalDevice,
-            _layer_name: *const c_char,
-            property_count: *mut u32,
-            properties: *mut vk::VkExtensionProperties,
-        ) -> vk::VkResult {
-            let fake_vulkan =
-                unsafe { &*(physical_device as *mut FakeVulkan) };
-
-            if properties.is_null() {
-                unsafe { *property_count = fake_vulkan.n_extensions as u32 };
-                vk::VK_SUCCESS
-            } else {
-                let n_extensions = std::cmp::min(
-                    fake_vulkan.n_extensions,
-                    unsafe { *property_count } as usize,
-                );
-
-                for i in 0..n_extensions {
-                    let prop = unsafe { properties.add(i).as_mut().unwrap() };
-                    prop.extensionName = fake_vulkan.extension_names[i];
-                    prop.specVersion = 0;
-                }
-
-                unsafe { *property_count = n_extensions as u32  };
-
-                vk::VK_SUCCESS
-            }
-        }
-
-        fn add_extension(&mut self, name: &str) {
-            let extension_num = self.n_extensions;
-            assert!(extension_num < self.extension_names.len());
-            let extension = &mut self.extension_names[extension_num];
-            assert!(name.len() < extension.len());
-            for (i, b) in name.bytes().enumerate() {
-                extension[i] = b as i8;
-            }
-            extension[name.len()] = 0i8;
-            self.n_extensions += 1;
         }
     }
 
@@ -1348,18 +1208,15 @@ mod test {
         reqs: &'a Requirements,
         features: &vk::VkPhysicalDeviceFeatures
     ) -> Result<(), CheckError<'a>> {
-        let mut fake_vulkan = FakeVulkan::new();
+        let mut data = FakeVulkanData::new();
 
-        fake_vulkan.base_features = features.clone();
-
-        let instance = fake_vulkan.instance();
-        let device = fake_vulkan.device();
+        data.fake_vulkan.physical_devices[0].features = features.clone();
 
         reqs.check(
-            &fake_vulkan.vklib,
-            &fake_vulkan.vkinst,
-            instance,
-            device,
+            &data.vklib,
+            &data.vkinst,
+            data.instance,
+            data.device,
         )
     }
 
@@ -1401,18 +1258,15 @@ mod test {
 
     #[test]
     fn test_check_extensions() {
-        let mut fv = FakeVulkan::new();
+        let mut data = FakeVulkanData::new();
         let mut reqs = Requirements::new();
-
-        let instance = fv.instance();
-        let device = fv.device();
 
         assert!(matches!(
             reqs.check(
-                &fv.vklib,
-                &fv.vkinst,
-                instance,
-                device,
+                &data.vklib,
+                &data.vkinst,
+                data.instance,
+                data.device,
             ),
             Ok(()),
         ));
@@ -1420,10 +1274,10 @@ mod test {
         reqs.add("fake_extension");
 
         match reqs.check(
-            &fv.vklib,
-            &fv.vkinst,
-            instance,
-            device,
+            &data.vklib,
+            &data.vkinst,
+            data.instance,
+            data.device,
         ) {
             Ok(()) => unreachable!("expected extensions check to fail"),
             Err(e) => {
@@ -1438,14 +1292,14 @@ mod test {
             },
         };
 
-        fv.add_extension("fake_extension");
+        data.fake_vulkan.physical_devices[0].add_extension("fake_extension");
 
         assert!(matches!(
             reqs.check(
-                &fv.vklib,
-                &fv.vkinst,
-                instance,
-                device,
+                &data.vklib,
+                &data.vkinst,
+                data.instance,
+                data.device,
             ),
             Ok(()),
         ));
@@ -1454,10 +1308,10 @@ mod test {
         reqs.add("multiviewGeometryShader");
 
         match reqs.check(
-            &fv.vklib,
-            &fv.vkinst,
-            instance,
-            device,
+            &data.vklib,
+            &data.vkinst,
+            data.instance,
+            data.device,
         ) {
             Ok(()) => unreachable!("expected extensions check to fail"),
             Err(e) => {
@@ -1472,13 +1326,13 @@ mod test {
             },
         };
 
-        fv.add_extension("VK_KHR_multiview");
+        data.fake_vulkan.physical_devices[0].add_extension("VK_KHR_multiview");
 
         match reqs.check(
-            &fv.vklib,
-            &fv.vkinst,
-            instance,
-            device,
+            &data.vklib,
+            &data.vkinst,
+            data.instance,
+            data.device,
         ) {
             Ok(()) => unreachable!("expected extensions check to fail"),
             Err(e) => {
@@ -1495,14 +1349,19 @@ mod test {
         };
 
         // Make an unterminated UTF-8 character
-        fv.extension_names[0][0] = -1;
-        fv.extension_names[0][1] = 0;
+        let extension_name = &mut data
+            .fake_vulkan
+            .physical_devices[0]
+            .extensions[0]
+            .extensionName;
+        extension_name[0] = -1;
+        extension_name[1] = 0;
 
         match reqs.check(
-            &fv.vklib,
-            &fv.vkinst,
-            instance,
-            device,
+            &data.vklib,
+            &data.vkinst,
+            data.instance,
+            data.device,
         ) {
             Ok(()) => unreachable!("expected extensions check to fail"),
             Err(e) => {
@@ -1516,13 +1375,13 @@ mod test {
         };
 
         // No null-terminator in the extension
-        fv.extension_names[0].fill(32);
+        extension_name.fill(32);
 
         match reqs.check(
-            &fv.vklib,
-            &fv.vkinst,
-            instance,
-            device,
+            &data.vklib,
+            &data.vkinst,
+            data.instance,
+            data.device,
         ) {
             Ok(()) => unreachable!("expected extensions check to fail"),
             Err(e) => {
@@ -1538,20 +1397,17 @@ mod test {
 
     #[test]
     fn test_check_structures() {
-        let mut fv = FakeVulkan::new();
+        let mut data = FakeVulkanData::new();
         let mut reqs = Requirements::new();
 
-        let instance = fv.instance();
-        let device = fv.device();
-
         reqs.add("multiview");
-        fv.add_extension("VK_KHR_multiview");
+        data.fake_vulkan.physical_devices[0].add_extension("VK_KHR_multiview");
 
         match reqs.check(
-            &fv.vklib,
-            &fv.vkinst,
-            instance,
-            device,
+            &data.vklib,
+            &data.vkinst,
+            data.instance,
+            data.device,
         ) {
             Ok(()) => unreachable!("expected features check to fail"),
             Err(e) => {
@@ -1567,26 +1423,28 @@ mod test {
             },
         };
 
-        fv.multiview.multiview = vk::VK_TRUE;
+        data.fake_vulkan.physical_devices[0].multiview.multiview = vk::VK_TRUE;
 
         assert!(matches!(
             reqs.check(
-                &fv.vklib,
-                &fv.vkinst,
-                instance,
-                device,
+                &data.vklib,
+                &data.vkinst,
+                data.instance,
+                data.device,
             ),
             Ok(()),
         ));
 
         reqs.add("shaderBufferInt64Atomics");
-        fv.add_extension("VK_KHR_shader_atomic_int64");
+        data.fake_vulkan.physical_devices[0].add_extension(
+            "VK_KHR_shader_atomic_int64"
+        );
 
         match reqs.check(
-            &fv.vklib,
-            &fv.vkinst,
-            instance,
-            device,
+            &data.vklib,
+            &data.vkinst,
+            data.instance,
+            data.device,
         ) {
             Ok(()) => unreachable!("expected features check to fail"),
             Err(e) => {
@@ -1602,14 +1460,18 @@ mod test {
             },
         };
 
-        fv.shader_atomic.shaderBufferInt64Atomics = vk::VK_TRUE;
+        data.fake_vulkan
+            .physical_devices[0]
+            .shader_atomic
+            .shaderBufferInt64Atomics =
+            vk::VK_TRUE;
 
         assert!(matches!(
             reqs.check(
-                &fv.vklib,
-                &fv.vkinst,
-                instance,
-                device,
+                &data.vklib,
+                &data.vkinst,
+                data.instance,
+                data.device,
             ),
             Ok(()),
         ));
@@ -1617,20 +1479,18 @@ mod test {
 
     #[test]
     fn test_check_version() {
-        let mut fv = FakeVulkan::new();
+        let mut data = FakeVulkanData::new();
         let mut reqs = Requirements::new();
 
-        let instance = fv.instance();
-        let device = fv.device();
-
         reqs.add_version(1, 2, 0);
-        fv.properties.apiVersion = make_version(1, 1, 0);
+        data.fake_vulkan.physical_devices[0].properties.apiVersion =
+            make_version(1, 1, 0);
 
         match reqs.check(
-            &fv.vklib,
-            &fv.vkinst,
-            instance,
-            device,
+            &data.vklib,
+            &data.vkinst,
+            data.instance,
+            data.device,
         ) {
             Ok(()) => unreachable!("expected version check to fail"),
             Err(e) => {
@@ -1650,13 +1510,13 @@ mod test {
 
         // Now we let it have vkEnumerateInstanceVersion so it will
         // report the API version but it is still too low.
-        fv.has_enumerate_instance_version = true;
+        data.fake_vulkan.has_enumerate_instance_version = true;
 
         match reqs.check(
-            &fv.vklib,
-            &fv.vkinst,
-            instance,
-            device,
+            &data.vklib,
+            &data.vkinst,
+            data.instance,
+            data.device,
         ) {
             Ok(()) => unreachable!("expected version check to fail"),
             Err(e) => {
@@ -1675,14 +1535,15 @@ mod test {
         };
 
         // Finally a valid version
-        fv.properties.apiVersion = make_version(1, 3, 0);
+        data.fake_vulkan.physical_devices[0].properties.apiVersion =
+            make_version(1, 3, 0);
 
         assert!(matches!(
             reqs.check(
-                &fv.vklib,
-                &fv.vkinst,
-                instance,
-                device,
+                &data.vklib,
+                &data.vkinst,
+                data.instance,
+                data.device,
             ),
             Ok(()),
         ));
