@@ -17,3 +17,6 @@ mod window_format;
 mod source;
 mod stream;
 mod script;
+
+#[cfg(test)]
+mod fake_vulkan;
