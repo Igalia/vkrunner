@@ -24,7 +24,7 @@
 
 use crate::vk;
 use crate::vulkan_funcs;
-use crate::util;
+use crate::vulkan_funcs::{NEXT_PTR_OFFSET, FIRST_FEATURE_OFFSET};
 use std::mem;
 use std::collections::{HashMap, HashSet};
 use std::ffi::CStr;
@@ -158,19 +158,6 @@ impl<'a> fmt::Display for CheckError<'a> {
     }
 }
 
-// Offset of the pNext member of the features struct. There doesn’t
-// seem to be a nice equivalent to offsetof in Rust so this is just
-// trying to replicate the C struct alignment rules.
-const NEXT_PTR_OFFSET: usize = util::align(
-    mem::size_of::<vk::VkStructureType>(),
-    mem::align_of::<*mut std::os::raw::c_void>(),
-);
-// Offset of the first VkBool32 field in the features structs.
-const FIRST_BOOL_OFFSET: usize = util::align(
-    NEXT_PTR_OFFSET + mem::size_of::<*mut std::os::raw::c_void>(),
-    mem::align_of::<vk::VkBool32>(),
-);
-
 /// Convert a decomposed Vulkan version into an integer. This is the
 /// same as the `VK_MAKE_VERSION` macro in the Vulkan headers.
 pub const fn make_version(major: u32, minor: u32, patch: u32) -> u32 {
@@ -288,7 +275,7 @@ impl Requirements {
             // the bools
             assert!(
                 extension.struct_size
-                    >= (FIRST_BOOL_OFFSET
+                    >= (FIRST_FEATURE_OFFSET
                         + features.len() * mem::size_of::<vk::VkBool32>())
             );
 
@@ -300,13 +287,13 @@ impl Requirements {
             structures[offset..type_end]
                 .copy_from_slice(&extension.struct_type.to_ne_bytes());
 
-            offsets.push((offset + FIRST_BOOL_OFFSET, extension_num));
+            offsets.push((offset + FIRST_FEATURE_OFFSET, extension_num));
         }
 
         let mut last_offset = 0;
 
         for &(offset, _) in &offsets[1..] {
-            let offset = offset - FIRST_BOOL_OFFSET;
+            let offset = offset - FIRST_FEATURE_OFFSET;
 
             // SAFETY: The offsets are all valid offsets into the
             // structures vec so they should all be in the same
@@ -895,7 +882,7 @@ mod test {
             let struct_type = get_struct_type(structures);
 
             if struct_type == extension.struct_type {
-                let bools_ptr = structures.add(FIRST_BOOL_OFFSET);
+                let bools_ptr = structures.add(FIRST_FEATURE_OFFSET);
                 return std::slice::from_raw_parts(
                     bools_ptr as *const vk::VkBool32,
                     extension.features.len()
@@ -1298,7 +1285,7 @@ mod test {
                 unsafe {
                     std::ptr::copy(
                         to_copy.as_ptr(),
-                        struct_ptr.add(FIRST_BOOL_OFFSET).cast(),
+                        struct_ptr.add(FIRST_FEATURE_OFFSET).cast(),
                         to_copy.len(),
                     );
                 }

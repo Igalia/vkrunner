@@ -23,7 +23,22 @@
 // DEALINGS IN THE SOFTWARE.
 
 use crate::vk;
+use crate::util;
 use std::ffi::{c_void, c_int, c_char, CString};
+use std::mem;
+
+/// Offset of the pNext member of the structs that can be chained.
+/// There doesn’t seem to be a nice equivalent to offsetof in Rust so
+/// this is just trying to replicate the C struct alignment rules.
+pub const NEXT_PTR_OFFSET: usize = util::align(
+    mem::size_of::<vk::VkStructureType>(),
+    mem::align_of::<*mut std::os::raw::c_void>(),
+);
+/// Offset of the first VkBool32 field in the features structs.
+pub const FIRST_FEATURE_OFFSET: usize = util::align(
+    NEXT_PTR_OFFSET + mem::size_of::<*mut std::os::raw::c_void>(),
+    mem::align_of::<vk::VkBool32>(),
+);
 
 pub type GetInstanceProcFunc = unsafe extern "C" fn(
     func_name: *const u8,
