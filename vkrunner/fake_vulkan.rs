@@ -34,6 +34,7 @@ use std::mem::transmute;
 use std::ffi::{c_char, CStr};
 use std::ptr;
 use std::cmp::min;
+use std::collections::{HashMap, VecDeque};
 
 // Pointer to the current FakeVulkan instance that was created in
 // this thread. There can only be one instance per thread.
@@ -131,6 +132,11 @@ pub struct FakeVulkan {
     n_command_pools: usize,
     n_command_buffers: usize,
     n_fences: usize,
+
+    // Queue of values to return instead of VK_SUCCESS to simulate
+    // function call failures. This is indexed by the function name
+    // and the value is a queue of override values to return.
+    result_queue: HashMap<String, VecDeque<vk::VkResult>>,
 }
 
 impl FakeVulkan {
@@ -144,6 +150,7 @@ impl FakeVulkan {
             n_command_buffers: 0,
             n_fences: 0,
             has_enumerate_instance_version: false,
+            result_queue: HashMap::new(),
         });
 
         CURRENT_FAKE_VULKAN.with(|f| {
@@ -160,6 +167,28 @@ impl FakeVulkan {
 
     pub fn current() -> &'static mut FakeVulkan {
         unsafe { &mut *CURRENT_FAKE_VULKAN.with(|f| f.get().unwrap()) }
+    }
+
+    fn next_result(&mut self, func_name: &str) -> vk::VkResult {
+        match self.result_queue.get_mut(func_name) {
+            Some(queue) => match queue.pop_front() {
+                Some(res) => res,
+                None => vk::VK_SUCCESS,
+            },
+            None => vk::VK_SUCCESS,
+        }
+    }
+
+    /// Queue a VkResult to return the next time the named function is
+    /// called. The value will be used only once and after that the
+    /// function will revert to always returning VK_SUCCESS. This can
+    /// be called multiple times to queue multiple results before
+    /// reverting.
+    pub fn queue_result(&mut self, func_name: String, result: vk::VkResult) {
+        self.result_queue
+            .entry(func_name)
+            .or_insert_with(Default::default)
+            .push_back(result);
     }
 
     /// Sets the get_proc_addr override on the [vulkan_funcs] so that
@@ -352,7 +381,7 @@ impl FakeVulkan {
                     fake_vulkan.physical_devices.len() as u32;
             }
 
-            return vk::VK_SUCCESS;
+            return fake_vulkan.next_result("vkEnumeratePhysicalDevices");
         }
 
         let count = min(
@@ -373,7 +402,7 @@ impl FakeVulkan {
             *physical_device_count = count as u32;
         }
 
-        vk::VK_SUCCESS
+        fake_vulkan.next_result("vkEnumeratePhysicalDevices")
     }
 
     /// Get the physical device that would point to the device at the
@@ -570,7 +599,7 @@ impl FakeVulkan {
             properties,
         );
 
-        vk::VK_SUCCESS
+        fake_vulkan.next_result("vkEnumerateInstanceExtensionProperties")
     }
 
     extern "C" fn enumerate_device_extension_properties(
@@ -590,7 +619,7 @@ impl FakeVulkan {
             properties,
         );
 
-        vk::VK_SUCCESS
+        fake_vulkan.next_result("vkEnumerateDeviceExtensionProperties")
     }
 
     extern "C" fn create_instance(
@@ -606,7 +635,7 @@ impl FakeVulkan {
             *instance_out = fake_vulkan.n_instances as vk::VkInstance;
         }
 
-        vk::VK_SUCCESS
+        fake_vulkan.next_result("vkCreateInstance")
     }
 
     extern "C" fn create_device(
@@ -623,7 +652,7 @@ impl FakeVulkan {
             *device_out = fake_vulkan.n_devices as vk::VkDevice;
         }
 
-        vk::VK_SUCCESS
+        fake_vulkan.next_result("vkCreateDevice")
     }
 
     extern "C" fn destroy_device(
@@ -662,7 +691,7 @@ impl FakeVulkan {
             *command_pool_out = 1usize as vk::VkCommandPool;
         }
 
-        vk::VK_SUCCESS
+        fake_vulkan.next_result("vkCreateCommandPool")
     }
 
     extern "C" fn destroy_command_pool(
@@ -696,7 +725,7 @@ impl FakeVulkan {
             }
         }
 
-        vk::VK_SUCCESS
+        fake_vulkan.next_result("vkAllocateCommandBuffers")
     }
 
     extern "C" fn free_command_buffers(
@@ -728,7 +757,7 @@ impl FakeVulkan {
             *fence_out = 1usize as vk::VkFence;
         }
 
-        vk::VK_SUCCESS
+        fake_vulkan.next_result("vkCreateFence")
     }
 
     extern "C" fn destroy_fence(
@@ -746,8 +775,9 @@ impl FakeVulkan {
     extern "C" fn enumerate_instance_version(
         api_version: *mut u32
     ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
         unsafe { *api_version = requirements::make_version(1, 1, 0) }
-        vk::VK_SUCCESS
+        fake_vulkan.next_result("vkEnumerateInstanceVersion")
     }
 }
 
