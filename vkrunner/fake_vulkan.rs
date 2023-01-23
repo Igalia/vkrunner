@@ -123,6 +123,10 @@ pub struct FakeVulkan {
     pub physical_devices: Vec<PhysicalDeviceInfo>,
     pub instance_extensions: Vec<vk::VkExtensionProperties>,
 
+    // A fake set of requirements to return from the next call to
+    // vkGetBufferMemoryRequirements or vkGetImageMemoryRequirements.
+    pub memory_requirements: vk::VkMemoryRequirements,
+
     /// Whether to claim that the vkEnumerateInstanceVersion function
     /// is available.
     pub has_enumerate_instance_version: bool,
@@ -144,6 +148,7 @@ impl FakeVulkan {
         let mut fake_vulkan = Box::new(FakeVulkan {
             physical_devices: Vec::new(),
             instance_extensions: Vec::new(),
+            memory_requirements: Default::default(),
             n_instances: 0,
             n_devices: 0,
             n_command_pools: 0,
@@ -317,6 +322,31 @@ impl FakeVulkan {
             "vkGetPhysicalDeviceFeatures2KHR" => unsafe {
                 transmute::<vk::PFN_vkGetPhysicalDeviceFeatures2, _>(
                     Some(FakeVulkan::get_physical_device_features2)
+                )
+            },
+            "vkGetImageMemoryRequirements" => unsafe {
+                transmute::<vk::PFN_vkGetImageMemoryRequirements, _>(
+                    Some(FakeVulkan::get_image_memory_requirements)
+                )
+            },
+            "vkGetBufferMemoryRequirements" => unsafe {
+                transmute::<vk::PFN_vkGetBufferMemoryRequirements, _>(
+                    Some(FakeVulkan::get_buffer_memory_requirements)
+                )
+            },
+            "vkBindBufferMemory" => unsafe {
+                transmute::<vk::PFN_vkBindBufferMemory, _>(
+                    Some(FakeVulkan::bind_buffer_memory)
+                )
+            },
+            "vkBindImageMemory" => unsafe {
+                transmute::<vk::PFN_vkBindImageMemory, _>(
+                    Some(FakeVulkan::bind_image_memory)
+                )
+            },
+            "vkAllocateMemory" => unsafe {
+                transmute::<vk::PFN_vkAllocateMemory, _>(
+                    Some(FakeVulkan::allocate_memory)
                 )
             },
             _ => None,
@@ -778,6 +808,66 @@ impl FakeVulkan {
         let fake_vulkan = FakeVulkan::current();
         unsafe { *api_version = requirements::make_version(1, 1, 0) }
         fake_vulkan.next_result("vkEnumerateInstanceVersion")
+    }
+
+    fn get_memory_requirements(
+        memory_requirements: *mut vk::VkMemoryRequirements,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+        unsafe {
+            *memory_requirements = fake_vulkan.memory_requirements.clone();
+        }
+    }
+
+    extern "C" fn get_buffer_memory_requirements(
+        _device: vk::VkDevice,
+        _buffer: vk::VkBuffer,
+        memory_requirements: *mut vk::VkMemoryRequirements,
+    ) {
+        FakeVulkan::get_memory_requirements(memory_requirements);
+    }
+
+    extern "C" fn get_image_memory_requirements(
+        _device: vk::VkDevice,
+        _buffer: vk::VkImage,
+        memory_requirements: *mut vk::VkMemoryRequirements,
+    ) {
+        FakeVulkan::get_memory_requirements(memory_requirements);
+    }
+
+    extern "C" fn allocate_memory(
+        _device: vk::VkDevice,
+        _allocate_info: *const vk::VkMemoryAllocateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        memory: *mut vk::VkDeviceMemory,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        unsafe {
+            *memory = 1usize as vk::VkDeviceMemory;
+        }
+
+        fake_vulkan.next_result("vkAllocateMemory")
+    }
+
+    extern "C" fn bind_buffer_memory(
+        _device: vk::VkDevice,
+        _buffer: vk::VkBuffer,
+        _memory: vk::VkDeviceMemory,
+        _memory_offset: vk::VkDeviceSize,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+        fake_vulkan.next_result("vkBindBufferMemory")
+    }
+
+    extern "C" fn bind_image_memory(
+        _device: vk::VkDevice,
+        _image: vk::VkImage,
+        _memory: vk::VkDeviceMemory,
+        _memory_offset: vk::VkDeviceSize,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+        fake_vulkan.next_result("vkBindImageMemory")
     }
 }
 
