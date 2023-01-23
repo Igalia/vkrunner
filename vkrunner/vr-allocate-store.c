@@ -35,12 +35,15 @@ find_memory_type(struct vr_context *context,
                  uint32_t usable_memory_types,
                  uint32_t memory_type_flags)
 {
+        const struct VkPhysicalDeviceMemoryProperties *memory_properties =
+                vr_context_get_memory_properties(context);
+
         int i;
 
         while (usable_memory_types) {
                 i = vr_util_ffs(usable_memory_types) - 1;
 
-                if ((context->memory_properties.memoryTypes[i].propertyFlags &
+                if ((memory_properties->memoryTypes[i].propertyFlags &
                      memory_type_flags) == memory_type_flags)
                         return i;
 
@@ -59,7 +62,7 @@ vr_allocate_store_buffer(struct vr_context *context,
                          int *memory_type_index_out,
                          int *offsets)
 {
-        struct vr_vk_device *vkfn = context->vkdev;
+        const struct vr_vk_device *vkfn = vr_context_get_vkdev(context);
         VkDeviceMemory memory;
         VkMemoryRequirements reqs;
         VkResult res;
@@ -72,10 +75,16 @@ vr_allocate_store_buffer(struct vr_context *context,
         if (offsets == NULL)
                 offsets = alloca(sizeof *offsets * n_buffers);
 
-        granularity = context->device_properties.limits.bufferImageGranularity;
+        const struct VkPhysicalDeviceProperties *device_properties =
+                vr_context_get_device_properties(context);
+
+        granularity = device_properties->limits.bufferImageGranularity;
+
+        VkDevice device =
+                vr_context_get_vk_device(context);
 
         for (i = 0; i < n_buffers; i++) {
-                vkfn->vkGetBufferMemoryRequirements(context->device,
+                vkfn->vkGetBufferMemoryRequirements(device,
                                                     buffers[i],
                                                     &reqs);
                 offset = vr_align(offset, granularity);
@@ -97,7 +106,7 @@ vr_allocate_store_buffer(struct vr_context *context,
                 .allocationSize = offset,
                 .memoryTypeIndex = memory_type_index
         };
-        res = vkfn->vkAllocateMemory(context->device,
+        res = vkfn->vkAllocateMemory(device,
                                      &allocate_info,
                                      NULL, /* allocator */
                                      &memory);
@@ -105,7 +114,7 @@ vr_allocate_store_buffer(struct vr_context *context,
                 return res;
 
         for (i = 0; i < n_buffers; i++) {
-                vkfn->vkBindBufferMemory(context->device,
+                vkfn->vkBindBufferMemory(device,
                                          buffers[i],
                                          memory,
                                          offsets[i]);
@@ -126,7 +135,7 @@ vr_allocate_store_image(struct vr_context *context,
                         VkDeviceMemory *memory_out,
                         int *memory_type_index_out)
 {
-        struct vr_vk_device *vkfn = context->vkdev;
+        const struct vr_vk_device *vkfn = vr_context_get_vkdev(context);
         VkDeviceMemory memory;
         VkMemoryRequirements reqs;
         VkResult res;
@@ -137,10 +146,15 @@ vr_allocate_store_image(struct vr_context *context,
         VkDeviceSize granularity;
         int i;
 
-        granularity = context->device_properties.limits.bufferImageGranularity;
+        const VkPhysicalDeviceProperties *device_properties =
+                vr_context_get_device_properties(context);
+
+        granularity = device_properties->limits.bufferImageGranularity;
+
+        VkDevice device = vr_context_get_vk_device(context);
 
         for (i = 0; i < n_images; i++) {
-                vkfn->vkGetImageMemoryRequirements(context->device,
+                vkfn->vkGetImageMemoryRequirements(device,
                                                    images[i],
                                                    &reqs);
                 offset = vr_align(offset, granularity);
@@ -162,7 +176,7 @@ vr_allocate_store_image(struct vr_context *context,
                 .allocationSize = offset,
                 .memoryTypeIndex = memory_type_index
         };
-        res = vkfn->vkAllocateMemory(context->device,
+        res = vkfn->vkAllocateMemory(device,
                                      &allocate_info,
                                      NULL, /* allocator */
                                      &memory);
@@ -170,7 +184,7 @@ vr_allocate_store_image(struct vr_context *context,
                 return res;
 
         for (i = 0; i < n_images; i++) {
-                vkfn->vkBindImageMemory(context->device,
+                vkfn->vkBindImageMemory(device,
                                         images[i],
                                         memory,
                                         offsets[i]);

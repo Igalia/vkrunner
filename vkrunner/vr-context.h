@@ -33,29 +33,7 @@
 #include "vr-config.h"
 #include "vr-requirements.h"
 
-struct vr_context {
-        const struct vr_config *config;
-
-        bool device_is_external;
-
-        VkDevice device;
-        VkPhysicalDevice physical_device;
-        VkPhysicalDeviceMemoryProperties memory_properties;
-        VkPhysicalDeviceProperties device_properties;
-        VkPhysicalDeviceFeatures features;
-        VkCommandPool command_pool;
-        VkCommandBuffer command_buffer;
-        VkQueue queue;
-        int queue_family;
-        VkInstance vk_instance;
-        VkFence vk_fence;
-
-        bool always_flush_memory;
-
-        struct vr_vk_library *vklib;
-        struct vr_vk_instance *vkinst;
-        struct vr_vk_device *vkdev;
-};
+struct vr_context;
 
 enum vr_result
 vr_context_new(const struct vr_config *config,
@@ -70,6 +48,45 @@ vr_context_new_with_device(const struct vr_config *config,
                            int queue_family,
                            VkDevice device,
                            struct vr_context **context_out);
+
+const VkPhysicalDeviceProperties *
+vr_context_get_device_properties(const struct vr_context *context);
+
+const VkPhysicalDeviceMemoryProperties *
+vr_context_get_memory_properties(const struct vr_context *context);
+
+const struct vr_vk_library *
+vr_context_get_vklib(const struct vr_context *context);
+
+const struct vr_vk_device *
+vr_context_get_vkdev(const struct vr_context *context);
+
+const struct vr_vk_instance *
+vr_context_get_vkinst(const struct vr_context *context);
+
+VkFence
+vr_context_get_fence(const struct vr_context *context);
+
+VkQueue
+vr_context_get_queue(const struct vr_context *context);
+
+VkCommandBuffer
+vr_context_get_command_buffer(const struct vr_context *context);
+
+VkPhysicalDevice
+vr_context_get_physical_device(const struct vr_context *context);
+
+VkDevice
+vr_context_get_vk_device(const struct vr_context *context);
+
+VkInstance
+vr_context_get_vk_instance(const struct vr_context *context);
+
+bool
+vr_context_get_always_flush_memory(const struct vr_context *context);
+
+bool
+vr_context_device_is_external(const struct vr_context *context);
 
 void
 vr_context_free(struct vr_context *context);

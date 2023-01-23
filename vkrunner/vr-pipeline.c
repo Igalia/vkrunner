@@ -141,7 +141,7 @@ compile_stage(const struct vr_config *config,
               const struct vr_script_shader_code *shaders,
               size_t total_n_shaders)
 {
-        struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = window->vkdev;
         const int n_base_args = 8;
         VkShaderModule module = VK_NULL_HANDLE;
         FILE *module_stream = NULL;
@@ -254,7 +254,7 @@ assemble_stage(const struct vr_config *config,
                const struct vr_script *script,
                const struct vr_script_shader_code *shader)
 {
-        struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = window->vkdev;
         FILE *module_stream = NULL;
         char *module_filename;
         char *source_filename = NULL;
@@ -343,7 +343,7 @@ load_binary_stage(const struct vr_config *config,
                   struct vr_window *window,
                   const struct vr_script_shader_code *shader)
 {
-        struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = window->vkdev;
         VkShaderModule module = VK_NULL_HANDLE;
         bool res;
 
@@ -497,7 +497,7 @@ create_vk_pipeline(struct vr_pipeline *pipeline,
                    VkPipeline parent_pipeline)
 {
         struct vr_window *window = pipeline->window;
-        struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = window->vkdev;
         VkResult res;
         int num_stages = 0;
 
@@ -599,7 +599,7 @@ create_compute_pipeline(struct vr_pipeline *pipeline,
                         const struct vr_pipeline_key *key)
 {
         struct vr_window *window = pipeline->window;
-        struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = window->vkdev;
         char *entrypoint =
                 vr_pipeline_key_get_entrypoint(key, VR_SHADER_STAGE_COMPUTE);
         VkResult res;
@@ -668,7 +668,7 @@ static VkPipelineLayout
 create_vk_layout(struct vr_pipeline *pipeline,
                  const struct vr_script *script)
 {
-        struct vr_vk_device *vkfn = pipeline->window->vkdev;
+        const struct vr_vk_device *vkfn = pipeline->window->vkdev;
         VkResult res;
 
         VkPushConstantRange push_constant_range = {
@@ -711,7 +711,7 @@ static bool
 create_vk_descriptor_set_layout(struct vr_pipeline *pipeline,
                                 const struct vr_script *script)
 {
-        struct vr_vk_device *vkfn = pipeline->window->vkdev;
+        const struct vr_vk_device *vkfn = pipeline->window->vkdev;
         VkResult res;
         bool ret = false;
         const struct vr_script_buffer *buffers;
@@ -858,7 +858,7 @@ vr_pipeline_create(const struct vr_config *config,
                    struct vr_window *window,
                    const struct vr_script *script)
 {
-        struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = window->vkdev;
         VkResult res;
         struct vr_pipeline *pipeline = vr_calloc(sizeof *pipeline);
 
@@ -976,7 +976,7 @@ void
 vr_pipeline_free(struct vr_pipeline *pipeline)
 {
         struct vr_window *window = pipeline->window;
-        struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = window->vkdev;
 
         for (int i = 0; i < pipeline->n_pipelines; i++) {
                 if (pipeline->pipelines[i]) {

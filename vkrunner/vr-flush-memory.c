@@ -34,13 +34,15 @@ vr_flush_memory(struct vr_context *context,
                 VkDeviceSize offset,
                 VkDeviceSize size)
 {
-        struct vr_vk_device *vkfn = context->vkdev;
+        const struct vr_vk_device *vkfn = vr_context_get_vkdev(context);
+        const struct VkPhysicalDeviceMemoryProperties *memory_properties =
+                vr_context_get_memory_properties(context);
         const VkMemoryType *memory_type =
-                &context->memory_properties.memoryTypes[memory_type_index];
+                &memory_properties->memoryTypes[memory_type_index];
 
         /* We don’t need to do anything if the memory is already
          * coherent */
-        if (!context->always_flush_memory &&
+        if (!vr_context_get_always_flush_memory(context) &&
             (memory_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
                 return VK_SUCCESS;
 
@@ -50,7 +52,10 @@ vr_flush_memory(struct vr_context *context,
                 .offset = offset,
                 .size = size
         };
-        return vkfn->vkFlushMappedMemoryRanges(context->device,
+
+        VkDevice device = vr_context_get_vk_device(context);
+
+        return vkfn->vkFlushMappedMemoryRanges(device,
                                                1, /* memoryRangeCount */
                                                &mapped_memory_range);
 }

@@ -90,7 +90,7 @@ context_is_compatible(struct vr_executor *executor,
         /* If device is created externally then it’s up to the caller
          * to ensure the device has all the necessary features
          * enabled. */
-        if (executor->context->device_is_external)
+        if (vr_context_device_is_external(executor->context))
                 return true;
 
         const struct vr_requirements *script_requirements =
@@ -190,11 +190,19 @@ vr_executor_execute_script(struct vr_executor *executor,
         if (executor->use_external) {
                 struct vr_context *context = executor->context;
 
+                const struct vr_vk_library *vklib =
+                        vr_context_get_vklib(context);
+                const struct vr_vk_instance *vkinst =
+                        vr_context_get_vkinst(context);
+                VkInstance vk_instance = vr_context_get_vk_instance(context);
+                VkPhysicalDevice physical_device =
+                        vr_context_get_physical_device(context);
+
                 if (!vr_requirements_check(script_requirements,
-                                           context->vklib,
-                                           context->vkinst,
-                                           context->vk_instance,
-                                           context->physical_device)) {
+                                           vklib,
+                                           vkinst,
+                                           vk_instance,
+                                           physical_device)) {
                         char *filename = vr_script_get_filename(script);
                         vr_error_message(executor->config,
                                          "%s: A required feature or extension "

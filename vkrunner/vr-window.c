@@ -39,7 +39,7 @@
 static void
 destroy_framebuffer_resources(struct vr_window *window)
 {
-        struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = window->vkdev;
 
         if (window->color_image_view) {
                 vkfn->vkDestroyImageView(window->device,
@@ -113,7 +113,7 @@ destroy_framebuffer_resources(struct vr_window *window)
 static bool
 init_depth_stencil_resources(struct vr_window *window)
 {
-        struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = window->vkdev;
         VkResult res;
 
         VkImageCreateInfo image_create_info = {
@@ -194,9 +194,11 @@ check_format(struct vr_window *window,
              const struct vr_format *format,
              VkFormatFeatureFlags flags)
 {
-        struct vr_vk_instance *vkfn = window->context->vkinst;
+        const struct vr_vk_instance *vkfn =
+                vr_context_get_vkinst(window->context);
         VkFormatProperties format_properties;
-        VkPhysicalDevice physical_device = window->context->physical_device;
+        VkPhysicalDevice physical_device =
+                vr_context_get_physical_device(window->context);
 
         vkfn->vkGetPhysicalDeviceFormatProperties(physical_device,
                                                   format->vk_format,
@@ -210,7 +212,7 @@ create_render_pass(struct vr_window *window,
                    bool first_render,
                    VkRenderPass *render_pass_out)
 {
-        struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = window->vkdev;
         VkResult res;
         bool has_stencil = false;
         const struct vr_format *depth_stencil_format =
@@ -306,7 +308,7 @@ create_render_pass(struct vr_window *window,
 static bool
 init_framebuffer_resources(struct vr_window *window)
 {
-        struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = window->vkdev;
         VkResult res;
         int linear_memory_type;
 
@@ -386,8 +388,11 @@ init_framebuffer_resources(struct vr_window *window)
                 return false;
         }
 
+        const struct VkPhysicalDeviceMemoryProperties *memory_properties =
+                vr_context_get_memory_properties(window->context);
+
         window->need_linear_memory_invalidate =
-                (window->context->memory_properties.
+                (memory_properties->
                  memoryTypes[linear_memory_type].propertyFlags &
                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0;
 
@@ -477,8 +482,8 @@ vr_window_new(const struct vr_config *config,
         window->config = config;
 
         window->context = context;
-        window->device = context->device;
-        window->vkdev = context->vkdev;
+        window->device = vr_context_get_vk_device(context);
+        window->vkdev = vr_context_get_vkdev(context);
 
         window->format = *format;
 

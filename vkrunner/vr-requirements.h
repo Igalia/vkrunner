@@ -60,8 +60,8 @@ vr_requirements_copy(const struct vr_requirements *reqs);
 
 bool
 vr_requirements_check(const struct vr_requirements *reqs,
-                      struct vr_vk_library *vklib,
-                      struct vr_vk_instance *vkinst,
+                      const struct vr_vk_library *vklib,
+                      const struct vr_vk_instance *vkinst,
                       VkInstance instance,
                       VkPhysicalDevice device);
 
