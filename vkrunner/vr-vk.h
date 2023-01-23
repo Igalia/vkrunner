@@ -56,23 +56,4 @@ typedef void *
 (* vr_vk_get_instance_proc_cb)(const char *name,
                                void *user_data);
 
-struct vr_vk_library *
-vr_vk_library_new(const struct vr_config *config);
-
-void
-vr_vk_library_free(struct vr_vk_library *library);
-
-struct vr_vk_instance *
-vr_vk_instance_new(vr_vk_get_instance_proc_cb get_instance_proc_cb,
-                   void *user_data);
-
-void
-vr_vk_instance_free(struct vr_vk_instance *instance);
-
-struct vr_vk_device *
-vr_vk_device_new(struct vr_vk_instance *instance, VkDevice device);
-
-void
-vr_vk_device_free(struct vr_vk_device *device);
-
 #endif /* VR_VK_H */

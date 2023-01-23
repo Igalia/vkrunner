@@ -170,65 +170,6 @@ impl Drop for Library {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn vr_vk_library_new(
-    config: *const c_void
-) -> *const Library {
-    extern "C" {
-        fn vr_error_message_string(config: *const c_void, str: *const i8);
-    }
-
-    match Library::new() {
-        Ok(library) => Box::into_raw(Box::new(library)),
-        Err(s) => {
-            let message = CString::new(s).unwrap();
-
-            unsafe {
-                vr_error_message_string(config, message.as_ptr());
-            }
-
-            std::ptr::null()
-        }
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vk_library_free(library: *mut Library) {
-    unsafe { Box::from_raw(library) };
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn vr_vk_instance_new(
-    get_instance_proc_cb: GetInstanceProcFunc,
-    user_data: *const c_void,
-) -> *const Instance {
-    Box::into_raw(Box::new(Instance::new(
-        get_instance_proc_cb,
-        user_data,
-    )))
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vk_instance_free(instance: *mut Instance) {
-    unsafe { Box::from_raw(instance) };
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vk_device_new(
-    instance: *const Instance,
-    device: vk::VkDevice,
-) -> *const Device {
-    Box::into_raw(Box::new(Device::new(
-        unsafe { instance.as_ref().unwrap() },
-        device,
-    )))
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vk_device_free(device: *mut Device) {
-    unsafe { Box::from_raw(device) };
-}
-
 /// Helper function to temporarily replace the `vkGetInstanceProcAddr`
 /// function that will be used for the next call to [Library::new].
 /// The override will only be used once and subsequent calls to
