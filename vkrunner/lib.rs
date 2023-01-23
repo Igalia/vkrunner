@@ -15,6 +15,7 @@ mod shader_stage;
 mod pipeline_key;
 mod window_format;
 mod source;
+mod config;
 mod stream;
 mod script;
 
