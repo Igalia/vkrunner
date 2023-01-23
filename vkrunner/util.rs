@@ -22,7 +22,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 use std::env;
-use std::ffi::{CStr, c_char, OsStr};
+use std::ffi::OsStr;
 
 /// Align a value, only works on power-of-two alignments
 #[inline]
@@ -47,19 +47,6 @@ pub fn env_var_as_boolean<K: AsRef<OsStr>>(
             "0" | "false" | "no" => false,
             _ => default_value,
         },
-        Err(_) => default_value,
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_env_var_as_boolean(
-    var_name: *const c_char,
-    default_value: bool
-) -> bool {
-    let c_str = unsafe { CStr::from_ptr(var_name) };
-
-    match c_str.to_str() {
-        Ok(s) => env_var_as_boolean(s, default_value),
         Err(_) => default_value,
     }
 }

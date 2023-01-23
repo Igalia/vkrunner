@@ -143,9 +143,6 @@ vr_strconcat(const char *string1, ...);
 void
 vr_free(void *ptr);
 
-bool
-vr_env_var_as_boolean(const char *var_name, bool default_value);
-
 VR_NO_RETURN
 VR_PRINTF_FORMAT(1, 2)
 void
