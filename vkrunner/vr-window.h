@@ -64,7 +64,8 @@ struct vr_window {
 };
 
 enum vr_result
-vr_window_new(struct vr_context *context,
+vr_window_new(const struct vr_config *config,
+              struct vr_context *context,
               const struct vr_window_format *format,
               struct vr_window **window_out);
 

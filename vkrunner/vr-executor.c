@@ -207,7 +207,8 @@ vr_executor_execute_script(struct vr_executor *executor,
         }
 
         if (executor->window == NULL) {
-                res = vr_window_new(executor->context,
+                res = vr_window_new(executor->config,
+                                    executor->context,
                                     script_window_format,
                                     &executor->window);
                 if (res != VR_RESULT_PASS)
