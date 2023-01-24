@@ -34,41 +34,53 @@
 #include "vr-context.h"
 #include "vr-window-format.h"
 
-struct vr_window {
-        struct vr_context *context;
-
-        const struct vr_config *config;
-
-        /* These are copies of the values from the context for convenience */
-        VkDevice device;
-        const struct vr_vk_device *vkdev;
-
-        /* The first render pass is used for the first render and has
-         * a loadOp of DONT_CARE. The second is used for subsequent
-         * renders and loads the framebuffer contents.
-         */
-        VkRenderPass render_pass[2];
-
-        VkImage color_image;
-        VkBuffer linear_buffer;
-        VkDeviceMemory memory;
-        VkDeviceMemory linear_memory;
-        bool need_linear_memory_invalidate;
-        void *linear_memory_map;
-        VkDeviceSize linear_memory_stride;
-        VkImageView color_image_view;
-        VkImage depth_image;
-        VkDeviceMemory depth_image_memory;
-        VkImageView depth_image_view;
-        VkFramebuffer framebuffer;
-        struct vr_window_format format;
-};
+struct vr_window;
 
 enum vr_result
 vr_window_new(const struct vr_config *config,
               struct vr_context *context,
               const struct vr_window_format *format,
               struct vr_window **window_out);
+
+struct vr_context *
+vr_window_get_context(struct vr_window *window);
+
+const struct vr_window_format *
+vr_window_get_format(const struct vr_window *window);
+
+const struct vr_vk_device *
+vr_window_get_vkdev(const struct vr_window *window);
+
+VkDevice
+vr_window_get_device(const struct vr_window *window);
+
+VkRenderPass
+vr_window_get_render_pass(const struct vr_window *window,
+                          bool first_render);
+
+const struct vr_config *
+vr_window_get_config(const struct vr_window *window);
+
+bool
+vr_window_need_linear_memory_invalidate(const struct vr_window *window);
+
+VkDeviceMemory
+vr_window_get_linear_memory(const struct vr_window *window);
+
+VkDeviceSize
+vr_window_get_linear_memory_stride(const struct vr_window *window);
+
+VkBuffer
+vr_window_get_linear_buffer(const struct vr_window *window);
+
+const void *
+vr_window_get_linear_memory_map(struct vr_window *window);
+
+VkFramebuffer
+vr_window_get_framebuffer(const struct vr_window *window);
+
+VkImage
+vr_window_get_color_image(const struct vr_window *window);
 
 void
 vr_window_free(struct vr_window *window);

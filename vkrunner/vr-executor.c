@@ -164,10 +164,14 @@ vr_executor_execute_script(struct vr_executor *executor,
                 vr_script_get_requirements(script);
 
         /* Recreate the window if the framebuffer format is different */
-        if (executor->window &&
-            !vr_window_format_equal(&executor->window->format,
-                                    script_window_format))
-                free_window(executor);
+        if (executor->window) {
+                const struct vr_window_format *window_format =
+                        vr_window_get_format(executor->window);
+
+                if (!vr_window_format_equal(window_format,
+                                            script_window_format))
+                        free_window(executor);
+        }
 
         if (executor->context == NULL) {
                 if (executor->use_external) {

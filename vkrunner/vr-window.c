@@ -36,73 +36,100 @@
 #include "vr-allocate-store.h"
 #include "vr-format-private.h"
 
+struct vr_window {
+        struct vr_context *context;
+
+        const struct vr_config *config;
+
+        /* The first render pass is used for the first render and has
+         * a loadOp of DONT_CARE. The second is used for subsequent
+         * renders and loads the framebuffer contents.
+         */
+        VkRenderPass render_pass[2];
+
+        VkImage color_image;
+        VkBuffer linear_buffer;
+        VkDeviceMemory memory;
+        VkDeviceMemory linear_memory;
+        bool need_linear_memory_invalidate;
+        void *linear_memory_map;
+        VkDeviceSize linear_memory_stride;
+        VkImageView color_image_view;
+        VkImage depth_image;
+        VkDeviceMemory depth_image_memory;
+        VkImageView depth_image_view;
+        VkFramebuffer framebuffer;
+        struct vr_window_format format;
+};
+
 static void
 destroy_framebuffer_resources(struct vr_window *window)
 {
-        const struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = vr_window_get_vkdev(window);
+        VkDevice device = vr_window_get_device(window);
 
         if (window->color_image_view) {
-                vkfn->vkDestroyImageView(window->device,
+                vkfn->vkDestroyImageView(device,
                                          window->color_image_view,
                                          NULL /* allocator */);
                 window->color_image_view = VK_NULL_HANDLE;
         }
         if (window->framebuffer) {
-                vkfn->vkDestroyFramebuffer(window->device,
+                vkfn->vkDestroyFramebuffer(device,
                                            window->framebuffer,
                                            NULL /* allocator */);
                 window->framebuffer = VK_NULL_HANDLE;
         }
         if (window->linear_memory_map) {
-                vkfn->vkUnmapMemory(window->device,
+                vkfn->vkUnmapMemory(device,
                                     window->linear_memory);
                 window->linear_memory_map = NULL;
         }
         if (window->linear_memory) {
-                vkfn->vkFreeMemory(window->device,
+                vkfn->vkFreeMemory(device,
                                    window->linear_memory,
                                    NULL /* allocator */);
                 window->linear_memory = VK_NULL_HANDLE;
         }
         if (window->memory) {
-                vkfn->vkFreeMemory(window->device,
+                vkfn->vkFreeMemory(device,
                                    window->memory,
                                    NULL /* allocator */);
                 window->memory = VK_NULL_HANDLE;
         }
         if (window->linear_buffer) {
-                vkfn->vkDestroyBuffer(window->device,
+                vkfn->vkDestroyBuffer(device,
                                       window->linear_buffer,
                                       NULL /* allocator */);
                 window->linear_buffer = VK_NULL_HANDLE;
         }
         if (window->color_image) {
-                vkfn->vkDestroyImage(window->device,
+                vkfn->vkDestroyImage(device,
                                      window->color_image,
                                      NULL /* allocator */);
                 window->color_image = VK_NULL_HANDLE;
         }
         if (window->depth_image_view) {
-                vkfn->vkDestroyImageView(window->device,
+                vkfn->vkDestroyImageView(device,
                                          window->depth_image_view,
                                          NULL /* allocator */);
                 window->depth_image_view = VK_NULL_HANDLE;
         }
         if (window->depth_image_memory) {
-                vkfn->vkFreeMemory(window->device,
+                vkfn->vkFreeMemory(device,
                                    window->depth_image_memory,
                                    NULL /* allocator */);
                 window->depth_image_memory = VK_NULL_HANDLE;
         }
         if (window->depth_image) {
-                vkfn->vkDestroyImage(window->device,
+                vkfn->vkDestroyImage(device,
                                      window->depth_image,
                                      NULL /* allocator */);
                 window->depth_image = VK_NULL_HANDLE;
         }
         for (int i = 0; i < VR_N_ELEMENTS(window->render_pass); i++) {
                 if (window->render_pass[i]) {
-                        vkfn->vkDestroyRenderPass(window->device,
+                        vkfn->vkDestroyRenderPass(device,
                                                   window->render_pass[i],
                                                   NULL /* allocator */);
                         window->render_pass[i] = VK_NULL_HANDLE;
@@ -113,7 +140,7 @@ destroy_framebuffer_resources(struct vr_window *window)
 static bool
 init_depth_stencil_resources(struct vr_window *window)
 {
-        const struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = vr_window_get_vkdev(window);
         VkResult res;
 
         VkImageCreateInfo image_create_info = {
@@ -133,7 +160,7 @@ init_depth_stencil_resources(struct vr_window *window)
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
                 .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
         };
-        res = vkfn->vkCreateImage(window->device,
+        res = vkfn->vkCreateImage(vr_window_get_device(window),
                                   &image_create_info,
                                   NULL, /* allocator */
                                   &window->depth_image);
@@ -175,7 +202,7 @@ init_depth_stencil_resources(struct vr_window *window)
                         .layerCount = 1
                 }
         };
-        res = vkfn->vkCreateImageView(window->device,
+        res = vkfn->vkCreateImageView(vr_window_get_device(window),
                                       &image_view_create_info,
                                       NULL, /* allocator */
                                       &window->depth_image_view);
@@ -212,7 +239,7 @@ create_render_pass(struct vr_window *window,
                    bool first_render,
                    VkRenderPass *render_pass_out)
 {
-        const struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = vr_window_get_vkdev(window);
         VkResult res;
         bool has_stencil = false;
         const struct vr_format *depth_stencil_format =
@@ -292,7 +319,7 @@ create_render_pass(struct vr_window *window,
                 render_pass_create_info.attachmentCount--;
                 subpass_descriptions[0].pDepthStencilAttachment = NULL;
         }
-        res = vkfn->vkCreateRenderPass(window->device,
+        res = vkfn->vkCreateRenderPass(vr_window_get_device(window),
                                        &render_pass_create_info,
                                        NULL, /* allocator */
                                        render_pass_out);
@@ -308,7 +335,7 @@ create_render_pass(struct vr_window *window,
 static bool
 init_framebuffer_resources(struct vr_window *window)
 {
-        const struct vr_vk_device *vkfn = window->vkdev;
+        const struct vr_vk_device *vkfn = vr_window_get_vkdev(window);
         VkResult res;
         int linear_memory_type;
 
@@ -339,7 +366,7 @@ init_framebuffer_resources(struct vr_window *window)
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
                 .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
         };
-        res = vkfn->vkCreateImage(window->device,
+        res = vkfn->vkCreateImage(vr_window_get_device(window),
                                   &image_create_info,
                                   NULL, /* allocator */
                                   &window->color_image);
@@ -364,7 +391,7 @@ init_framebuffer_resources(struct vr_window *window)
                 .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         };
-        res = vkfn->vkCreateBuffer(window->device,
+        res = vkfn->vkCreateBuffer(vr_window_get_device(window),
                                    &buffer_create_info,
                                    NULL, /* allocator */
                                    &window->linear_buffer);
@@ -396,7 +423,7 @@ init_framebuffer_resources(struct vr_window *window)
                  memoryTypes[linear_memory_type].propertyFlags &
                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0;
 
-        res = vkfn->vkMapMemory(window->device,
+        res = vkfn->vkMapMemory(vr_window_get_device(window),
                                 window->linear_memory,
                                 0, /* offset */
                                 VK_WHOLE_SIZE,
@@ -427,7 +454,7 @@ init_framebuffer_resources(struct vr_window *window)
                         .layerCount = 1
                 }
         };
-        res = vkfn->vkCreateImageView(window->device,
+        res = vkfn->vkCreateImageView(vr_window_get_device(window),
                                       &image_view_create_info,
                                       NULL, /* allocator */
                                       &window->color_image_view);
@@ -456,7 +483,7 @@ init_framebuffer_resources(struct vr_window *window)
                 .height = window->format.height,
                 .layers = 1
         };
-        res = vkfn->vkCreateFramebuffer(window->device,
+        res = vkfn->vkCreateFramebuffer(vr_window_get_device(window),
                                         &framebuffer_create_info,
                                         NULL, /* allocator */
                                         &window->framebuffer);
@@ -482,8 +509,6 @@ vr_window_new(const struct vr_config *config,
         window->config = config;
 
         window->context = context;
-        window->device = vr_context_get_vk_device(context);
-        window->vkdev = vr_context_get_vkdev(context);
 
         window->format = *format;
 
@@ -527,6 +552,85 @@ vr_window_new(const struct vr_config *config,
 error:
         vr_window_free(window);
         return vres;
+}
+
+struct vr_context *
+vr_window_get_context(struct vr_window *window)
+{
+        return window->context;
+}
+
+const struct vr_window_format *
+vr_window_get_format(const struct vr_window *window)
+{
+        return &window->format;
+}
+
+const struct vr_vk_device *
+vr_window_get_vkdev(const struct vr_window *window)
+{
+        return vr_context_get_vkdev(window->context);
+}
+
+VkDevice
+vr_window_get_device(const struct vr_window *window)
+{
+        return vr_context_get_vk_device(window->context);
+}
+
+VkRenderPass
+vr_window_get_render_pass(const struct vr_window *window,
+                          bool first_render_pass)
+{
+        return window->render_pass[first_render_pass ? 0 : 1];
+}
+
+const struct vr_config *
+vr_window_get_config(const struct vr_window *window)
+{
+        return window->config;
+}
+
+bool
+vr_window_need_linear_memory_invalidate(const struct vr_window *window)
+{
+        return window->need_linear_memory_invalidate;
+}
+
+VkDeviceMemory
+vr_window_get_linear_memory(const struct vr_window *window)
+{
+        return window->linear_memory;
+}
+
+VkDeviceSize
+vr_window_get_linear_memory_stride(const struct vr_window *window)
+{
+        return window->linear_memory_stride;
+}
+
+const void *
+vr_window_get_linear_memory_map(struct vr_window *window)
+{
+        return window->linear_memory_map;
+}
+
+VkBuffer
+vr_window_get_linear_buffer(const struct vr_window *window)
+{
+        return window->linear_buffer;
+}
+
+VkFramebuffer
+vr_window_get_framebuffer(const struct vr_window *window)
+{
+        return window->framebuffer;
+}
+
+VkImage
+vr_window_get_color_image(const struct vr_window *window)
+{
+        return window->color_image;
 }
 
 void
