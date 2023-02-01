@@ -860,7 +860,7 @@ impl Context {
     /// the functions will be retrieved using the
     /// `vkGetDeviceProcAddr` function that that returns. `user_data`
     /// will be passed to the function.
-    fn new_with_device(
+    pub fn new_with_device(
         get_instance_proc_cb: vulkan_funcs::GetInstanceProcFunc,
         user_data: *const c_void,
         physical_device: vk::VkPhysicalDevice,
