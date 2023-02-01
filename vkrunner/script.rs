@@ -1968,8 +1968,8 @@ impl Script {
         &*self.pipeline_keys
     }
 
-    pub fn requirements(&mut self) -> &mut Requirements {
-        &mut self.requirements
+    pub fn requirements(&self) -> &Requirements {
+        &self.requirements
     }
 
     pub fn window_format(&self) -> &WindowFormat {
@@ -2188,8 +2188,8 @@ pub extern "C" fn vr_script_get_indices(
 
 #[no_mangle]
 pub extern "C" fn vr_script_get_requirements(
-    script: &mut Script,
-) -> &mut Requirements {
+    script: &Script,
+) -> &Requirements {
     script.requirements()
 }
 
@@ -3602,7 +3602,7 @@ mod test {
 
     #[test]
     fn test_requires_section() {
-        let mut script = script_from_string(
+        let script = script_from_string(
             "[comment]\n\
              a comment section can appear before the require section\n\
              [require]\n\
