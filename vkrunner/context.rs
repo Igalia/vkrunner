@@ -183,7 +183,7 @@ struct InstancePair {
 impl InstancePair {
     fn new(
         vklib: &vulkan_funcs::Library,
-        requirements: &mut Requirements
+        requirements: &Requirements
     ) -> Result<InstancePair, ContextError> {
         let application_info = vk::VkApplicationInfo {
             sType: vk::VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -304,7 +304,7 @@ struct DevicePair {
 impl DevicePair {
     fn new(
         instance_pair: &InstancePair,
-        requirements: &mut Requirements,
+        requirements: &Requirements,
         physical_device: vk::VkPhysicalDevice,
         queue_family: u32,
     ) -> Result<DevicePair, ContextError> {
@@ -820,7 +820,7 @@ impl Context {
     /// selection to an index in the list returned by
     /// `vkEnumeratePhysicalDevices`.
     pub fn new(
-        requirements: &mut Requirements,
+        requirements: &Requirements,
         device_id: Option<usize>,
     ) -> Result<Context, ContextError> {
         let vklib = Box::new(vulkan_funcs::Library::new()?);
@@ -1035,7 +1035,7 @@ fn handle_wrapper_constructor_result(
 #[no_mangle]
 pub extern "C" fn vr_context_new(
     config: &Config,
-    requirements: &mut Requirements,
+    requirements: &Requirements,
     context_out: *mut *mut Context,
 ) -> result::Result {
     handle_wrapper_constructor_result(
@@ -1183,7 +1183,7 @@ mod test {
         fake_vulkan.physical_devices[0].memory_properties.memoryTypeCount = 3;
 
         fake_vulkan.set_override();
-        let context = Context::new(&mut Requirements::new(), None).unwrap();
+        let context = Context::new(&Requirements::new(), None).unwrap();
 
         assert!(context.library().is_some());
         assert!(!context.vk_instance().is_null());
@@ -1208,7 +1208,7 @@ mod test {
     fn no_devices() {
         let fake_vulkan = FakeVulkan::new();
         fake_vulkan.set_override();
-        let err = Context::new(&mut Requirements::new(), None).unwrap_err();
+        let err = Context::new(&Requirements::new(), None).unwrap_err();
         assert_eq!(
             &err.to_string(),
             "The Vulkan instance reported zero drivers"
