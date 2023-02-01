@@ -211,7 +211,7 @@ impl InstancePair {
 
         let mut enabled_extensions = Vec::<*const c_char>::new();
 
-        if !structures.is_null() {
+        if structures.is_some() {
             check_instance_extension(vklib, ext)?;
             enabled_extensions.push(ext.as_ptr().cast());
         }
@@ -325,7 +325,9 @@ impl DevicePair {
 
         let device_create_info = vk::VkDeviceCreateInfo {
             sType: vk::VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            pNext: structures.cast(),
+            pNext: structures
+                .and_then(|s| Some(s.as_ptr().cast()))
+                .unwrap_or(ptr::null()),
             flags: 0,
             queueCreateInfoCount: 1,
             pQueueCreateInfos: ptr::addr_of!(queue_create_info),

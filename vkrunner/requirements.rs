@@ -30,6 +30,7 @@ use std::collections::{HashMap, HashSet};
 use std::ffi::CStr;
 use std::convert::TryInto;
 use std::fmt;
+use std::cell::UnsafeCell;
 
 #[derive(Debug)]
 struct Extension {
@@ -61,6 +62,29 @@ impl Extension {
 
 include!("features.rs");
 
+// Lazily generated extensions data used for passing to Vulkan
+struct LazyExtensions {
+    // All of the null-terminated strings concatenated into a buffer
+    strings: Vec<u8>,
+    // Pointers to the start of each string
+    pointers: Vec<* const u8>,
+}
+
+// Lazily generated structures data used for passing to Vulkan
+struct LazyStructures {
+    // A buffer used to return a linked chain of structs that can be
+    // accessed from C.
+    list: Vec<u8>,
+}
+
+// Lazily generated VkPhysicalDeviceFeatures struct to pass to Vulkan
+struct LazyBaseFeatures {
+    // Array big enough to store a VkPhysicalDeciveFeatures struct.
+    // It’s easier to manipulate as an array instead of the actual
+    // struct because we want to update the bools by index.
+    bytes: [u8; mem::size_of::<vk::VkPhysicalDeviceFeatures>()],
+}
+
 #[derive(Debug)]
 pub struct Requirements {
     // Minimum vulkan version
@@ -78,29 +102,9 @@ pub struct Requirements {
     // The rest of the struct is lazily created from the above data
     // and shouldn’t be part of the PartialEq implementation.
 
-    // true if an extension has been added to the requirements since
-    // the last time the `c_extensions` vec was updated.
-    c_extensions_dirty: bool,
-    // A buffer used to return the list of extensions as an array of
-    // pointers to C-style strings. This is lazily updated.
-    c_extensions: Vec<u8>,
-    // Pointers into the c_extensions array
-    c_extension_pointers: Vec<* const u8>,
-
-    // true if a feature requirement has been added since the last
-    // time the `c_structures` vec was updated.
-    c_structures_dirty: bool,
-    // A buffer used to return a linked chain of structs that can be
-    // accessed from C.
-    c_structures: Vec<u8>,
-
-    // true if a base feature requirement has been added since the
-    // last time the `c_base_features` array was updated.
-    c_base_features_dirty: bool,
-    // Array big enough to store a VkPhysicalDeciveFeatures struct.
-    // It’s easier to manipulate as an array instead of the actual
-    // struct because we want to update the bools by index.
-    c_base_features: [u8; mem::size_of::<vk::VkPhysicalDeviceFeatures>()],
+    lazy_extensions: UnsafeCell<Option<LazyExtensions>>,
+    lazy_structures: UnsafeCell<Option<LazyStructures>>,
+    lazy_base_features: UnsafeCell<Option<LazyBaseFeatures>>,
 }
 
 /// Error returned by [Requirements::check]
@@ -179,14 +183,9 @@ impl Requirements {
             extensions: HashSet::new(),
             features: HashMap::new(),
             base_features: [false; N_BASE_FEATURES],
-            c_extensions_dirty: true,
-            c_extensions: Vec::new(),
-            c_extension_pointers: Vec::new(),
-            c_structures_dirty: true,
-            c_structures: Vec::new(),
-            c_base_features_dirty: true,
-            c_base_features:
-            [0; mem::size_of::<vk::VkPhysicalDeviceFeatures>()],
+            lazy_extensions: UnsafeCell::new(None),
+            lazy_structures: UnsafeCell::new(None),
+            lazy_base_features: UnsafeCell::new(None),
         }
     }
 
@@ -201,13 +200,24 @@ impl Requirements {
         self.version = make_version(major, minor, patch);
     }
 
-    fn update_c_extensions(&mut self) {
-        if !self.c_extensions_dirty {
-            return;
-        }
-
-        self.c_extensions.clear();
-        self.c_extension_pointers.clear();
+    fn update_lazy_extensions(&self) -> &[* const u8] {
+        // SAFETY: The only case where lazy_extensions will be
+        // modified is if it is None and the only way for that to
+        // happen is if something modifies the requirements through a
+        // mutable reference. If that is the case then at that point
+        // there were no other references to the requirements so
+        // nothing can be holding a reference to the lazy data.
+        let extensions = unsafe {
+            match &mut *self.lazy_extensions.get() {
+                Some(data) => return data.pointers.as_ref(),
+                option @ None => {
+                    option.insert(LazyExtensions {
+                        strings: Vec::new(),
+                        pointers: Vec::new(),
+                    })
+                },
+            }
+        };
 
         // Store a list of offsets into the c_extensions array for
         // each extension. We can’t directly store the pointers yet
@@ -216,37 +226,31 @@ impl Requirements {
         let mut offsets = Vec::<usize>::new();
 
         for extension in self.extensions.iter() {
-            offsets.push(self.c_extensions.len());
+            offsets.push(extensions.strings.len());
 
-            self.c_extensions.extend_from_slice(extension.as_bytes());
+            extensions.strings.extend_from_slice(extension.as_bytes());
             // Add the null terminator
-            self.c_extensions.push(0);
+            extensions.strings.push(0);
         }
 
-        let base_ptr = self.c_extensions.as_ptr();
+        let base_ptr = extensions.strings.as_ptr();
 
-        self.c_extension_pointers.reserve(offsets.len());
+        extensions.pointers.reserve(offsets.len());
 
         for offset in offsets {
             // SAFETY: These are all valid offsets into the
             // c_extensions Vec so they should all be in the same
             // allocation and no overflow is possible.
-            self.c_extension_pointers.push(unsafe { base_ptr.add(offset) });
+            extensions.pointers.push(unsafe { base_ptr.add(offset) });
         }
 
-        self.c_extensions_dirty = false;
+        extensions.pointers.as_ref()
     }
 
     /// Return a reference to an array of pointers to C-style strings
     /// that can be passed to `vkCreateDevice`.
-    ///
-    /// The pointers are only valid until the next call to
-    /// `c_extensions` and are tied to the lifetime of the
-    /// `Requirements` struct.
-    pub fn c_extensions(&mut self) -> &[* const u8] {
-        self.update_c_extensions();
-
-        &self.c_extension_pointers
+    pub fn c_extensions(&self) -> &[* const u8] {
+        self.update_lazy_extensions()
     }
 
     // Make a linked list of features structures that is suitable for
@@ -311,12 +315,23 @@ impl Requirements {
         (structures, offsets)
     }
 
-    fn update_c_structures(&mut self) {
-        if !self.c_structures_dirty {
-            return;
-        }
+    fn update_lazy_structures(&self) -> &[u8] {
+        // SAFETY: The only case where lazy_structures will be
+        // modified is if it is None and the only way for that to
+        // happen is if something modifies the requirements through a
+        // mutable reference. If that is the case then at that point
+        // there were no other references to the requirements so
+        // nothing can be holding a reference to the lazy data.
+        let (structures, offsets) = unsafe {
+            match &mut *self.lazy_structures.get() {
+                Some(data) => return data.list.as_slice(),
+                option @ None => {
+                    let (list, offsets) = self.make_empty_structures();
 
-        let (mut structures, offsets) = self.make_empty_structures();
+                    (option.insert(LazyStructures { list }), offsets)
+                },
+            }
+        };
 
         for (offset, extension_num) in offsets {
             let features = &self.features[&extension_num];
@@ -329,56 +344,62 @@ impl Requirements {
                 let feature_end =
                     feature_start + mem::size_of::<vk::VkBool32>();
 
-                structures[feature_start..feature_end]
+                structures.list[feature_start..feature_end]
                     .copy_from_slice(&(feature as vk::VkBool32).to_ne_bytes());
             }
         }
 
-        self.c_structures = structures;
-        self.c_structures_dirty = false;
+        structures.list.as_slice()
     }
 
     /// Return a pointer to a linked list of feature structures that
-    /// can be passed to `vkCreateDevice`, or `NULL` if no feature
+    /// can be passed to `vkCreateDevice`, or `None` if no feature
     /// structs are required.
-    ///
-    /// The pointer is only valid until the next call to
-    /// `c_structures` and is tied to the lifetime of the
-    /// `Requirements` struct.
-    pub fn c_structures(&mut self) -> *const u8 {
+    pub fn c_structures(&self) -> Option<&[u8]> {
         if self.features.is_empty() {
-            std::ptr::null()
+            None
         } else {
-            self.update_c_structures();
-
-            self.c_structures.as_ptr()
+            Some(self.update_lazy_structures())
         }
     }
 
-    fn update_c_base_features(&mut self) {
-        if !self.c_base_features_dirty {
-            return;
-        }
+    fn update_lazy_base_features(&self) -> &[u8] {
+        // SAFETY: The only case where lazy_structures will be
+        // modified is if it is None and the only way for that to
+        // happen is if something modifies the requirements through a
+        // mutable reference. If that is the case then at that point
+        // there were no other references to the requirements so
+        // nothing can be holding a reference to the lazy data.
+        let base_features = unsafe {
+            match &mut *self.lazy_base_features.get() {
+                Some(data) => return &data.bytes,
+                option @ None => {
+                    option.insert(LazyBaseFeatures {
+                        bytes: [
+                            0;
+                            mem::size_of::<vk::VkPhysicalDeviceFeatures>()
+                        ],
+                    })
+                },
+            }
+        };
 
         for (feature_num, &feature) in self.base_features.iter().enumerate() {
             let feature_start = feature_num * mem::size_of::<vk::VkBool32>();
             let feature_end = feature_start + mem::size_of::<vk::VkBool32>();
-            self.c_base_features[feature_start..feature_end]
+            base_features.bytes[feature_start..feature_end]
                 .copy_from_slice(&(feature as vk::VkBool32).to_ne_bytes());
         }
 
-        self.c_base_features_dirty = false;
+        &base_features.bytes
     }
 
     /// Return a pointer to a `VkPhysicalDeviceFeatures` struct that
     /// can be passed to `vkCreateDevice`.
-    ///
-    /// The pointer is only valid until the next call to
-    /// `c_base_features` and is tied to the lifetime of the
-    /// `Requirements` struct.
-    pub fn c_base_features(&mut self) -> *const vk::VkPhysicalDeviceFeatures {
-        self.update_c_base_features();
-        self.c_base_features.as_ptr() as *const vk::VkPhysicalDeviceFeatures
+    pub fn c_base_features(&self) -> &vk::VkPhysicalDeviceFeatures {
+        unsafe {
+            &*self.update_lazy_base_features().as_ptr().cast()
+        }
     }
 
     fn add_extension_name(&mut self, name: &str) {
@@ -389,7 +410,11 @@ impl Requirements {
         // immediately free it.
         if !self.extensions.contains(name) {
             self.extensions.insert(name.to_owned());
-            self.c_extensions_dirty = true;
+            // SAFETY: self is immutable so there should be no other
+            // reference to the lazy data
+            unsafe {
+                *self.lazy_extensions.get() = None;
+            }
         }
     }
 
@@ -416,13 +441,21 @@ impl Requirements {
                 });
 
             if !features[feature_num] {
-                self.c_structures_dirty = true;
+                // SAFETY: self is immutable so there should be no other
+                // reference to the lazy data
+                unsafe {
+                    *self.lazy_structures.get() = None;
+                }
                 features[feature_num] = true;
             }
         } else if let Some(num) = find_base_feature(name) {
             if !self.base_features[num] {
                 self.base_features[num] = true;
-                self.c_base_features_dirty = true;
+                // SAFETY: self is immutable so there should be no other
+                // reference to the lazy data
+                unsafe {
+                    *self.lazy_structures.get() = None;
+                }
             }
         } else {
             self.add_extension_name(name);
@@ -735,14 +768,9 @@ impl Clone for Requirements {
             extensions: self.extensions.clone(),
             features: self.features.clone(),
             base_features: self.base_features.clone(),
-            c_extensions_dirty: true,
-            c_extensions: Vec::new(),
-            c_extension_pointers: Vec::new(),
-            c_structures_dirty: true,
-            c_structures: Vec::new(),
-            c_base_features_dirty: true,
-            c_base_features:
-            [0; mem::size_of::<vk::VkPhysicalDeviceFeatures>()],
+            lazy_extensions: UnsafeCell::new(None),
+            lazy_structures: UnsafeCell::new(None),
+            lazy_base_features: UnsafeCell::new(None),
         }
     }
 
@@ -751,9 +779,13 @@ impl Clone for Requirements {
         self.extensions.clone_from(&source.extensions);
         self.features.clone_from(&source.features);
         self.base_features.clone_from(&source.base_features);
-        self.c_extensions_dirty = true;
-        self.c_structures_dirty = true;
-        self.c_base_features_dirty = true;
+        // SAFETY: self is immutable so there should be no other
+        // reference to the lazy data
+        unsafe {
+            *self.lazy_extensions.get() = None;
+            *self.lazy_structures.get() = None;
+            *self.lazy_base_features.get() = None;
+        }
     }
 }
 
@@ -814,39 +846,41 @@ mod test {
     use std::ffi::c_void;
     use crate::fake_vulkan;
 
-    unsafe fn get_struct_type(structure: *const u8) -> vk::VkStructureType {
-        let slice = std::slice::from_raw_parts(
-            structure,
-            mem::size_of::<vk::VkStructureType>(),
-        );
+    fn get_struct_type(structure: &[u8]) -> vk::VkStructureType {
+        let slice = &structure[0..mem::size_of::<vk::VkStructureType>()];
         let mut bytes = [0; mem::size_of::<vk::VkStructureType>()];
         bytes.copy_from_slice(slice);
         vk::VkStructureType::from_ne_bytes(bytes)
     }
 
-    unsafe fn get_next_structure(structure: *const u8) -> *const u8 {
-        let slice = std::slice::from_raw_parts(
-            structure.add(NEXT_PTR_OFFSET),
-            mem::size_of::<usize>(),
-        );
+    fn get_next_structure(structure: &[u8]) -> &[u8] {
+        let slice = &structure[
+            NEXT_PTR_OFFSET..NEXT_PTR_OFFSET + mem::size_of::<usize>()
+        ];
         let mut bytes = [0; mem::size_of::<usize>()];
         bytes.copy_from_slice(slice);
-        usize::from_ne_bytes(bytes) as *const u8
+        let pointer = usize::from_ne_bytes(bytes);
+        let offset = pointer - structure.as_ptr() as usize;
+        &structure[offset..]
     }
 
-    unsafe fn find_bools_for_extension(
-        mut structures: *const u8,
-        extension: &Extension
-    ) -> &[vk::VkBool32] {
-        while !structures.is_null() {
+    fn find_bools_for_extension<'a, 'b>(
+        mut structures: &'a [u8],
+        extension: &'b Extension
+    ) -> &'a [vk::VkBool32] {
+        while !structures.is_empty() {
             let struct_type = get_struct_type(structures);
 
             if struct_type == extension.struct_type {
-                let bools_ptr = structures.add(FIRST_FEATURE_OFFSET);
-                return std::slice::from_raw_parts(
-                    bools_ptr as *const vk::VkBool32,
-                    extension.features.len()
-                );
+                unsafe {
+                    let bools_ptr = structures
+                        .as_ptr()
+                        .add(FIRST_FEATURE_OFFSET);
+                    return std::slice::from_raw_parts(
+                        bools_ptr as *const vk::VkBool32,
+                        extension.features.len()
+                    );
+                }
             }
 
             structures = get_next_structure(structures);
@@ -892,7 +926,7 @@ mod test {
         // All of the base features should be enabled
         assert!(reqs.base_features.iter().all(|&b| b));
 
-        let base_features = unsafe { reqs.c_base_features().as_ref() }.unwrap();
+        let base_features = reqs.c_base_features();
 
         assert_eq!(base_features.robustBufferAccess, 1);
         assert_eq!(base_features.fullDrawIndexUint32, 1);
@@ -952,17 +986,15 @@ mod test {
 
         // All of the values should be set in the C structs
         for extension in EXTENSIONS.iter() {
-            let structs = reqs.c_structures();
+            let structs = reqs.c_structures().unwrap();
 
             assert!(
-                unsafe {
-                    find_bools_for_extension(structs, extension)
-                        .iter()
-                        .all(|&b| b == 1)
-                }
+                find_bools_for_extension(structs, extension)
+                    .iter()
+                    .all(|&b| b == 1)
             );
 
-            assert!(!reqs.c_structures_dirty);
+            assert!(unsafe { &*reqs.lazy_structures.get() }.is_some());
         }
 
         // All of the extensions should be in the c_extensions
@@ -970,7 +1002,7 @@ mod test {
             assert!(unsafe {
                 extension_in_c_extensions(&mut reqs, extension.name())
             });
-            assert!(!reqs.c_extensions_dirty);
+            assert!(unsafe { &*reqs.lazy_extensions.get() }.is_some());
         }
 
         // Sanity check that a made-up extension isn’t in c_extensions
@@ -988,12 +1020,14 @@ mod test {
 
     #[test]
     fn test_empty() {
-        let mut reqs = Requirements::new();
+        let reqs = Requirements::new();
 
-        assert_eq!(reqs.c_extensions.len(), 0);
-        assert!(reqs.c_structures().is_null());
+        assert!(unsafe { &*reqs.lazy_extensions.get() }.is_none());
+        assert!(unsafe { &*reqs.lazy_structures.get() }.is_none());
 
-        let base_features_ptr = reqs.c_base_features() as *const vk::VkBool32;
+        let base_features_ptr = reqs.c_base_features()
+            as *const vk::VkPhysicalDeviceFeatures
+            as *const vk::VkBool32;
 
         unsafe {
             let base_features = std::slice::from_raw_parts(
@@ -1056,23 +1090,17 @@ mod test {
         reqs.add("advancedBlendCoherentOperations");
         assert_eq!(reqs.clone(), reqs);
 
-        assert!(!reqs.c_structures().is_null());
+        assert!(unsafe { &*reqs.lazy_structures.get() }.is_none());
         assert_eq!(reqs.c_extensions().len(), 2);
-        assert_eq!(
-            unsafe { reqs.c_base_features().as_ref().unwrap().wideLines },
-            1
-        );
+        assert_eq!(reqs.c_base_features().wideLines, 1);
 
         let empty = Requirements::new();
 
         reqs.clone_from(&empty);
 
-        assert!(reqs.c_structures().is_null());
+        assert!(unsafe { &*reqs.lazy_structures.get() }.is_none());
         assert_eq!(reqs.c_extensions().len(), 0);
-        assert_eq!(
-            unsafe { reqs.c_base_features().as_ref().unwrap().wideLines },
-            0
-        );
+        assert_eq!(reqs.c_base_features().wideLines, 0);
 
         assert_eq!(reqs, empty);
     }
