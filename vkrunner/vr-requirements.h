@@ -33,23 +33,8 @@
 
 struct vr_requirements;
 
-struct vr_requirements *
-vr_requirements_new(void);
-
 uint32_t
 vr_requirements_get_version(const struct vr_requirements *reqs);
-
-const char* const*
-vr_requirements_get_extensions(const struct vr_requirements *reqs);
-
-size_t
-vr_requirements_get_n_extensions(const struct vr_requirements *reqs);
-
-const void *
-vr_requirements_get_structures(const struct vr_requirements *reqs);
-
-const VkPhysicalDeviceFeatures *
-vr_requirements_get_base_features(const struct vr_requirements *reqs);
 
 bool
 vr_requirements_equal(const struct vr_requirements *reqs_a,

@@ -758,51 +758,10 @@ impl Clone for Requirements {
 }
 
 #[no_mangle]
-pub extern "C" fn vr_requirements_new() -> *mut Requirements {
-    Box::into_raw(Box::new(Requirements::new()))
-}
-
-#[no_mangle]
 pub extern "C" fn vr_requirements_get_version(
     reqs: *const Requirements
 ) -> u32 {
     unsafe { (*reqs).version() }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_requirements_get_extensions(
-    reqs: *mut Requirements
-) -> *const *const u8 {
-    unsafe {
-        (*reqs).c_extensions().as_ptr()
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_requirements_get_n_extensions(
-    reqs: *mut Requirements
-) -> usize {
-    unsafe {
-        (*reqs).extensions.len()
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_requirements_get_structures(
-    reqs: *mut Requirements
-) -> *const u8 {
-    unsafe {
-        (*reqs).c_structures()
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_requirements_get_base_features(
-    reqs: *mut Requirements
-) -> *const vk::VkPhysicalDeviceFeatures {
-    unsafe {
-        (*reqs).c_base_features()
-    }
 }
 
 #[no_mangle]
