@@ -20,6 +20,7 @@ mod stream;
 mod script;
 mod context;
 mod allocate_store;
+mod executor;
 
 #[cfg(test)]
 mod fake_vulkan;
