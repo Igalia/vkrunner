@@ -26,9 +26,7 @@ use crate::vk;
 use crate::requirements::{Requirements, CheckError};
 use crate::vulkan_funcs;
 use crate::util::env_var_as_boolean;
-use crate::result;
-use crate::config::Config;
-use std::ffi::{c_char, c_void, CStr, CString};
+use std::ffi::{c_char, c_void, CStr};
 use std::fmt;
 use std::fmt::Write;
 use std::ptr;
@@ -997,91 +995,6 @@ impl Drop for Context {
     }
 }
 
-fn handle_wrapper_constructor_result(
-    config: &Config,
-    result: Result<Context, ContextError>,
-    context_out: *mut *mut Context,
-) -> result::Result {
-    match result {
-        Ok(c) => {
-            unsafe { *context_out = Box::into_raw(Box::new(c)) };
-            result::Result::Pass
-        },
-        Err(e) => {
-            extern "C" {
-                fn vr_error_message_string(
-                    config: *const c_void,
-                    str: *const c_char
-                );
-            }
-
-            let message = CString::new(e.to_string()).unwrap();
-
-            unsafe {
-                vr_error_message_string(
-                    (config as *const Config).cast(),
-                    message.as_ptr(),
-                );
-            }
-
-            match e {
-                ContextError::Incompatible(_) => result::Result::Skip,
-                ContextError::Failure(_) => result::Result::Fail,
-            }
-        },
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_new(
-    config: &Config,
-    requirements: &Requirements,
-    context_out: *mut *mut Context,
-) -> result::Result {
-    handle_wrapper_constructor_result(
-        config,
-        Context::new(
-            requirements,
-            if config.device_id >= 0 {
-                Some(config.device_id as usize)
-            } else {
-                None
-            },
-        ),
-        context_out,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_new_with_device(
-    config: &Config,
-    get_instance_proc_cb: vulkan_funcs::GetInstanceProcFunc,
-    user_data: *const c_void,
-    physical_device: vk::VkPhysicalDevice,
-    queue_family: u32,
-    device: vk::VkDevice,
-    context_out: *mut *mut Context,
-) -> result::Result {
-    handle_wrapper_constructor_result(
-        config,
-        Context::new_with_device(
-            get_instance_proc_cb,
-            user_data,
-            physical_device,
-            queue_family,
-            device,
-        ),
-        context_out,
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_get_device_properties(
-    context: &Context,
-) -> &vk::VkPhysicalDeviceProperties {
-    context.device_properties()
-}
-
 #[no_mangle]
 pub extern "C" fn vr_context_get_memory_properties(
     context: &Context,
@@ -1090,24 +1003,10 @@ pub extern "C" fn vr_context_get_memory_properties(
 }
 
 #[no_mangle]
-pub extern "C" fn vr_context_get_vklib(
-    context: &Context,
-) -> Option<&vulkan_funcs::Library> {
-    context.library()
-}
-
-#[no_mangle]
 pub extern "C" fn vr_context_get_vkdev(
     context: &Context,
 ) -> &vulkan_funcs::Device {
     context.device()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_get_vkinst(
-    context: &Context,
-) -> &vulkan_funcs::Instance {
-    context.instance()
 }
 
 #[no_mangle]
@@ -1146,29 +1045,10 @@ pub extern "C" fn vr_context_get_vk_device(
 }
 
 #[no_mangle]
-pub extern "C" fn vr_context_get_vk_instance(
-    context: &Context,
-) -> vk::VkInstance {
-    context.vk_instance()
-}
-
-#[no_mangle]
 pub extern "C" fn vr_context_get_always_flush_memory(
     context: &Context,
 ) -> bool {
     context.always_flush_memory()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_device_is_external(
-    context: &Context,
-) -> bool {
-    context.is_external()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_free(context: *mut Context) {
-    unsafe { Box::from_raw(context) };
 }
 
 #[cfg(test)]
