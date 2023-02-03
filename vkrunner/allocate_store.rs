@@ -246,7 +246,7 @@ mod test {
         memory_property_flags: &[u32],
         memory_type_bits: u32,
         memory_type_flags: vk::VkMemoryPropertyFlags,
-    ) -> Result<(vk::VkDeviceMemory, u32), String> {
+    ) -> Result<(vk::VkDeviceMemory, u32, Context, Box<FakeVulkan>), String> {
         let mut fake_vulkan = FakeVulkan::new();
         fake_vulkan.physical_devices.push(Default::default());
 
@@ -266,12 +266,18 @@ mod test {
             &context,
             memory_type_flags,
             1usize as vk::VkBuffer, // fake buffer handle
-        )
+        ).map(|(memory, memory_type)| (
+            memory,
+            memory_type,
+            context,
+            fake_vulkan,
+        ))
     }
 
     #[test]
     fn find_memory() {
-        let (_memory, memory_type) = do_allocate_buffer(
+        let (device_memory, memory_type, context, fake_vulkan) =
+            do_allocate_buffer(
             // Made-up set of memory properties
             &[
                 vk::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
@@ -296,6 +302,17 @@ mod test {
         // Only 2 or 3 have the properties we need, but only 3 is
         // allowed for the buffer requirements.
         assert_eq!(memory_type, 3);
+
+        unsafe {
+            context.device().vkFreeMemory.unwrap()(
+                context.vk_device(),
+                device_memory,
+                ptr::null(), // allocator
+            );
+        }
+
+        drop(context);
+        drop(fake_vulkan);
 
         // Try with an impossible combination
         let err = do_allocate_buffer(
@@ -377,5 +394,13 @@ mod test {
 
         assert!(!device_memory.is_null());
         assert_eq!(memory_type, 0);
+
+        unsafe {
+            context.device().vkFreeMemory.unwrap()(
+                context.vk_device(),
+                device_memory,
+                ptr::null(), // allocator
+            );
+        }
     }
 }

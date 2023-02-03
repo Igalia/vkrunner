@@ -119,6 +119,7 @@ pub enum HandleType {
     CommandPool,
     CommandBuffer { command_pool: usize },
     Fence,
+    Memory,
 }
 
 #[derive(Debug)]
@@ -354,6 +355,11 @@ impl FakeVulkan {
             "vkAllocateMemory" => unsafe {
                 transmute::<vk::PFN_vkAllocateMemory, _>(
                     Some(FakeVulkan::allocate_memory)
+                )
+            },
+            "vkFreeMemory" => unsafe {
+                transmute::<vk::PFN_vkFreeMemory, _>(
+                    Some(FakeVulkan::free_memory)
                 )
             },
             _ => None,
@@ -933,18 +939,40 @@ impl FakeVulkan {
     }
 
     extern "C" fn allocate_memory(
-        _device: vk::VkDevice,
+        device: vk::VkDevice,
         _allocate_info: *const vk::VkMemoryAllocateInfo,
         _allocator: *const vk::VkAllocationCallbacks,
         memory: *mut vk::VkDeviceMemory,
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
 
-        unsafe {
-            *memory = 1usize as vk::VkDeviceMemory;
+        let res = fake_vulkan.next_result("vkAllocateMemory");
+
+        if res != vk::VK_SUCCESS {
+            return res;
         }
 
-        fake_vulkan.next_result("vkAllocateMemory")
+        fake_vulkan.check_device(device);
+
+        unsafe {
+            *memory = fake_vulkan.add_handle(HandleType::Memory);
+        }
+
+        res
+    }
+
+    extern "C" fn free_memory(
+        device: vk::VkDevice,
+        memory: vk::VkDeviceMemory,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(memory);
+        assert!(matches!(handle.data, HandleType::Memory));
+        handle.freed = true;
     }
 
     extern "C" fn bind_buffer_memory(
