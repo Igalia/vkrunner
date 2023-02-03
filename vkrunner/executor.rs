@@ -24,40 +24,28 @@
 
 use crate::vulkan_funcs;
 use crate::context::{Context, ContextError};
+use crate::window::{Window, WindowError};
 use crate::config::Config;
-use crate::window_format::WindowFormat;
 use crate::script::{Script, LoadError};
 use crate::source::Source;
 use crate::result;
 use crate::vk;
 use crate::requirements::Requirements;
 use std::ffi::{c_void, c_int};
-use std::ptr;
 use std::fmt;
 use std::rc::Rc;
 
 extern "C" {
-    fn vr_window_new(
-        config: *const Config,
-        context: &Context,
-        format: &WindowFormat,
-        window_out: *mut *const c_void,
-    ) -> result::Result;
-
-    fn vr_window_get_format(window: *const c_void) -> *const WindowFormat;
-
-    fn vr_window_free(window: *const c_void);
-
     fn vr_pipeline_create(
         config: *const Config,
-        window: *const c_void,
+        window: &Window,
         script: &Script,
     ) -> *mut c_void;
 
     fn vr_pipeline_free(pipeline: *mut c_void);
 
     fn vr_test_run(
-        window: *const c_void,
+        window: &Window,
         pipeline: *const c_void,
         script: &Script,
     ) -> bool;
@@ -65,8 +53,7 @@ extern "C" {
 
 pub enum ExecutorError {
     Context(ContextError),
-    WindowIncompatible,
-    WindowError,
+    Window(WindowError),
     PipelineError,
     LoadError(LoadError),
     TestFailed,
@@ -79,8 +66,7 @@ impl ExecutorError {
                 ContextError::Failure(_) => result::Result::Fail,
                 ContextError::Incompatible(_) => result::Result::Skip,
             },
-            ExecutorError::WindowIncompatible => result::Result::Skip,
-            ExecutorError::WindowError => result::Result::Fail,
+            ExecutorError::Window(e) => e.result(),
             ExecutorError::PipelineError => result::Result::Fail,
             ExecutorError::LoadError(_) => result::Result::Fail,
             ExecutorError::TestFailed => result::Result::Fail,
@@ -94,6 +80,12 @@ impl From<ContextError> for ExecutorError {
     }
 }
 
+impl From<WindowError> for ExecutorError {
+    fn from(error: WindowError) -> ExecutorError {
+        ExecutorError::Window(error)
+    }
+}
+
 impl From<LoadError> for ExecutorError {
     fn from(error: LoadError) -> ExecutorError {
         ExecutorError::LoadError(error)
@@ -104,12 +96,7 @@ impl fmt::Display for ExecutorError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ExecutorError::Context(e) => e.fmt(f),
-            ExecutorError::WindowIncompatible => {
-                write!(f, "The window format is incompatible")
-            },
-            ExecutorError::WindowError => {
-                write!(f, "Error creating the window")
-            },
+            ExecutorError::Window(e) => e.fmt(f),
             ExecutorError::PipelineError => {
                 write!(f, "Error creating the pipelines")
             },
@@ -133,7 +120,7 @@ struct ExternalData {
 #[derive(Debug)]
 pub struct Executor {
     config: *const Config,
-    window: Option<*const c_void>,
+    window: Option<Window>,
     context: Option<Rc<Context>>,
     // A cache of the requirements that the context was created with.
     // Used to detect if the requirements have changed. This won’t be
@@ -145,11 +132,7 @@ pub struct Executor {
 
 impl Executor {
     fn reset_window(&mut self) {
-        if let Some(window) = self.window.take() {
-            unsafe {
-                vr_window_free(window);
-            }
-        }
+        self.window = None;
     }
 
     fn reset_context(&mut self) {
@@ -251,38 +234,21 @@ impl Executor {
         &mut self,
         script: &Script,
         context: Rc<Context>,
-    ) -> Result<*const c_void, ExecutorError> {
+    ) -> Result<&Window, ExecutorError> {
         // Recreate the window if the framebuffer format is different
-        if let &Some(window) = &self.window {
-            let window_format = unsafe { &*vr_window_get_format(window) };
-
-            if !window_format.eq(script.window_format()) {
+        if let Some(window) = &self.window {
+            if !window.format().eq(script.window_format()) {
                 self.reset_window();
             }
         }
 
         match self.window {
-            Some(w) => Ok(w),
-            None => {
-                let mut window = std::ptr::null();
-                let res = unsafe {
-                    vr_window_new(
-                        self.config,
-                        context.as_ref(),
-                        script.window_format(),
-                        ptr::addr_of_mut!(window),
-                    )
-                };
-                match res {
-                    result::Result::Pass => Ok(*self.window.insert(window)),
-                    result::Result::Skip => {
-                        Err(ExecutorError::WindowIncompatible)
-                    },
-                    result::Result::Fail => {
-                        Err(ExecutorError::WindowError)
-                    },
-                }
-            },
+            Some(ref w) => Ok(w),
+            None => Ok(&*self.window.insert(Window::new(
+                self.config,
+                context,
+                script.window_format(),
+            )?)),
         }
     }
 
@@ -291,11 +257,12 @@ impl Executor {
         script: &Script
     ) -> Result<(), ExecutorError> {
         let context = self.context_for_script(script)?;
+        let config = self.config;
         let window = self.window_for_script(script, Rc::clone(&context))?;
 
         let pipeline = unsafe {
             vr_pipeline_create(
-                self.config,
+                config,
                 window,
                 script
             )
@@ -325,12 +292,6 @@ impl Executor {
         source: &Source,
     ) -> Result<(), ExecutorError> {
         self.execute_script(&Script::load(source)?)
-    }
-}
-
-impl Drop for Executor {
-    fn drop(&mut self) {
-        self.reset_window();
     }
 }
 

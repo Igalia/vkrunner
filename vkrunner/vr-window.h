@@ -36,12 +36,6 @@
 
 struct vr_window;
 
-enum vr_result
-vr_window_new(const struct vr_config *config,
-              struct vr_context *context,
-              const struct vr_window_format *format,
-              struct vr_window **window_out);
-
 struct vr_context *
 vr_window_get_context(struct vr_window *window);
 
@@ -81,8 +75,5 @@ vr_window_get_framebuffer(const struct vr_window *window);
 
 VkImage
 vr_window_get_color_image(const struct vr_window *window);
-
-void
-vr_window_free(struct vr_window *window);
 
 #endif /* VR_WINDOW_H */

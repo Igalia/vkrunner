@@ -19,6 +19,7 @@ mod config;
 mod stream;
 mod script;
 mod context;
+mod window;
 mod allocate_store;
 mod executor;
 
