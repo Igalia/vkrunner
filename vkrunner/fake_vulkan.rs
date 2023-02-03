@@ -701,11 +701,17 @@ impl FakeVulkan {
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
 
+        let res = fake_vulkan.next_result("vkCreateInstance");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
         unsafe {
             *instance_out = fake_vulkan.add_handle(HandleType::Instance);
         }
 
-        fake_vulkan.next_result("vkCreateInstance")
+        res
     }
 
     extern "C" fn create_device(
@@ -716,11 +722,17 @@ impl FakeVulkan {
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
 
+        let res = fake_vulkan.next_result("vkCreateDevice");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
         unsafe {
             *device_out = fake_vulkan.add_handle(HandleType::Device);
         }
 
-        fake_vulkan.next_result("vkCreateDevice")
+        res
     }
 
     extern "C" fn destroy_device(
@@ -753,13 +765,19 @@ impl FakeVulkan {
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
 
+        let res = fake_vulkan.next_result("vkCreateCommandPool");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
         fake_vulkan.check_device(device);
 
         unsafe {
             *command_pool_out = fake_vulkan.add_handle(HandleType::CommandPool);
         }
 
-        fake_vulkan.next_result("vkCreateCommandPool")
+        res
     }
 
     extern "C" fn destroy_command_pool(
@@ -783,6 +801,12 @@ impl FakeVulkan {
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
 
+        let res = fake_vulkan.next_result("vkAllocateCommandBuffers");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
         fake_vulkan.check_device(device);
 
         let command_pool_handle = unsafe { (*allocate_info).commandPool };
@@ -803,7 +827,7 @@ impl FakeVulkan {
             }
         }
 
-        fake_vulkan.next_result("vkAllocateCommandBuffers")
+        res
     }
 
     extern "C" fn free_command_buffers(
@@ -846,13 +870,19 @@ impl FakeVulkan {
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
 
+        let res = fake_vulkan.next_result("vkCreateFence");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
         fake_vulkan.check_device(device);
 
         unsafe {
             *fence_out = fake_vulkan.add_handle(HandleType::Fence);
         }
 
-        fake_vulkan.next_result("vkCreateFence")
+        res
     }
 
     extern "C" fn destroy_fence(
