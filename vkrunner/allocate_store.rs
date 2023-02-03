@@ -169,38 +169,6 @@ pub fn allocate_image(
 }
 
 #[no_mangle]
-pub extern "C" fn vr_allocate_store_image(
-    context: &Context,
-    memory_type_flags: u32,
-    n_images: c_int,
-    images: *const vk::VkImage,
-    memory_out: *mut vk::VkDeviceMemory,
-    memory_type_index_out: *mut c_int,
-) -> vk::VkResult {
-    // The original C functions could allocate memory for multiple
-    // images at a time. This isn’t actually used anywhere so for
-    // simplicity we only allow one buffer.
-    assert_eq!(n_images, 1);
-
-    match allocate_image(
-        context,
-        memory_type_flags as vk::VkMemoryPropertyFlags,
-        unsafe { *images },
-    ) {
-        Ok((memory, memory_type_index)) => {
-            unsafe {
-                *memory_out = memory;
-                if !memory_type_index_out.is_null() {
-                    *memory_type_index_out = memory_type_index as c_int;
-                }
-            }
-            vk::VK_SUCCESS
-        },
-        Err(_) => vk::VK_ERROR_UNKNOWN,
-    }
-}
-
-#[no_mangle]
 pub extern "C" fn vr_allocate_store_buffer(
     context: &Context,
     memory_type_flags: u32,

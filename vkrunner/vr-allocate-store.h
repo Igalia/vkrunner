@@ -30,14 +30,6 @@
 #include "vr-context.h"
 
 VkResult
-vr_allocate_store_image(struct vr_context *context,
-                        uint32_t memory_type_flags,
-                        int n_images,
-                        const VkImage *images,
-                        VkDeviceMemory *memory_out,
-                        int *memory_type_index_out);
-
-VkResult
 vr_allocate_store_buffer(struct vr_context *context,
                          uint32_t memory_type_flags,
                          int n_buffers,
