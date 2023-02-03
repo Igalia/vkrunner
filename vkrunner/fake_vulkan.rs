@@ -67,6 +67,7 @@ pub struct PhysicalDeviceInfo {
     pub features: vk::VkPhysicalDeviceFeatures,
     pub queue_families: Vec<vk::VkQueueFamilyProperties>,
     pub extensions: Vec<vk::VkExtensionProperties>,
+    pub format_properties: HashMap<vk::VkFormat, vk::VkFormatProperties>,
     // Two random extension feature sets to report when asked
     pub shader_atomic: vk::VkPhysicalDeviceShaderAtomicInt64FeaturesKHR,
     pub multiview: vk::VkPhysicalDeviceMultiviewFeaturesKHR,
@@ -93,6 +94,7 @@ impl Default for PhysicalDeviceInfo {
                 sparseProperties: Default::default(),
             },
             memory_properties: Default::default(),
+            format_properties: HashMap::new(),
             features: Default::default(),
             queue_families: vec![vk::VkQueueFamilyProperties {
                 queueFlags: vk::VK_QUEUE_GRAPHICS_BIT,
@@ -240,6 +242,11 @@ impl FakeVulkan {
             "vkGetPhysicalDeviceMemoryProperties" => unsafe {
                 transmute::<vk::PFN_vkGetPhysicalDeviceMemoryProperties, _>(
                     Some(FakeVulkan::get_physical_device_memory_properties)
+                )
+            },
+            "vkGetPhysicalDeviceFormatProperties" => unsafe {
+                transmute::<vk::PFN_vkGetPhysicalDeviceFormatProperties, _>(
+                    Some(FakeVulkan::get_physical_device_format_properties)
                 )
             },
             "vkGetPhysicalDeviceProperties" => unsafe {
@@ -509,6 +516,22 @@ impl FakeVulkan {
                 fake_vulkan.physical_device_to_index(physical_device);
             let device = &fake_vulkan.physical_devices[device_num];
             *features_out = device.features.clone();
+        }
+    }
+
+    extern "C" fn get_physical_device_format_properties(
+        physical_device: vk::VkPhysicalDevice,
+        format: vk::VkFormat,
+        properties: *mut vk::VkFormatProperties,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        let device_num =
+            fake_vulkan.physical_device_to_index(physical_device);
+        let device = &fake_vulkan.physical_devices[device_num];
+
+        unsafe {
+            *properties = device.format_properties[&format];
         }
     }
 
