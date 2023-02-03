@@ -31,7 +31,7 @@ use crate::requirements;
 use std::cell::Cell;
 use std::mem;
 use std::mem::transmute;
-use std::ffi::{c_char, CStr};
+use std::ffi::{c_char, CStr, c_void};
 use std::ptr;
 use std::cmp::min;
 use std::collections::{HashMap, VecDeque};
@@ -121,7 +121,12 @@ pub enum HandleType {
     CommandPool,
     CommandBuffer { command_pool: usize },
     Fence,
-    Memory,
+    Memory { mapping: Option<Vec<u8>> },
+    RenderPass { attachments: Vec<vk::VkAttachmentDescription> },
+    Image,
+    ImageView,
+    Buffer,
+    Framebuffer,
 }
 
 #[derive(Debug)]
@@ -325,6 +330,56 @@ impl FakeVulkan {
                     Some(FakeVulkan::destroy_fence)
                 )
             },
+            "vkCreateRenderPass" => unsafe {
+                transmute::<vk::PFN_vkCreateRenderPass, _>(
+                    Some(FakeVulkan::create_render_pass)
+                )
+            },
+            "vkDestroyRenderPass" => unsafe {
+                transmute::<vk::PFN_vkDestroyRenderPass, _>(
+                    Some(FakeVulkan::destroy_render_pass)
+                )
+            },
+            "vkCreateImageView" => unsafe {
+                transmute::<vk::PFN_vkCreateImageView, _>(
+                    Some(FakeVulkan::create_image_view)
+                )
+            },
+            "vkDestroyImageView" => unsafe {
+                transmute::<vk::PFN_vkDestroyImageView, _>(
+                    Some(FakeVulkan::destroy_image_view)
+                )
+            },
+            "vkCreateImage" => unsafe {
+                transmute::<vk::PFN_vkCreateImage, _>(
+                    Some(FakeVulkan::create_image)
+                )
+            },
+            "vkDestroyImage" => unsafe {
+                transmute::<vk::PFN_vkDestroyImage, _>(
+                    Some(FakeVulkan::destroy_image)
+                )
+            },
+            "vkCreateBuffer" => unsafe {
+                transmute::<vk::PFN_vkCreateBuffer, _>(
+                    Some(FakeVulkan::create_buffer)
+                )
+            },
+            "vkDestroyBuffer" => unsafe {
+                transmute::<vk::PFN_vkDestroyBuffer, _>(
+                    Some(FakeVulkan::destroy_buffer)
+                )
+            },
+            "vkCreateFramebuffer" => unsafe {
+                transmute::<vk::PFN_vkCreateFramebuffer, _>(
+                    Some(FakeVulkan::create_framebuffer)
+                )
+            },
+            "vkDestroyFramebuffer" => unsafe {
+                transmute::<vk::PFN_vkDestroyFramebuffer, _>(
+                    Some(FakeVulkan::destroy_framebuffer)
+                )
+            },
             "vkEnumerateInstanceVersion" => unsafe {
                 if self.has_enumerate_instance_version {
                     transmute::<vk::PFN_vkEnumerateInstanceVersion, _>(
@@ -367,6 +422,16 @@ impl FakeVulkan {
             "vkFreeMemory" => unsafe {
                 transmute::<vk::PFN_vkFreeMemory, _>(
                     Some(FakeVulkan::free_memory)
+                )
+            },
+            "vkMapMemory" => unsafe {
+                transmute::<vk::PFN_vkMapMemory, _>(
+                    Some(FakeVulkan::map_memory)
+                )
+            },
+            "vkUnmapMemory" => unsafe {
+                transmute::<vk::PFN_vkUnmapMemory, _>(
+                    Some(FakeVulkan::unmap_memory)
                 )
             },
             _ => None,
@@ -723,6 +788,16 @@ impl FakeVulkan {
         assert!(matches!(handle.data, HandleType::CommandPool));
     }
 
+    fn check_image(&mut self, image: vk::VkImage) {
+        let handle = self.get_handle(image);
+        assert!(matches!(handle.data, HandleType::Image));
+    }
+
+    fn check_image_view(&mut self, image_view: vk::VkImageView) {
+        let handle = self.get_handle(image_view);
+        assert!(matches!(handle.data, HandleType::ImageView));
+    }
+
     extern "C" fn create_instance(
         _create_info: *const vk::VkInstanceCreateInfo,
         _allocator: *const vk::VkAllocationCallbacks,
@@ -928,6 +1003,212 @@ impl FakeVulkan {
         handle.freed = true;
     }
 
+    extern "C" fn create_render_pass(
+        device: vk::VkDevice,
+        create_info: *const vk::VkRenderPassCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        render_pass_out: *mut vk::VkRenderPass,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreateRenderPass");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        unsafe {
+            let create_info = &*create_info;
+
+            *render_pass_out = fake_vulkan.add_handle(HandleType::RenderPass {
+                attachments: std::slice::from_raw_parts(
+                    create_info.pAttachments,
+                    create_info.attachmentCount as usize,
+                ).to_owned(),
+            });
+        }
+
+        res
+    }
+
+    extern "C" fn destroy_render_pass(
+        device: vk::VkDevice,
+        render_pass: vk::VkRenderPass,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(render_pass);
+        assert!(matches!(handle.data, HandleType::RenderPass { .. }));
+        handle.freed = true;
+    }
+
+    extern "C" fn create_image_view(
+        device: vk::VkDevice,
+        create_info: *const vk::VkImageViewCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        image_view_out: *mut vk::VkImageView,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreateImageView");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        fake_vulkan.check_image(unsafe { *create_info }.image);
+
+        unsafe {
+            *image_view_out = fake_vulkan.add_handle(HandleType::ImageView);
+        }
+
+        res
+    }
+
+    extern "C" fn destroy_image_view(
+        device: vk::VkDevice,
+        image_view: vk::VkImageView,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(image_view);
+        assert!(matches!(handle.data, HandleType::ImageView));
+        handle.freed = true;
+    }
+
+    extern "C" fn create_image(
+        device: vk::VkDevice,
+        _create_info: *const vk::VkImageCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        image_out: *mut vk::VkImage,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreateImage");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        unsafe {
+            *image_out = fake_vulkan.add_handle(HandleType::Image);
+        }
+
+        res
+    }
+
+    extern "C" fn destroy_image(
+        device: vk::VkDevice,
+        image: vk::VkImage,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(image);
+        assert!(matches!(handle.data, HandleType::Image));
+        handle.freed = true;
+    }
+
+    extern "C" fn create_buffer(
+        device: vk::VkDevice,
+        _create_info: *const vk::VkBufferCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        buffer_out: *mut vk::VkBuffer,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreateBuffer");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        unsafe {
+            *buffer_out = fake_vulkan.add_handle(HandleType::Buffer);
+        }
+
+        res
+    }
+
+    extern "C" fn destroy_buffer(
+        device: vk::VkDevice,
+        buffer: vk::VkBuffer,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(buffer);
+        assert!(matches!(handle.data, HandleType::Buffer));
+        handle.freed = true;
+    }
+
+    extern "C" fn create_framebuffer(
+        device: vk::VkDevice,
+        create_info: *const vk::VkFramebufferCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        framebuffer_out: *mut vk::VkFramebuffer,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreateFramebuffer");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        let attachments = unsafe {
+            let attachment_count = (*create_info).attachmentCount as usize;
+            std::slice::from_raw_parts(
+                (*create_info).pAttachments,
+                attachment_count
+            )
+        };
+
+        for &attachment in attachments {
+            fake_vulkan.check_image_view(attachment);
+        }
+
+        unsafe {
+            *framebuffer_out = fake_vulkan.add_handle(HandleType::Framebuffer);
+        }
+
+        res
+    }
+
+    extern "C" fn destroy_framebuffer(
+        device: vk::VkDevice,
+        framebuffer: vk::VkFramebuffer,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(framebuffer);
+        assert!(matches!(handle.data, HandleType::Framebuffer));
+        handle.freed = true;
+    }
+
     extern "C" fn enumerate_instance_version(
         api_version: *mut u32
     ) -> vk::VkResult {
@@ -978,7 +1259,9 @@ impl FakeVulkan {
         fake_vulkan.check_device(device);
 
         unsafe {
-            *memory = fake_vulkan.add_handle(HandleType::Memory);
+            *memory = fake_vulkan.add_handle(HandleType::Memory {
+                mapping: None,
+            });
         }
 
         res
@@ -994,7 +1277,12 @@ impl FakeVulkan {
         fake_vulkan.check_device(device);
 
         let handle = fake_vulkan.get_handle(memory);
-        assert!(matches!(handle.data, HandleType::Memory));
+
+        match handle.data {
+            HandleType::Memory { ref mapping } => assert!(mapping.is_none()),
+            _ => unreachable!("mismatched handle"),
+        }
+
         handle.freed = true;
     }
 
@@ -1017,6 +1305,64 @@ impl FakeVulkan {
         let fake_vulkan = FakeVulkan::current();
         fake_vulkan.next_result("vkBindImageMemory")
     }
+
+    extern "C" fn map_memory(
+        device: vk::VkDevice,
+        memory: vk::VkDeviceMemory,
+        _offset: vk::VkDeviceSize,
+        size: vk::VkDeviceSize,
+        _flags: vk::VkMemoryMapFlags,
+        data_out: *mut *mut c_void,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkMapMemory");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        let mapping = match fake_vulkan.get_handle(memory).data {
+            HandleType::Memory { ref mut mapping } => mapping,
+            _ => unreachable!("mismatched handle"),
+        };
+
+        assert!(mapping.is_none());
+
+        let size = if size == vk::VK_WHOLE_SIZE as vk::VkDeviceSize {
+            10 * 1024 * 1024
+        } else {
+            size as usize
+        };
+
+        let mut data = Vec::new();
+        data.resize(size, 0);
+
+        unsafe {
+            *data_out = mapping.insert(data).as_mut_ptr().cast();
+        }
+
+        res
+    }
+
+    extern "C" fn unmap_memory(
+        device: vk::VkDevice,
+        memory: vk::VkDeviceMemory
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let mapping = match fake_vulkan.get_handle(memory).data {
+            HandleType::Memory { ref mut mapping } => mapping,
+            _ => unreachable!("mismatched handle"),
+        };
+
+        assert!(mapping.is_some());
+        *mapping = None;
+    }
 }
 
 impl Drop for FakeVulkan {
@@ -1026,6 +1372,17 @@ impl Drop for FakeVulkan {
         if !std::thread::panicking() {
             for handle in self.handles.iter() {
                 assert!(handle.freed);
+
+                match handle.data {
+                    HandleType::Instance | HandleType::Device |
+                    HandleType::CommandPool | HandleType::CommandBuffer { .. } |
+                    HandleType::Fence | HandleType::RenderPass { .. } |
+                    HandleType::Image | HandleType::ImageView |
+                    HandleType::Buffer | HandleType::Framebuffer => (),
+                    HandleType::Memory { ref mapping } => {
+                        assert!(mapping.is_none());
+                    },
+                }
             }
 
             // There should only be one FakeVulkan at a time so the
