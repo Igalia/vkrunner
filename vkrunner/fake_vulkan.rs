@@ -112,6 +112,21 @@ const ATOMIC_TYPE: vk::VkStructureType =
 const MULTIVIEW_TYPE: vk::VkStructureType =
     vk::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
 
+#[derive(Debug)]
+pub enum HandleType {
+    Instance,
+    Device,
+    CommandPool,
+    CommandBuffer { command_pool: usize },
+    Fence,
+}
+
+#[derive(Debug)]
+pub struct Handle {
+    pub freed: bool,
+    pub data: HandleType,
+}
+
 /// A fake Vulkan driver. Note that there can only be one FakeVulkan
 /// instance per-thread because it needs to use thread-local storage
 /// to figure out the current fake driver when the fake
@@ -131,11 +146,7 @@ pub struct FakeVulkan {
     /// is available.
     pub has_enumerate_instance_version: bool,
 
-    n_instances: usize,
-    n_devices: usize,
-    n_command_pools: usize,
-    n_command_buffers: usize,
-    n_fences: usize,
+    handles: Vec<Handle>,
 
     // Queue of values to return instead of VK_SUCCESS to simulate
     // function call failures. This is indexed by the function name
@@ -149,11 +160,7 @@ impl FakeVulkan {
             physical_devices: Vec::new(),
             instance_extensions: Vec::new(),
             memory_requirements: Default::default(),
-            n_instances: 0,
-            n_devices: 0,
-            n_command_pools: 0,
-            n_command_buffers: 0,
-            n_fences: 0,
+            handles: Vec::new(),
             has_enumerate_instance_version: false,
             result_queue: HashMap::new(),
         });
@@ -652,6 +659,41 @@ impl FakeVulkan {
         fake_vulkan.next_result("vkEnumerateDeviceExtensionProperties")
     }
 
+    pub fn add_handle<T>(&mut self, data: HandleType) -> *mut T {
+        self.handles.push(Handle {
+            freed: false,
+            data,
+        });
+
+        self.handles.len() as *mut T
+    }
+
+    pub fn handle_to_index<T>(handle: *mut T) -> usize {
+        let handle_num = handle as usize;
+
+        assert!(handle_num > 0);
+
+        handle_num - 1
+    }
+
+    pub fn get_handle<T>(&mut self, handle: *mut T) -> &mut Handle {
+        let handle = &mut self.handles[FakeVulkan::handle_to_index(handle)];
+
+        assert!(!handle.freed);
+
+        handle
+    }
+
+    fn check_device(&mut self, device: vk::VkDevice) {
+        let handle = self.get_handle(device);
+        assert!(matches!(handle.data, HandleType::Device));
+    }
+
+    fn check_command_pool(&mut self, command_pool: vk::VkCommandPool) {
+        let handle = self.get_handle(command_pool);
+        assert!(matches!(handle.data, HandleType::CommandPool));
+    }
+
     extern "C" fn create_instance(
         _create_info: *const vk::VkInstanceCreateInfo,
         _allocator: *const vk::VkAllocationCallbacks,
@@ -659,10 +701,8 @@ impl FakeVulkan {
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
 
-        fake_vulkan.n_instances += 1;
-
         unsafe {
-            *instance_out = fake_vulkan.n_instances as vk::VkInstance;
+            *instance_out = fake_vulkan.add_handle(HandleType::Instance);
         }
 
         fake_vulkan.next_result("vkCreateInstance")
@@ -676,82 +716,90 @@ impl FakeVulkan {
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
 
-        fake_vulkan.n_devices += 1;
-
         unsafe {
-            *device_out = fake_vulkan.n_devices as vk::VkDevice;
+            *device_out = fake_vulkan.add_handle(HandleType::Device);
         }
 
         fake_vulkan.next_result("vkCreateDevice")
     }
 
     extern "C" fn destroy_device(
-        _device: vk::VkDevice,
+        device: vk::VkDevice,
         _allocator: *const vk::VkAllocationCallbacks
     ) {
         let fake_vulkan = FakeVulkan::current();
 
-        assert!(fake_vulkan.n_devices >= 1);
-
-        fake_vulkan.n_devices -= 1;
+        let handle = fake_vulkan.get_handle(device);
+        assert!(matches!(handle.data, HandleType::Device));
+        handle.freed = true;
     }
 
     extern "C" fn destroy_instance(
-        _instance: vk::VkInstance,
+        instance: vk::VkInstance,
         _allocator: *const vk::VkAllocationCallbacks
     ) {
         let fake_vulkan = FakeVulkan::current();
 
-        assert!(fake_vulkan.n_instances >= 1);
-
-        fake_vulkan.n_instances -= 1;
+        let handle = fake_vulkan.get_handle(instance);
+        assert!(matches!(handle.data, HandleType::Instance));
+        handle.freed = true;
     }
 
     extern "C" fn create_command_pool(
-        _device: vk::VkDevice,
+        device: vk::VkDevice,
         _create_info: *const vk::VkCommandPoolCreateInfo,
         _allocator: *const vk::VkAllocationCallbacks,
         command_pool_out: *mut vk::VkCommandPool,
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
 
-        fake_vulkan.n_command_pools += 1;
+        fake_vulkan.check_device(device);
 
         unsafe {
-            *command_pool_out = 1usize as vk::VkCommandPool;
+            *command_pool_out = fake_vulkan.add_handle(HandleType::CommandPool);
         }
 
         fake_vulkan.next_result("vkCreateCommandPool")
     }
 
     extern "C" fn destroy_command_pool(
-        _device: vk::VkDevice,
-        _command_pool: vk::VkCommandPool,
+        device: vk::VkDevice,
+        command_pool: vk::VkCommandPool,
         _allocator: *const vk::VkAllocationCallbacks,
     ) {
         let fake_vulkan = FakeVulkan::current();
 
-        assert!(fake_vulkan.n_command_pools >= 1);
+        fake_vulkan.check_device(device);
 
-        fake_vulkan.n_command_pools -= 1;
+        let handle = fake_vulkan.get_handle(command_pool);
+        assert!(matches!(handle.data, HandleType::CommandPool));
+        handle.freed = true;
     }
 
     extern "C" fn allocate_command_buffers(
-        _device: vk::VkDevice,
+        device: vk::VkDevice,
         allocate_info: *const vk::VkCommandBufferAllocateInfo,
         command_buffers: *mut vk::VkCommandBuffer,
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
 
-        assert!(fake_vulkan.n_command_pools >= 1);
+        fake_vulkan.check_device(device);
+
+        let command_pool_handle = unsafe { (*allocate_info).commandPool };
+
+        fake_vulkan.check_command_pool(command_pool_handle);
 
         let n_buffers = unsafe { (*allocate_info).commandBufferCount };
 
-        fake_vulkan.n_command_buffers += n_buffers as usize;
-
         for i in 0..(n_buffers as usize) {
             unsafe {
-                *command_buffers.add(i) = (i + 1) as vk::VkCommandBuffer;
+                *command_buffers.add(i) = fake_vulkan.add_handle(
+                    HandleType::CommandBuffer {
+                        command_pool: FakeVulkan::handle_to_index(
+                            command_pool_handle
+                        ),
+                    },
+                );
             }
         }
 
@@ -759,47 +807,66 @@ impl FakeVulkan {
     }
 
     extern "C" fn free_command_buffers(
-        _device: vk::VkDevice,
-        _command_pool: vk::VkCommandPool,
+        device: vk::VkDevice,
+        command_pool: vk::VkCommandPool,
         command_buffer_count: u32,
-        _command_buffers: *const vk::VkCommandBuffer,
+        command_buffers: *const vk::VkCommandBuffer,
     ) {
         let fake_vulkan = FakeVulkan::current();
 
-        assert!(fake_vulkan.n_command_pools >= 1);
+        fake_vulkan.check_device(device);
 
-        assert!(command_buffer_count as usize <= fake_vulkan.n_command_buffers);
+        fake_vulkan.check_command_pool(command_pool);
 
-        fake_vulkan.n_command_buffers -= command_buffer_count as usize;
+        for i in 0..command_buffer_count as usize {
+            let command_buffer = unsafe {
+                *command_buffers.add(i)
+            };
+
+            let command_buffer_handle = fake_vulkan.get_handle(command_buffer);
+
+            match command_buffer_handle.data {
+                HandleType::CommandBuffer { command_pool: handle_pool } => {
+                    assert_eq!(
+                        handle_pool,
+                        FakeVulkan::handle_to_index(command_pool),
+                    );
+                    command_buffer_handle.freed = true;
+                },
+                _ => unreachable!("mismatched handle"),
+            }
+        }
     }
 
     extern "C" fn create_fence(
-        _device: vk::VkDevice,
+        device: vk::VkDevice,
         _create_info: *const vk::VkFenceCreateInfo,
         _allocator: *const vk::VkAllocationCallbacks,
         fence_out: *mut vk::VkFence,
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
 
-        fake_vulkan.n_fences += 1;
+        fake_vulkan.check_device(device);
 
         unsafe {
-            *fence_out = 1usize as vk::VkFence;
+            *fence_out = fake_vulkan.add_handle(HandleType::Fence);
         }
 
         fake_vulkan.next_result("vkCreateFence")
     }
 
     extern "C" fn destroy_fence(
-        _device: vk::VkDevice,
-        _fence: vk::VkFence,
+        device: vk::VkDevice,
+        fence: vk::VkFence,
         _allocator: *const vk::VkAllocationCallbacks,
     ) {
         let fake_vulkan = FakeVulkan::current();
 
-        assert!(fake_vulkan.n_fences >= 1);
+        fake_vulkan.check_device(device);
 
-        fake_vulkan.n_fences -= 1;
+        let handle = fake_vulkan.get_handle(fence);
+        assert!(matches!(handle.data, HandleType::Fence));
+        handle.freed = true;
     }
 
     extern "C" fn enumerate_instance_version(
@@ -876,11 +943,9 @@ impl Drop for FakeVulkan {
         let old_value = CURRENT_FAKE_VULKAN.with(|f| f.replace(None));
 
         if !std::thread::panicking() {
-            assert_eq!(self.n_instances, 0);
-            assert_eq!(self.n_devices, 0);
-            assert_eq!(self.n_command_pools, 0);
-            assert_eq!(self.n_command_buffers, 0);
-            assert_eq!(self.n_fences, 0);
+            for handle in self.handles.iter() {
+                assert!(handle.freed);
+            }
 
             // There should only be one FakeVulkan at a time so the
             // one we just dropped should be the one that was set for

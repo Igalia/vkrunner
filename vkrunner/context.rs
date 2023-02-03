@@ -1174,7 +1174,7 @@ pub extern "C" fn vr_context_free(context: *mut Context) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::fake_vulkan::FakeVulkan;
+    use crate::fake_vulkan::{FakeVulkan, HandleType};
 
     #[test]
     fn base() {
@@ -1450,6 +1450,8 @@ mod test {
         let mut fake_vulkan = FakeVulkan::new();
         fake_vulkan.physical_devices.push(Default::default());
 
+        let device = fake_vulkan.add_handle(HandleType::Device);
+
         extern "C" fn no_create_device(
             _physical_device: vk::VkPhysicalDevice,
             _create_info: *const vk::VkDeviceCreateInfo,
@@ -1537,7 +1539,7 @@ mod test {
             (fake_vulkan.as_ref() as *const FakeVulkan).cast(),
             fake_vulkan.index_to_physical_device(0),
             3, // queue_family
-            1234usize as vk::VkDevice,
+            device,
         ).unwrap();
 
         assert_eq!(context.vk_instance(), ptr::null_mut());
@@ -1545,9 +1547,13 @@ mod test {
             fake_vulkan.physical_device_to_index(context.physical_device()),
             0
         );
-        assert_eq!(context.vk_device(), 1234usize as vk::VkDevice);
+        assert_eq!(context.vk_device(), device);
         assert!(context.device_pair.is_external);
         assert!(context.instance_pair.is_external);
         assert!(context.library().is_none());
+
+        drop(context);
+
+        fake_vulkan.get_handle(device).freed = true;
     }
 }
