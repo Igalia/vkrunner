@@ -28,6 +28,7 @@ use crate::vk;
 use std::convert::TryInto;
 use std::num::NonZeroUsize;
 use std::slice;
+use std::ffi::c_char;
 
 #[derive(Debug)]
 #[repr(C)]
@@ -405,13 +406,13 @@ pub extern "C" fn vr_format_load_pixel(
 }
 
 #[no_mangle]
-pub extern "C" fn vr_format_get_name(format: &Format) -> *mut u8 {
+pub extern "C" fn vr_format_get_name(format: &Format) -> *mut c_char {
     extern "C" {
-        fn vr_strndup(s: *const u8, len: usize) -> *mut u8;
+        fn vr_strndup(s: *const c_char, len: usize) -> *mut c_char;
     }
 
     unsafe {
-        vr_strndup(format.name.as_ptr(), format.name.len())
+        vr_strndup(format.name.as_ptr().cast(), format.name.len())
     }
 }
 

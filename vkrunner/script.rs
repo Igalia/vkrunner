@@ -2111,7 +2111,7 @@ pub extern "C" fn vr_script_load(
     source: &Source
 ) -> Option<Box<Script>> {
     extern "C" {
-        fn vr_error_message_string(config: *const c_void, str: *const i8);
+        fn vr_error_message_string(config: *const c_void, str: *const c_char);
     }
 
     match Script::load(source) {
@@ -2135,11 +2135,14 @@ pub extern "C" fn vr_script_free(script: *mut Script) {
 #[no_mangle]
 pub extern "C" fn vr_script_get_filename(script: &Script) -> *mut c_char {
     extern "C" {
-        fn vr_strndup(s: *const u8, len: usize) -> *mut u8;
+        fn vr_strndup(s: *const c_char, len: usize) -> *mut c_char;
     }
 
     unsafe {
-        vr_strndup(script.filename().as_ptr(), script.filename().len()).cast()
+        vr_strndup(
+            script.filename().as_ptr().cast(),
+            script.filename().len()
+        ).cast()
     }
 }
 

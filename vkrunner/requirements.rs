@@ -843,7 +843,7 @@ pub extern "C" fn vr_requirements_free(reqs: *mut Requirements) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::ffi::c_void;
+    use std::ffi::{c_char, c_void};
     use crate::fake_vulkan;
 
     fn get_struct_type(structure: &[u8]) -> vk::VkStructureType {
@@ -894,7 +894,7 @@ mod test {
         ext: &str
     ) -> bool {
         for &p in reqs.c_extensions().iter() {
-            if CStr::from_ptr(p as *const i8).to_str().unwrap() == ext {
+            if CStr::from_ptr(p as *const c_char).to_str().unwrap() == ext {
                 return true;
             }
         }
@@ -1134,7 +1134,7 @@ mod test {
             }
 
             extern "C" fn get_instance_proc(
-                func_name: *const u8,
+                func_name: *const c_char,
                 user_data: *const c_void,
             ) -> *const c_void {
                 unsafe {
@@ -1341,7 +1341,7 @@ mod test {
             .physical_devices[0]
             .extensions[0]
             .extensionName;
-        extension_name[0] = -1;
+        extension_name[0] = -1i8 as c_char;
         extension_name[1] = 0;
 
         match reqs.check(

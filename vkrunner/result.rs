@@ -23,6 +23,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 use std::fmt;
+use std::ffi::c_char;
 
 /// Enum representing the possible results of a test.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -89,8 +90,8 @@ pub extern "C" fn vr_result_merge(a: Result, b: Result) -> Result {
 }
 
 #[no_mangle]
-pub extern "C" fn vr_result_to_string(res: Result) -> *const u8 {
-    res.name_with_terminator().as_ptr()
+pub extern "C" fn vr_result_to_string(res: Result) -> *const c_char {
+    res.name_with_terminator().as_ptr().cast()
 }
 
 #[cfg(test)]

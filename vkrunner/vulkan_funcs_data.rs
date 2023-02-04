@@ -113,43 +113,43 @@ impl Instance {
     ) -> Instance {
         Instance {
             vkCreateDevice: std::mem::transmute(get_instance_proc_cb(
-                "vkCreateDevice\0".as_ptr(),
+                "vkCreateDevice\0".as_ptr().cast(),
                 user_data,
             )),
             vkDestroyInstance: std::mem::transmute(get_instance_proc_cb(
-                "vkDestroyInstance\0".as_ptr(),
+                "vkDestroyInstance\0".as_ptr().cast(),
                 user_data,
             )),
             vkEnumerateDeviceExtensionProperties: std::mem::transmute(get_instance_proc_cb(
-                "vkEnumerateDeviceExtensionProperties\0".as_ptr(),
+                "vkEnumerateDeviceExtensionProperties\0".as_ptr().cast(),
                 user_data,
             )),
             vkEnumeratePhysicalDevices: std::mem::transmute(get_instance_proc_cb(
-                "vkEnumeratePhysicalDevices\0".as_ptr(),
+                "vkEnumeratePhysicalDevices\0".as_ptr().cast(),
                 user_data,
             )),
             vkGetDeviceProcAddr: std::mem::transmute(get_instance_proc_cb(
-                "vkGetDeviceProcAddr\0".as_ptr(),
+                "vkGetDeviceProcAddr\0".as_ptr().cast(),
                 user_data,
             )),
             vkGetPhysicalDeviceFeatures: std::mem::transmute(get_instance_proc_cb(
-                "vkGetPhysicalDeviceFeatures\0".as_ptr(),
+                "vkGetPhysicalDeviceFeatures\0".as_ptr().cast(),
                 user_data,
             )),
             vkGetPhysicalDeviceFormatProperties: std::mem::transmute(get_instance_proc_cb(
-                "vkGetPhysicalDeviceFormatProperties\0".as_ptr(),
+                "vkGetPhysicalDeviceFormatProperties\0".as_ptr().cast(),
                 user_data,
             )),
             vkGetPhysicalDeviceMemoryProperties: std::mem::transmute(get_instance_proc_cb(
-                "vkGetPhysicalDeviceMemoryProperties\0".as_ptr(),
+                "vkGetPhysicalDeviceMemoryProperties\0".as_ptr().cast(),
                 user_data,
             )),
             vkGetPhysicalDeviceProperties: std::mem::transmute(get_instance_proc_cb(
-                "vkGetPhysicalDeviceProperties\0".as_ptr(),
+                "vkGetPhysicalDeviceProperties\0".as_ptr().cast(),
                 user_data,
             )),
             vkGetPhysicalDeviceQueueFamilyProperties: std::mem::transmute(get_instance_proc_cb(
-                "vkGetPhysicalDeviceQueueFamilyProperties\0".as_ptr(),
+                "vkGetPhysicalDeviceQueueFamilyProperties\0".as_ptr().cast(),
                 user_data,
             )),
         }

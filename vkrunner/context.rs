@@ -91,7 +91,7 @@ struct GetInstanceProcClosure<'a> {
 }
 
 extern "C" fn get_instance_proc(
-    func_name: *const u8,
+    func_name: *const c_char,
     user_data: *const c_void,
 ) -> *const c_void {
     unsafe {
@@ -153,7 +153,7 @@ fn check_instance_extension(
         // will check for null too.
 
         for (i, &c) in ext.iter().enumerate() {
-            if c as i8 != prop.extensionName[i] {
+            if c as c_char != prop.extensionName[i] {
                 continue 'prop_loop;
             }
         }
@@ -1011,7 +1011,7 @@ fn handle_wrapper_constructor_result(
             extern "C" {
                 fn vr_error_message_string(
                     config: *const c_void,
-                    str: *const i8
+                    str: *const c_char
                 );
             }
 
@@ -1495,7 +1495,7 @@ mod test {
         }
 
         extern "C" fn get_instance_proc_cb(
-            func_name: *const u8,
+            func_name: *const c_char,
             user_data: *const c_void,
         ) -> *const c_void {
             let name = unsafe {

@@ -41,7 +41,7 @@ pub const FIRST_FEATURE_OFFSET: usize = util::align(
 );
 
 pub type GetInstanceProcFunc = unsafe extern "C" fn(
-    func_name: *const u8,
+    func_name: *const c_char,
     user_data: *const c_void,
 ) -> *const c_void;
 

@@ -172,7 +172,7 @@ impl Instance {
         Instance {
 % for func in instance_funcs:
             ${func}: std::mem::transmute(get_instance_proc_cb(
-                "${func}\\0".as_ptr(),
+                "${func}\\0".as_ptr().cast(),
                 user_data,
             )),
 % endfor

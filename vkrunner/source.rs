@@ -127,13 +127,13 @@ pub extern "C" fn vr_source_from_file(
 }
 
 #[no_mangle]
-pub extern "C" fn vr_source_get_filename(source: &Source) -> *mut u8 {
+pub extern "C" fn vr_source_get_filename(source: &Source) -> *mut c_char {
     let filename = source.filename();
     extern "C" {
-        fn vr_strndup(s: *const u8, len: usize) -> *mut u8;
+        fn vr_strndup(s: *const c_char, len: usize) -> *mut c_char;
     }
     unsafe {
-        vr_strndup(filename.as_ptr(), filename.len())
+        vr_strndup(filename.as_ptr().cast(), filename.len())
     }
 }
 

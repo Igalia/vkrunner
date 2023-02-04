@@ -29,6 +29,7 @@ use crate::hex;
 use crate::util;
 use std::fmt;
 use std::mem;
+use std::ffi::c_char;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -510,14 +511,14 @@ pub extern "C" fn vr_pipeline_key_get_source(key: *const Key) -> Source {
 pub extern "C" fn vr_pipeline_key_get_entrypoint(
     key: *mut Key,
     stage: shader_stage::Stage,
-) -> *mut u8 {
+) -> *mut c_char {
     extern "C" {
-        fn vr_strndup(s: *const u8, len: usize) -> *mut u8;
+        fn vr_strndup(s: *const c_char, len: usize) -> *mut c_char;
     }
 
     unsafe {
         let entrypoint = (*key).entrypoint(stage);
-        vr_strndup(entrypoint.as_ptr(), entrypoint.len())
+        vr_strndup(entrypoint.as_ptr().cast(), entrypoint.len())
     }
 }
 
