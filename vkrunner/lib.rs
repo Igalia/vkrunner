@@ -22,6 +22,7 @@ mod context;
 mod window;
 mod allocate_store;
 mod executor;
+mod temp_file;
 
 #[cfg(test)]
 mod fake_vulkan;
