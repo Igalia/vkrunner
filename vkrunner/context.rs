@@ -1082,6 +1082,7 @@ mod test {
         assert!(!context.command_buffer().is_null());
         assert!(!context.fence().is_null());
         assert_eq!(FakeVulkan::unmake_queue(context.queue()), (0, 0));
+        assert!(!context.is_external());
     }
 
     #[test]
