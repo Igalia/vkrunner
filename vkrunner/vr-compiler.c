@@ -116,13 +116,13 @@ show_disassembly(const struct vr_config *config,
 
 static VkShaderModule
 compile_stage(const struct vr_config *config,
-              struct vr_window *window,
+              struct vr_context *context,
               const struct vr_script *script,
               enum vr_shader_stage stage,
               const struct vr_script_shader_code *shaders,
               size_t total_n_shaders)
 {
-        const struct vr_vk_device *vkfn = vr_window_get_vkdev(window);
+        const struct vr_vk_device *vkfn = vr_context_get_vkdev(context);
         const int n_base_args = 8;
         VkShaderModule module = VK_NULL_HANDLE;
         FILE *module_stream = NULL;
@@ -199,7 +199,7 @@ compile_stage(const struct vr_config *config,
                         .codeSize = module_size,
                         .pCode = (const uint32_t *) module_binary
         };
-        res = vkfn->vkCreateShaderModule(vr_window_get_device(window),
+        res = vkfn->vkCreateShaderModule(vr_context_get_vk_device(context),
                                          &shader_module_create_info,
                                          NULL, /* allocator */
                                          &module);
@@ -231,11 +231,11 @@ out:
 
 static VkShaderModule
 assemble_stage(const struct vr_config *config,
-               struct vr_window *window,
+               struct vr_context *context,
                const struct vr_script *script,
                const struct vr_script_shader_code *shader)
 {
-        const struct vr_vk_device *vkfn = vr_window_get_vkdev(window);
+        const struct vr_vk_device *vkfn = vr_context_get_vkdev(context);
         FILE *module_stream = NULL;
         char *module_filename;
         char *source_filename = NULL;
@@ -291,7 +291,7 @@ assemble_stage(const struct vr_config *config,
                         .codeSize = module_size,
                         .pCode = (const uint32_t *) module_binary
         };
-        res = vkfn->vkCreateShaderModule(vr_window_get_device(window),
+        res = vkfn->vkCreateShaderModule(vr_context_get_vk_device(context),
                                          &shader_module_create_info,
                                          NULL, /* allocator */
                                          &module);
@@ -321,10 +321,10 @@ out:
 
 static VkShaderModule
 load_binary_stage(const struct vr_config *config,
-                  struct vr_window *window,
+                  struct vr_context *context,
                   const struct vr_script_shader_code *shader)
 {
-        const struct vr_vk_device *vkfn = vr_window_get_vkdev(window);
+        const struct vr_vk_device *vkfn = vr_context_get_vkdev(context);
         VkShaderModule module = VK_NULL_HANDLE;
         bool res;
 
@@ -352,7 +352,7 @@ load_binary_stage(const struct vr_config *config,
                         .codeSize = shader->source_length,
                         .pCode = (const uint32_t *) shader->source
         };
-        res = vkfn->vkCreateShaderModule(vr_window_get_device(window),
+        res = vkfn->vkCreateShaderModule(vr_context_get_vk_device(context),
                                          &shader_module_create_info,
                                          NULL, /* allocator */
                                          &module);
@@ -364,7 +364,7 @@ load_binary_stage(const struct vr_config *config,
 
 VkShaderModule
 vr_compiler_build_stage(const struct vr_config *config,
-                        struct vr_window *window,
+                        struct vr_context *context,
                         const struct vr_script *script,
                         enum vr_shader_stage stage)
 {
@@ -389,17 +389,17 @@ vr_compiler_build_stage(const struct vr_config *config,
         switch (first_shader->source_type) {
         case VR_SCRIPT_SOURCE_TYPE_GLSL:
                 ret = compile_stage(config,
-                                     window,
+                                     context,
                                      script,
                                      stage,
                                      shaders,
                                      n_shaders);
                 goto found_source_type;
         case VR_SCRIPT_SOURCE_TYPE_SPIRV:
-                ret = assemble_stage(config, window, script, first_shader);
+                ret = assemble_stage(config, context, script, first_shader);
                 goto found_source_type;
         case VR_SCRIPT_SOURCE_TYPE_BINARY:
-                ret = load_binary_stage(config, window, first_shader);
+                ret = load_binary_stage(config, context, first_shader);
                 goto found_source_type;
         }
 

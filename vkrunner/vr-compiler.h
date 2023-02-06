@@ -27,14 +27,14 @@
 #ifndef VR_COMPILER_H
 #define VR_COMPILER_H
 
-#include "vr-window.h"
+#include "vr-context.h"
 #include "vr-script-private.h"
 #include "vr-config.h"
 #include "vr-shader-stage.h"
 
 VkShaderModule
 vr_compiler_build_stage(const struct vr_config *config,
-                        struct vr_window *window,
+                        struct vr_context *context,
                         const struct vr_script *script,
                         enum vr_shader_stage stage);
 

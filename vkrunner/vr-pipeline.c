@@ -528,7 +528,7 @@ vr_pipeline_create(const struct vr_config *config,
 
                 pipeline->modules[shader->stage] =
                         vr_compiler_build_stage(config,
-                                                window,
+                                                vr_window_get_context(window),
                                                 script,
                                                 shader->stage);
                 if (pipeline->modules[shader->stage] == VK_NULL_HANDLE)
