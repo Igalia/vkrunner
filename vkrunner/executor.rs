@@ -120,7 +120,7 @@ struct ExternalData {
 #[derive(Debug)]
 pub struct Executor {
     config: *const Config,
-    window: Option<Window>,
+    window: Option<Rc<Window>>,
     context: Option<Rc<Context>>,
     // A cache of the requirements that the context was created with.
     // Used to detect if the requirements have changed. This won’t be
@@ -234,7 +234,7 @@ impl Executor {
         &mut self,
         script: &Script,
         context: Rc<Context>,
-    ) -> Result<&Window, ExecutorError> {
+    ) -> Result<Rc<Window>, ExecutorError> {
         // Recreate the window if the framebuffer format is different
         if let Some(window) = &self.window {
             if !window.format().eq(script.window_format()) {
@@ -242,13 +242,13 @@ impl Executor {
             }
         }
 
-        match self.window {
-            Some(ref w) => Ok(w),
-            None => Ok(&*self.window.insert(Window::new(
+        match &self.window {
+            Some(w) => Ok(Rc::clone(w)),
+            None => Ok(Rc::clone(self.window.insert(Rc::new(Window::new(
                 self.config,
                 context,
                 script.window_format(),
-            )?)),
+            )?)))),
         }
     }
 
@@ -263,7 +263,7 @@ impl Executor {
         let pipeline = unsafe {
             vr_pipeline_create(
                 config,
-                window,
+                window.as_ref(),
                 script
             )
         };
@@ -273,7 +273,7 @@ impl Executor {
         }
 
         let test_result = unsafe {
-            vr_test_run(window, pipeline, script)
+            vr_test_run(window.as_ref(), pipeline, script)
         };
 
         unsafe {
