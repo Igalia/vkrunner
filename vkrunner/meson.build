@@ -22,7 +22,6 @@ vkrunner_source_files = [
    'vr-buffer.h',
    'vr-char.c',
    'vr-char.h',
-   'vr-compiler.c',
    'vr-compiler.h',
    'vr-config.c',
    'vr-config-private.h',
@@ -81,5 +80,14 @@ pkg.generate(vkrunner_lib,
              description : 'Vulkan shader testing script library')
 
 if rust.found()
-    rust.test('rust-unit-tests', rust_parts_lib)
+    # Fake compiler program to help test compiler.rs
+    fake_compiler = executable('fake_compiler', sources: 'fake_compiler.rs')
+    rust.test('rust-unit-tests',
+              rust_parts_lib,
+              depends: [fake_compiler],
+              env: {'PIGLIT_GLSLANG_VALIDATOR_BINARY':
+                    fake_compiler.full_path(),
+                    'PIGLIT_SPIRV_AS_BINARY': fake_compiler.full_path(),
+                    'PIGLIT_SPIRV_DIS_BINARY': fake_compiler.full_path(),
+                   })
 endif
