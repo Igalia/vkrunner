@@ -22,8 +22,15 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+use crate::logger;
+use std::ffi::c_void;
+
 #[repr(C)]
 pub struct Config {
     pub show_disassembly: bool,
     pub device_id: i32,
+
+    pub error_cb: Option<logger::WriteCallback>,
+    pub inspect_cb: Option<fn()>,
+    pub user_data: *mut c_void,
 }
