@@ -38,8 +38,6 @@ vkrunner_source_files = [
    'vr-requirements.h',
    'vr-script-private.h',
    'vr-source-private.h',
-   'vr-temp-file.c',
-   'vr-temp-file.h',
    'vr-util.c',
    'vr-util.h',
    'vr-vk.h',
