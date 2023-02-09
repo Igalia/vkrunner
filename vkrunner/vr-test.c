@@ -623,12 +623,16 @@ bind_ubo_descriptor_set(struct test_data *data)
         VkCommandBuffer command_buffer =
                 vr_context_get_command_buffer(context);
 
-        if (data->pipeline->stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
-                for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
+        VkShaderStageFlagBits stages = vr_pipeline_get_stages(data->pipeline);
+        size_t n_desc_sets = vr_pipeline_get_n_desc_sets(data->pipeline);
+        VkPipelineLayout layout = vr_pipeline_get_layout(data->pipeline);
+
+        if (stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
+                for (unsigned i = 0; i < n_desc_sets; i++) {
                         vkfn->vkCmdBindDescriptorSets(
                                         command_buffer,
                                         VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                        data->pipeline->layout,
+                                        layout,
                                         i, /* firstSet */
                                         1, /* descriptorSetCount */
                                         &data->ubo_descriptor_set[i],
@@ -637,12 +641,12 @@ bind_ubo_descriptor_set(struct test_data *data)
                 }
         }
 
-        if (data->pipeline->stages & VK_SHADER_STAGE_COMPUTE_BIT) {
-                for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
+        if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
+                for (unsigned i = 0; i < n_desc_sets; i++) {
                         vkfn->vkCmdBindDescriptorSets(
                                         command_buffer,
                                         VK_PIPELINE_BIND_POINT_COMPUTE,
-                                        data->pipeline->layout,
+                                        layout,
                                         i, /* firstSet */
                                         1, /* descriptorSetCount */
                                         &data->ubo_descriptor_set[i],
@@ -667,7 +671,8 @@ bind_pipeline(struct test_data *data,
         VkCommandBuffer command_buffer =
                 vr_context_get_command_buffer(context);
 
-        VkPipeline pipeline = data->pipeline->pipelines[pipeline_num];
+        VkPipeline pipeline =
+                vr_pipeline_get_pipelines(data->pipeline)[pipeline_num];
 
         const struct vr_pipeline_key *key =
                 vr_script_get_pipeline_key(data->script, pipeline_num);
@@ -1203,8 +1208,8 @@ set_push_constant(struct test_data *data,
                 vr_context_get_command_buffer(context);
 
         vkfn->vkCmdPushConstants(command_buffer,
-                                 data->pipeline->layout,
-                                 data->pipeline->stages,
+                                 vr_pipeline_get_layout(data->pipeline),
+                                 vr_pipeline_get_stages(data->pipeline),
                                  command->set_push_constant.offset,
                                  command->set_push_constant.size,
                                  command->set_push_constant.data);
@@ -1217,20 +1222,25 @@ allocate_ubo_buffers(struct test_data *data)
 {
         const struct vr_vk_device *vkfn = vr_window_get_vkdev(data->window);
 
-        VkResult res;
-        data->ubo_descriptor_set = vr_alloc(data->pipeline->n_desc_sets *
+        size_t n_desc_sets = vr_pipeline_get_n_desc_sets(data->pipeline);
+        const VkDescriptorSetLayout *descriptor_set_layouts =
+                vr_pipeline_get_descriptor_set_layouts(data->pipeline);
+        VkDescriptorPool descriptor_pool =
+                vr_pipeline_get_descriptor_pool(data->pipeline);
+
+        data->ubo_descriptor_set = vr_alloc(n_desc_sets *
                                             sizeof(VkDescriptorSet *));
-        for (unsigned i = 0; i < data->pipeline->n_desc_sets; i++) {
+        for (unsigned i = 0; i < n_desc_sets; i++) {
                 VkDescriptorSetAllocateInfo allocate_info = {
                         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-                        .descriptorPool = data->pipeline->descriptor_pool,
+                        .descriptorPool = descriptor_pool,
                         .descriptorSetCount = 1,
-                        .pSetLayouts = &data->pipeline->descriptor_set_layout[i]
+                        .pSetLayouts = &descriptor_set_layouts[i],
                 };
-                res = vkfn->vkAllocateDescriptorSets(
-                                vr_window_get_device(data->window),
-                                &allocate_info,
-                                &data->ubo_descriptor_set[i]);
+                VkResult res = vkfn->vkAllocateDescriptorSets(
+                        vr_window_get_device(data->window),
+                        &allocate_info,
+                        &data->ubo_descriptor_set[i]);
                 if (res != VK_SUCCESS) {
                         data->ubo_descriptor_set[i] = VK_NULL_HANDLE;
                         vr_error_message(vr_window_get_config(data->window),
@@ -1538,13 +1548,18 @@ vr_test_run(struct vr_window *window,
         vr_free(data.ubo_buffers);
 
         if (data.ubo_descriptor_set) {
-                for (unsigned i = 0; i < pipeline->n_desc_sets; i++) {
+                size_t n_desc_sets =
+                        vr_pipeline_get_n_desc_sets(data.pipeline);
+                VkDescriptorPool descriptor_pool =
+                        vr_pipeline_get_descriptor_pool(data.pipeline);
+
+                for (unsigned i = 0; i < n_desc_sets; i++) {
                         if (data.ubo_descriptor_set[i]) {
                                 vkfn->vkFreeDescriptorSets(
-                                                vr_window_get_device(window),
-                                                pipeline->descriptor_pool,
-                                                1, /* descriptorSetCount */
-                                                &data.ubo_descriptor_set[i]);
+                                        vr_window_get_device(window),
+                                        descriptor_pool,
+                                        1, /* descriptorSetCount */
+                                        &data.ubo_descriptor_set[i]);
                         }
                 }
                 vr_free(data.ubo_descriptor_set);

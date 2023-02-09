@@ -32,6 +32,7 @@
 #include "vr-buffer.h"
 #include "vr-format-private.h"
 #include "vr-compiler.h"
+#include "vr-pipeline-key.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -39,6 +40,19 @@
 #include <assert.h>
 #include <string.h>
 #include <limits.h>
+
+struct vr_pipeline {
+        struct vr_window *window;
+        VkPipelineLayout layout;
+        VkDescriptorPool descriptor_pool;
+        VkDescriptorSetLayout *descriptor_set_layout;
+        unsigned n_desc_sets;
+        int n_pipelines;
+        VkPipeline *pipelines;
+        VkPipelineCache pipeline_cache;
+        VkShaderModule modules[VR_SHADER_STAGE_N_STAGES];
+        VkShaderStageFlagBits stages;
+};
 
 struct desc_set_bindings_info {
         VkDescriptorSetLayoutBinding *bindings;
@@ -613,6 +627,48 @@ error:
         vr_pipeline_free(pipeline);
 
         return NULL;
+}
+
+size_t
+vr_pipeline_get_n_desc_sets(const struct vr_pipeline *pipeline)
+{
+        return pipeline->n_desc_sets;
+}
+
+VkShaderStageFlagBits
+vr_pipeline_get_stages(const struct vr_pipeline *pipeline)
+{
+        return pipeline->stages;
+}
+
+VkPipelineLayout
+vr_pipeline_get_layout(const struct vr_pipeline *pipeline)
+{
+        return pipeline->layout;
+}
+
+const VkPipeline *
+vr_pipeline_get_pipelines(const struct vr_pipeline *pipeline)
+{
+        return pipeline->pipelines;
+}
+
+size_t
+vr_pipeline_get_n_pipelines(const struct vr_pipeline *pipeline)
+{
+        return pipeline->n_pipelines;
+}
+
+VkDescriptorPool
+vr_pipeline_get_descriptor_pool(const struct vr_pipeline *pipeline)
+{
+        return pipeline->descriptor_pool;
+}
+
+const VkDescriptorSetLayout *
+vr_pipeline_get_descriptor_set_layouts(const struct vr_pipeline *pipeline)
+{
+        return pipeline->descriptor_set_layout;
 }
 
 void
