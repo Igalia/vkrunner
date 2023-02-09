@@ -127,6 +127,7 @@ pub enum HandleType {
     ImageView,
     Buffer,
     Framebuffer,
+    ShaderModule { code: Vec<u32> },
 }
 
 #[derive(Debug)]
@@ -432,6 +433,16 @@ impl FakeVulkan {
             "vkUnmapMemory" => unsafe {
                 transmute::<vk::PFN_vkUnmapMemory, _>(
                     Some(FakeVulkan::unmap_memory)
+                )
+            },
+            "vkCreateShaderModule" => unsafe {
+                transmute::<vk::PFN_vkCreateShaderModule, _>(
+                    Some(FakeVulkan::create_shader_module)
+                )
+            },
+            "vkDestroyShaderModule" => unsafe {
+                transmute::<vk::PFN_vkDestroyShaderModule, _>(
+                    Some(FakeVulkan::destroy_shader_module)
                 )
             },
             _ => None,
@@ -1363,6 +1374,53 @@ impl FakeVulkan {
         assert!(mapping.is_some());
         *mapping = None;
     }
+
+    extern "C" fn create_shader_module(
+        device: vk::VkDevice,
+        create_info: *const vk::VkShaderModuleCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        shader_module_out: *mut vk::VkShaderModule,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreateShaderModule");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        unsafe {
+            assert_eq!((*create_info).codeSize % (u32::BITS as usize / 8), 0);
+
+            let code = Vec::from(std::slice::from_raw_parts(
+                (*create_info).pCode,
+                (*create_info).codeSize / (u32::BITS as usize / 8),
+            ));
+
+            *shader_module_out = fake_vulkan.add_handle(
+                HandleType::ShaderModule { code }
+            );
+        }
+
+        res
+    }
+
+    extern "C" fn destroy_shader_module(
+        device: vk::VkDevice,
+        shader_module: vk::VkShaderModule,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(shader_module);
+        assert!(matches!(handle.data, HandleType::ShaderModule { .. }));
+        handle.freed = true;
+    }
+
 }
 
 impl Drop for FakeVulkan {
@@ -1378,7 +1436,8 @@ impl Drop for FakeVulkan {
                     HandleType::CommandPool | HandleType::CommandBuffer { .. } |
                     HandleType::Fence | HandleType::RenderPass { .. } |
                     HandleType::Image | HandleType::ImageView |
-                    HandleType::Buffer | HandleType::Framebuffer => (),
+                    HandleType::Buffer | HandleType::Framebuffer |
+                    HandleType::ShaderModule { .. } => (),
                     HandleType::Memory { ref mapping } => {
                         assert!(mapping.is_none());
                     },
