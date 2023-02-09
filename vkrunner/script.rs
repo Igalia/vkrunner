@@ -1933,6 +1933,12 @@ impl<'a> Loader<'a> {
 
         self.end_section()?;
 
+        self.buffers.sort_by(|a, b| {
+            a.desc_set
+                .cmp(&b.desc_set)
+                .then_with(|| a.binding.cmp(&b.binding))
+        });
+
         Ok(Script {
             filename: self.source.filename().to_owned(),
             stages: self.stages.map(|stage| stage.into_boxed_slice()),
@@ -3758,5 +3764,52 @@ mod test {
             Shader::Binary(data) => assert_eq!(data, &[0, 1, 2]),
             s @ _ => unreachable!("Unexpected shader type: {:?}", s),
         }
+    }
+
+    fn check_buffer_bindings_sorted(script: &Script) {
+        for (last_buffer_num, buffer) in script
+            .buffers()[1..]
+            .iter()
+            .enumerate()
+        {
+            let last_buffer = &script.buffers()[last_buffer_num];
+            assert!(buffer.desc_set >= last_buffer.desc_set);
+            if buffer.desc_set == last_buffer.desc_set {
+                assert!(buffer.binding > last_buffer.binding);
+            }
+        }
+    }
+
+    #[test]
+    fn sorted_buffer_bindings() {
+        let script = script_from_string(
+            "[test]\n\
+             ssbo 0:0 10\n\
+             ssbo 0:1 10\n\
+             ssbo 0:2 10\n\
+             ssbo 1:0 10\n\
+             ssbo 1:1 10\n\
+             ssbo 1:2 10\n\
+             ssbo 2:0 10\n\
+             ssbo 2:1 10\n\
+             ssbo 2:2 10\n".to_string()
+        );
+        assert_eq!(script.buffers().len(), 9);
+        check_buffer_bindings_sorted(&script);
+
+        let script = script_from_string(
+            "[test]\n\
+             ssbo 2:2 10\n\
+             ssbo 2:1 10\n\
+             ssbo 2:0 10\n\
+             ssbo 1:2 10\n\
+             ssbo 1:1 10\n\
+             ssbo 1:0 10\n\
+             ssbo 0:2 10\n\
+             ssbo 0:1 10\n\
+             ssbo 0:0 10\n".to_string()
+        );
+        assert_eq!(script.buffers().len(), 9);
+        check_buffer_bindings_sorted(&script);
     }
 }
