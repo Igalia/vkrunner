@@ -36,8 +36,4 @@ struct vr_window_format {
         size_t width, height;
 };
 
-bool
-vr_window_format_equal(const struct vr_window_format *a,
-                       const struct vr_window_format *b);
-
 #endif /* VR_WINDOW_FORMAT_H */

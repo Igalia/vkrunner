@@ -46,13 +46,3 @@ impl Default for WindowFormat {
         }
     }
 }
-
-#[no_mangle]
-pub extern "C" fn vr_window_format_equal(
-    a: *const WindowFormat,
-    b: *const WindowFormat,
-) -> u8 {
-    unsafe {
-        (*a).eq(&*b) as u8
-    }
-}
