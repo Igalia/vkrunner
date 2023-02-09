@@ -37,3 +37,13 @@ pub enum Stage {
 /// The number of shader stages known to VkRunner. This should match
 /// the number of values in [Stage].
 pub const N_STAGES: usize = 6;
+
+/// All the possible stage values.
+pub static ALL_STAGES: [Stage; N_STAGES] = [
+    Stage::Vertex,
+    Stage::TessCtrl,
+    Stage::TessEval,
+    Stage::Geometry,
+    Stage::Fragment,
+    Stage::Compute,
+];
