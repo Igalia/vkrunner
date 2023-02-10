@@ -114,6 +114,54 @@ const ATOMIC_TYPE: vk::VkStructureType =
 const MULTIVIEW_TYPE: vk::VkStructureType =
     vk::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
 
+#[derive(Debug, Clone)]
+pub struct GraphicsPipelineCreateInfo {
+    pub create_info: vk::VkGraphicsPipelineCreateInfo,
+    pub bindings: Vec<vk::VkVertexInputBindingDescription>,
+    pub attribs: Vec<vk::VkVertexInputAttributeDescription>,
+}
+
+impl GraphicsPipelineCreateInfo {
+    fn new(
+        create_info: &vk::VkGraphicsPipelineCreateInfo
+    ) -> GraphicsPipelineCreateInfo {
+        let vertex_input_state = unsafe {
+            &*create_info.pVertexInputState
+        };
+        let bindings = unsafe {
+            std::slice::from_raw_parts(
+                vertex_input_state.pVertexBindingDescriptions,
+                vertex_input_state.vertexBindingDescriptionCount as usize,
+            ).to_owned()
+        };
+        let attribs = unsafe {
+            std::slice::from_raw_parts(
+                vertex_input_state.pVertexAttributeDescriptions,
+                vertex_input_state.vertexAttributeDescriptionCount as usize,
+            ).to_owned()
+        };
+
+        GraphicsPipelineCreateInfo {
+            create_info: create_info.clone(),
+            bindings,
+            attribs,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum PipelineCreateInfo {
+    Graphics(GraphicsPipelineCreateInfo),
+    Compute(vk::VkComputePipelineCreateInfo),
+}
+
+#[derive(Debug, Clone)]
+pub struct PipelineLayoutCreateInfo {
+    pub create_info: vk::VkPipelineLayoutCreateInfo,
+    pub push_constant_ranges: Vec<vk::VkPushConstantRange>,
+    pub layouts: Vec<vk::VkDescriptorSetLayout>,
+}
+
 #[derive(Debug)]
 pub enum HandleType {
     Instance,
@@ -128,6 +176,11 @@ pub enum HandleType {
     Buffer,
     Framebuffer,
     ShaderModule { code: Vec<u32> },
+    PipelineCache,
+    DescriptorPool,
+    DescriptorSetLayout { bindings: Vec<vk::VkDescriptorSetLayoutBinding> },
+    PipelineLayout(PipelineLayoutCreateInfo),
+    Pipeline(PipelineCreateInfo),
 }
 
 #[derive(Debug)]
@@ -443,6 +496,61 @@ impl FakeVulkan {
             "vkDestroyShaderModule" => unsafe {
                 transmute::<vk::PFN_vkDestroyShaderModule, _>(
                     Some(FakeVulkan::destroy_shader_module)
+                )
+            },
+            "vkCreatePipelineCache" => unsafe {
+                transmute::<vk::PFN_vkCreatePipelineCache, _>(
+                    Some(FakeVulkan::create_pipeline_cache)
+                )
+            },
+            "vkDestroyPipelineCache" => unsafe {
+                transmute::<vk::PFN_vkDestroyPipelineCache, _>(
+                    Some(FakeVulkan::destroy_pipeline_cache)
+                )
+            },
+            "vkCreateDescriptorPool" => unsafe {
+                transmute::<vk::PFN_vkCreateDescriptorPool, _>(
+                    Some(FakeVulkan::create_descriptor_pool)
+                )
+            },
+            "vkDestroyDescriptorPool" => unsafe {
+                transmute::<vk::PFN_vkDestroyDescriptorPool, _>(
+                    Some(FakeVulkan::destroy_descriptor_pool)
+                )
+            },
+            "vkCreateDescriptorSetLayout" => unsafe {
+                transmute::<vk::PFN_vkCreateDescriptorSetLayout, _>(
+                    Some(FakeVulkan::create_descriptor_set_layout)
+                )
+            },
+            "vkDestroyDescriptorSetLayout" => unsafe {
+                transmute::<vk::PFN_vkDestroyDescriptorSetLayout, _>(
+                    Some(FakeVulkan::destroy_descriptor_set_layout)
+                )
+            },
+            "vkCreatePipelineLayout" => unsafe {
+                transmute::<vk::PFN_vkCreatePipelineLayout, _>(
+                    Some(FakeVulkan::create_pipeline_layout)
+                )
+            },
+            "vkDestroyPipelineLayout" => unsafe {
+                transmute::<vk::PFN_vkDestroyPipelineLayout, _>(
+                    Some(FakeVulkan::destroy_pipeline_layout)
+                )
+            },
+            "vkCreateGraphicsPipelines" => unsafe {
+                transmute::<vk::PFN_vkCreateGraphicsPipelines, _>(
+                    Some(FakeVulkan::create_graphics_pipelines)
+                )
+            },
+            "vkCreateComputePipelines" => unsafe {
+                transmute::<vk::PFN_vkCreateComputePipelines, _>(
+                    Some(FakeVulkan::create_compute_pipelines)
+                )
+            },
+            "vkDestroyPipeline" => unsafe {
+                transmute::<vk::PFN_vkDestroyPipeline, _>(
+                    Some(FakeVulkan::destroy_pipeline)
                 )
             },
             _ => None,
@@ -807,6 +915,11 @@ impl FakeVulkan {
     fn check_image_view(&mut self, image_view: vk::VkImageView) {
         let handle = self.get_handle(image_view);
         assert!(matches!(handle.data, HandleType::ImageView));
+    }
+
+    fn check_pipeline_cache(&mut self, pipeline_cache: vk::VkPipelineCache) {
+        let handle = self.get_handle(pipeline_cache);
+        assert!(matches!(handle.data, HandleType::PipelineCache));
     }
 
     extern "C" fn create_instance(
@@ -1421,6 +1534,262 @@ impl FakeVulkan {
         handle.freed = true;
     }
 
+    extern "C" fn create_pipeline_cache(
+        device: vk::VkDevice,
+        _create_info: *const vk::VkPipelineCacheCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        pipeline_cache_out: *mut vk::VkPipelineCache,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreatePipelineCache");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        unsafe {
+            *pipeline_cache_out = fake_vulkan.add_handle(
+                HandleType::PipelineCache
+            );
+        }
+
+        res
+    }
+
+    extern "C" fn destroy_pipeline_cache(
+        device: vk::VkDevice,
+        pipeline_cache: vk::VkPipelineCache,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(pipeline_cache);
+        assert!(matches!(handle.data, HandleType::PipelineCache));
+        handle.freed = true;
+    }
+
+    extern "C" fn create_descriptor_pool(
+        device: vk::VkDevice,
+        _create_info: *const vk::VkDescriptorPoolCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        descriptor_pool_out: *mut vk::VkDescriptorPool,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreateDescriptorPool");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        unsafe {
+            *descriptor_pool_out = fake_vulkan.add_handle(
+                HandleType::DescriptorPool
+            );
+        }
+
+        res
+    }
+
+    extern "C" fn destroy_descriptor_pool(
+        device: vk::VkDevice,
+        descriptor_pool: vk::VkDescriptorPool,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(descriptor_pool);
+        assert!(matches!(handle.data, HandleType::DescriptorPool));
+        handle.freed = true;
+    }
+
+    extern "C" fn create_descriptor_set_layout(
+        device: vk::VkDevice,
+        create_info: *const vk::VkDescriptorSetLayoutCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        descriptor_set_layout_out: *mut vk::VkDescriptorSetLayout,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreateDescriptorSetLayout");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        unsafe {
+            let bindings = std::slice::from_raw_parts(
+                (*create_info).pBindings,
+                (*create_info).bindingCount as usize,
+            ).to_vec();
+
+            *descriptor_set_layout_out = fake_vulkan.add_handle(
+                HandleType::DescriptorSetLayout { bindings }
+            );
+        }
+
+        res
+    }
+
+    extern "C" fn destroy_descriptor_set_layout(
+        device: vk::VkDevice,
+        descriptor_set_layout: vk::VkDescriptorSetLayout,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(descriptor_set_layout);
+        assert!(matches!(handle.data, HandleType::DescriptorSetLayout { .. }));
+        handle.freed = true;
+    }
+
+    extern "C" fn create_pipeline_layout(
+        device: vk::VkDevice,
+        create_info: *const vk::VkPipelineLayoutCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        pipeline_layout_out: *mut vk::VkPipelineLayout,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreatePipelineLayout");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        unsafe {
+            let push_constant_ranges = std::slice::from_raw_parts(
+                (*create_info).pPushConstantRanges,
+                (*create_info).pushConstantRangeCount as usize,
+            ).to_vec();
+
+            let layouts = std::slice::from_raw_parts(
+                (*create_info).pSetLayouts,
+                (*create_info).setLayoutCount as usize,
+            ).to_vec();
+
+            *pipeline_layout_out = fake_vulkan.add_handle(
+                HandleType::PipelineLayout(PipelineLayoutCreateInfo {
+                    create_info: (*create_info).clone(),
+                    push_constant_ranges,
+                    layouts,
+                }),
+            );
+        }
+
+        res
+    }
+
+    extern "C" fn destroy_pipeline_layout(
+        device: vk::VkDevice,
+        pipeline_layout: vk::VkPipelineLayout,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(pipeline_layout);
+        assert!(matches!(handle.data, HandleType::PipelineLayout(_)));
+        handle.freed = true;
+    }
+
+    extern "C" fn create_graphics_pipelines(
+        device: vk::VkDevice,
+        pipeline_cache: vk::VkPipelineCache,
+        create_info_count: u32,
+        create_infos: *const vk::VkGraphicsPipelineCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        pipelines_out: *mut vk::VkPipeline,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreateGraphicsPipelines");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+        fake_vulkan.check_pipeline_cache(pipeline_cache);
+
+        for i in 0..create_info_count as usize {
+            unsafe {
+                let create_info = &*create_infos.add(i);
+
+                *pipelines_out.add(i) = fake_vulkan.add_handle(
+                    HandleType::Pipeline(
+                        PipelineCreateInfo::Graphics(
+                            GraphicsPipelineCreateInfo::new(create_info)
+                        )
+                    ),
+                );
+            }
+        }
+
+        res
+    }
+
+    extern "C" fn create_compute_pipelines(
+        device: vk::VkDevice,
+        pipeline_cache: vk::VkPipelineCache,
+        create_info_count: u32,
+        create_infos: *const vk::VkComputePipelineCreateInfo,
+        _allocator: *const vk::VkAllocationCallbacks,
+        pipelines_out: *mut vk::VkPipeline,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkCreateComputePipelines");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+        fake_vulkan.check_pipeline_cache(pipeline_cache);
+
+        for i in 0..create_info_count as usize {
+            unsafe {
+                *pipelines_out.add(i) = fake_vulkan.add_handle(
+                    HandleType::Pipeline(PipelineCreateInfo::Compute(
+                        (*create_infos.add(i)).clone()
+                    )),
+                );
+            }
+        };
+
+        res
+    }
+
+    extern "C" fn destroy_pipeline(
+        device: vk::VkDevice,
+        pipeline: vk::VkPipeline,
+        _allocator: *const vk::VkAllocationCallbacks,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let handle = fake_vulkan.get_handle(pipeline);
+        assert!(matches!(handle.data, HandleType::Pipeline { .. }));
+        handle.freed = true;
+    }
 }
 
 impl Drop for FakeVulkan {
@@ -1437,7 +1806,12 @@ impl Drop for FakeVulkan {
                     HandleType::Fence | HandleType::RenderPass { .. } |
                     HandleType::Image | HandleType::ImageView |
                     HandleType::Buffer | HandleType::Framebuffer |
-                    HandleType::ShaderModule { .. } => (),
+                    HandleType::ShaderModule { .. } |
+                    HandleType::PipelineCache | HandleType::DescriptorPool |
+                    HandleType::DescriptorSetLayout { .. } |
+                    HandleType::PipelineLayout(_) |
+                    HandleType::Pipeline { .. } => (),
+
                     HandleType::Memory { ref mapping } => {
                         assert!(mapping.is_none());
                     },
