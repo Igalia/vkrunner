@@ -29,7 +29,6 @@ use crate::hex;
 use crate::util;
 use std::fmt;
 use std::mem;
-use std::ffi::c_char;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -500,55 +499,6 @@ impl fmt::Debug for Key {
 #[no_mangle]
 pub extern "C" fn vr_pipeline_key_get_type(key: *const Key) -> Type {
     unsafe { (*key).pipeline_type() }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_get_source(key: *const Key) -> Source {
-    unsafe { (*key).source() }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_get_entrypoint(
-    key: *mut Key,
-    stage: shader_stage::Stage,
-) -> *mut c_char {
-    extern "C" {
-        fn vr_strndup(s: *const c_char, len: usize) -> *mut c_char;
-    }
-
-    unsafe {
-        let entrypoint = (*key).entrypoint(stage);
-        vr_strndup(entrypoint.as_ptr().cast(), entrypoint.len())
-    }
-}
-
-#[repr(C)]
-pub struct CreateInfo {
-    create_info: *mut u8,
-    len: usize,
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_to_create_info(
-    key: *mut Key,
-    ci: *mut CreateInfo,
-) {
-    unsafe {
-        let mut buf = (*key).to_create_info();
-        (*ci).len = buf.len();
-        (*ci).create_info = buf.as_mut_ptr();
-        mem::forget(buf);
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_destroy_create_info(ci: *mut CreateInfo) {
-    unsafe {
-        drop(Box::from_raw(std::slice::from_raw_parts_mut(
-            (*ci).create_info,
-            (*ci).len,
-        )));
-    }
 }
 
 #[cfg(test)]
