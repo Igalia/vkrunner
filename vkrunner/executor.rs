@@ -31,22 +31,16 @@ use crate::source::Source;
 use crate::result;
 use crate::vk;
 use crate::requirements::Requirements;
+use crate::pipeline_set::{self, PipelineSet};
+use crate::logger::Logger;
 use std::ffi::{c_void, c_int};
 use std::fmt;
 use std::rc::Rc;
 
 extern "C" {
-    fn vr_pipeline_create(
-        config: *const Config,
-        window: &Window,
-        script: &Script,
-    ) -> *mut c_void;
-
-    fn vr_pipeline_free(pipeline: *mut c_void);
-
     fn vr_test_run(
         window: &Window,
-        pipeline: *const c_void,
+        pipeline_set: &PipelineSet,
         script: &Script,
     ) -> bool;
 }
@@ -54,7 +48,7 @@ extern "C" {
 pub enum ExecutorError {
     Context(ContextError),
     Window(WindowError),
-    PipelineError,
+    PipelineError(pipeline_set::Error),
     LoadError(LoadError),
     TestFailed,
 }
@@ -67,7 +61,7 @@ impl ExecutorError {
                 ContextError::Incompatible(_) => result::Result::Skip,
             },
             ExecutorError::Window(e) => e.result(),
-            ExecutorError::PipelineError => result::Result::Fail,
+            ExecutorError::PipelineError(_) => result::Result::Fail,
             ExecutorError::LoadError(_) => result::Result::Fail,
             ExecutorError::TestFailed => result::Result::Fail,
         }
@@ -92,14 +86,18 @@ impl From<LoadError> for ExecutorError {
     }
 }
 
+impl From<pipeline_set::Error> for ExecutorError {
+    fn from(error: pipeline_set::Error) -> ExecutorError {
+        ExecutorError::PipelineError(error)
+    }
+}
+
 impl fmt::Display for ExecutorError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ExecutorError::Context(e) => e.fmt(f),
             ExecutorError::Window(e) => e.fmt(f),
-            ExecutorError::PipelineError => {
-                write!(f, "Error creating the pipelines")
-            },
+            ExecutorError::PipelineError(e) => e.fmt(f),
             ExecutorError::LoadError(e) => e.fmt(f),
             ExecutorError::TestFailed => {
                 write!(f, "Test failed")
@@ -120,6 +118,7 @@ struct ExternalData {
 #[derive(Debug)]
 pub struct Executor {
     config: *const Config,
+    logger: Logger,
     window: Option<Rc<Window>>,
     context: Option<Rc<Context>>,
     // A cache of the requirements that the context was created with.
@@ -161,6 +160,10 @@ impl Executor {
             context: None,
             requirements: Requirements::new(),
             external: None,
+            logger: Logger::new(
+                unsafe { &*config }.error_cb,
+                unsafe { &*config }.user_data,
+            ),
         }
     }
 
@@ -257,28 +260,18 @@ impl Executor {
         script: &Script
     ) -> Result<(), ExecutorError> {
         let context = self.context_for_script(script)?;
-        let config = self.config;
         let window = self.window_for_script(script, Rc::clone(&context))?;
 
-        let pipeline = unsafe {
-            vr_pipeline_create(
-                config,
-                window.as_ref(),
-                script
-            )
-        };
-
-        if pipeline.is_null() {
-            return Err(ExecutorError::PipelineError);
-        }
+        let pipeline_set = PipelineSet::new(
+            &mut self.logger,
+            Rc::clone(&window),
+            script,
+            unsafe { (*self.config).show_disassembly },
+        )?;
 
         let test_result = unsafe {
-            vr_test_run(window.as_ref(), pipeline, script)
+            vr_test_run(window.as_ref(), &pipeline_set, script)
         };
-
-        unsafe {
-            vr_pipeline_free(pipeline);
-        }
 
         if test_result {
             Ok(())

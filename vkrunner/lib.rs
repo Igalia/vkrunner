@@ -26,6 +26,7 @@ mod temp_file;
 #[macro_use]
 mod logger;
 mod compiler;
+mod pipeline_set;
 
 #[cfg(test)]
 mod fake_vulkan;
