@@ -27,7 +27,6 @@ use crate::shader_stage;
 use crate::logger::Logger;
 use crate::context::Context;
 use crate::script::{Script, Shader};
-use crate::config::Config;
 use crate::temp_file;
 use crate::requirements::extract_version;
 use std::fmt;
@@ -396,37 +395,6 @@ pub fn build_stage(
             )
         },
     }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_compiler_build_stage(
-    config: &Config,
-    context: &Context,
-    script: &Script,
-    stage: shader_stage::Stage,
-) -> vk::VkShaderModule {
-    let mut logger = Logger::new(
-        config.error_cb,
-        config.user_data,
-    );
-
-    let module = match build_stage(
-        &mut logger,
-        context,
-        script,
-        stage,
-        config.show_disassembly,
-    ) {
-        Ok(module) => module,
-        Err(e) => {
-            log!(&mut logger, "{}", e);
-            ptr::null_mut()
-        },
-    };
-
-    let _ = std::io::Write::flush(&mut logger);
-
-    module
 }
 
 #[cfg(test)]
