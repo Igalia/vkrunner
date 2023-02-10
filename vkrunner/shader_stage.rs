@@ -22,6 +22,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+use crate::vk;
+
 /// An enum of all the possible shader stages known to VkRunner.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[repr(C)]
@@ -47,3 +49,32 @@ pub static ALL_STAGES: [Stage; N_STAGES] = [
     Stage::Fragment,
     Stage::Compute,
 ];
+
+impl Stage {
+    /// Get the corresponding flag for this stage. This can be used to
+    /// store the stages in a bitmask.
+    pub const fn flag(self) -> vk::VkShaderStageFlagBits {
+        vk::VK_SHADER_STAGE_VERTEX_BIT << self as usize
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn flags() {
+        assert_eq!(Stage::Vertex.flag(), vk::VK_SHADER_STAGE_VERTEX_BIT);
+        assert_eq!(
+            Stage::TessCtrl.flag(),
+            vk::VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+        );
+        assert_eq!(
+            Stage::TessEval.flag(),
+            vk::VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+        );
+        assert_eq!(Stage::Geometry.flag(), vk::VK_SHADER_STAGE_GEOMETRY_BIT);
+        assert_eq!(Stage::Fragment.flag(), vk::VK_SHADER_STAGE_FRAGMENT_BIT);
+        assert_eq!(Stage::Compute.flag(), vk::VK_SHADER_STAGE_COMPUTE_BIT);
+    }
+}
