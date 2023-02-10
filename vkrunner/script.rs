@@ -27,7 +27,7 @@ use crate::source::Source;
 use crate::stream::{Stream, StreamError};
 use crate::tolerance::Tolerance;
 use crate::pipeline_key;
-use crate::shader_stage::{Stage, N_STAGES};
+use crate::shader_stage::{Stage, N_STAGES, ALL_STAGES};
 use crate::slot;
 use crate::requirements::Requirements;
 use crate::window_format::WindowFormat;
@@ -2029,19 +2029,9 @@ pub extern "C" fn vr_script_get_shaders(
         fn malloc(size: usize) -> *mut c_void;
     }
 
-    static ALL_STAGES: [Stage; N_STAGES] = [
-        Stage::Vertex,
-        Stage::TessCtrl,
-        Stage::TessEval,
-        Stage::Geometry,
-        Stage::Fragment,
-        Stage::Compute,
-    ];
-
     let mut n_shaders = 0;
 
     for &stage in ALL_STAGES.iter() {
-
         for shader in script.shaders(stage) {
             let (source_type, ptr, length) = match shader {
                 Shader::Glsl(source) => {
