@@ -31,6 +31,7 @@ use std::str;
 /// configure a C callback to receive the messages by tweaking the
 /// [Config](crate::config::Config). The struct implements `Write` so
 /// it can be used with macros like [write!](std::write).
+#[derive(Debug)]
 pub struct Logger {
     callback: Option<WriteCallback>,
     user_data: *mut c_void,
