@@ -30,3 +30,5 @@ mod pipeline_set;
 
 #[cfg(test)]
 mod fake_vulkan;
+#[cfg(test)]
+mod env_var_test;
