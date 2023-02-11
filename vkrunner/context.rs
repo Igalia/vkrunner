@@ -1055,6 +1055,7 @@ pub extern "C" fn vr_context_get_always_flush_memory(
 mod test {
     use super::*;
     use crate::fake_vulkan::{FakeVulkan, HandleType};
+    use crate::env_var_test::EnvVarLock;
 
     #[test]
     fn base() {
@@ -1310,17 +1311,30 @@ mod test {
     }
 
     #[test]
-    fn always_flush_memory() {
+    fn always_flush_memory_false() {
         let mut fake_vulkan = FakeVulkan::new();
         fake_vulkan.physical_devices.push(Default::default());
         let mut reqs = Requirements::new();
 
-        std::env::set_var("VKRUNNER_ALWAYS_FLUSH_MEMORY", "false");
+        let _env_var_lock = EnvVarLock::new(&[
+            ("VKRUNNER_ALWAYS_FLUSH_MEMORY", "false"),
+        ]);
+
         fake_vulkan.set_override();
         let context = Context::new(&mut reqs, None).unwrap();
         assert_eq!(context.always_flush_memory(), false);
+    }
 
-        std::env::set_var("VKRUNNER_ALWAYS_FLUSH_MEMORY", "true");
+    #[test]
+    fn always_flush_memory_true() {
+        let mut fake_vulkan = FakeVulkan::new();
+        fake_vulkan.physical_devices.push(Default::default());
+        let mut reqs = Requirements::new();
+
+        let _env_var_lock = EnvVarLock::new(&[
+            ("VKRUNNER_ALWAYS_FLUSH_MEMORY", "true"),
+        ]);
+
         fake_vulkan.set_override();
         let context = Context::new(&mut reqs, None).unwrap();
         assert_eq!(context.always_flush_memory(), true);
