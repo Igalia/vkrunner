@@ -54,6 +54,7 @@ pub fn env_var_as_boolean<K: AsRef<OsStr>>(
 #[cfg(test)]
 mod test {
     use super::*;
+    use env_var_test::EnvVarLock;
 
     #[test]
     fn test_align() {
@@ -69,7 +70,11 @@ mod test {
         expected_result: bool
     ) {
         const TEST_VAR: &'static str = "VKRUNNER_TEST_ENV_VAR";
-        env::set_var(TEST_VAR, value);
+
+        let _env_var_lock = EnvVarLock::new(&[
+            (TEST_VAR, value)
+        ]);
+
         assert_eq!(
             env_var_as_boolean(TEST_VAR, default_value),
             expected_result
