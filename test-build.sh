@@ -20,7 +20,7 @@ rm -fr -- "$build_dir"
 meson -Dprefix="$install_dir" "$build_dir" "$src_dir"
 cd "$build_dir"
 
-ninja -C "$build_dir"
+ninja -C "$build_dir" test
 ninja -C "$build_dir" install
 
 # Run the built executable with all of the examples and enable the
