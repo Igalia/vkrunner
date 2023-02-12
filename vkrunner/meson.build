@@ -20,7 +20,6 @@ vkrunner_source_files = [
    'vr-box.h',
    'vr-buffer.c',
    'vr-buffer.h',
-   'vr-config.c',
    'vr-config-private.h',
    'vr-context.h',
    'vr-error-message.c',

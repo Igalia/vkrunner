@@ -24,7 +24,8 @@
 
 use crate::logger;
 use crate::inspect;
-use std::ffi::c_void;
+use std::ffi::{c_void, c_int};
+use std::ptr;
 
 #[repr(C)]
 pub struct Config {
@@ -34,4 +35,61 @@ pub struct Config {
     pub error_cb: Option<logger::WriteCallback>,
     pub inspect_cb: Option<inspect::Callback>,
     pub user_data: *mut c_void,
+}
+
+#[no_mangle]
+pub extern "C" fn vr_config_new() -> *mut Config {
+    Box::into_raw(Box::new(Config {
+        show_disassembly: false,
+        device_id: -1,
+        error_cb: None,
+        inspect_cb: None,
+        user_data: ptr::null_mut(),
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn vr_config_free(config: *mut Config)
+{
+    unsafe { Box::from_raw(config) };
+}
+
+#[no_mangle]
+pub extern "C" fn vr_config_set_show_disassembly(
+    config: &mut Config,
+    show_disassembly: bool,
+) {
+  config.show_disassembly = show_disassembly;
+}
+
+#[no_mangle]
+pub extern "C" fn vr_config_set_user_data(
+    config: &mut Config,
+    user_data: *mut c_void,
+) {
+    config.user_data = user_data;
+}
+
+#[no_mangle]
+pub extern "C" fn vr_config_set_error_cb(
+    config: &mut Config,
+    error_cb: Option<logger::WriteCallback>,
+) {
+    config.error_cb = error_cb;
+}
+
+#[no_mangle]
+pub extern "C" fn vr_config_set_inspect_cb(
+    config: &mut Config,
+    inspect_cb: Option<inspect::Callback>,
+) {
+    config.inspect_cb = inspect_cb;
+}
+
+#[no_mangle]
+pub extern "C" fn vr_config_set_device_id(
+    config: &mut Config,
+    device_id: c_int,
+) {
+    config.device_id = device_id;
 }
