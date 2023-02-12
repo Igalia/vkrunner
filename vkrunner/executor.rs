@@ -33,25 +33,18 @@ use crate::vk;
 use crate::requirements::Requirements;
 use crate::pipeline_set::{self, PipelineSet};
 use crate::logger::Logger;
+use crate::tester;
 use std::ffi::{c_void, c_int};
 use std::fmt;
 use std::rc::Rc;
 use std::cell::RefCell;
-
-extern "C" {
-    fn vr_test_run(
-        window: &Window,
-        pipeline_set: &PipelineSet,
-        script: &Script,
-    ) -> bool;
-}
 
 pub enum ExecutorError {
     Context(ContextError),
     Window(WindowError),
     PipelineError(pipeline_set::Error),
     LoadError(LoadError),
-    TestFailed,
+    TestError(tester::Error),
 }
 
 impl ExecutorError {
@@ -64,7 +57,7 @@ impl ExecutorError {
             ExecutorError::Window(e) => e.result(),
             ExecutorError::PipelineError(_) => result::Result::Fail,
             ExecutorError::LoadError(_) => result::Result::Fail,
-            ExecutorError::TestFailed => result::Result::Fail,
+            ExecutorError::TestError(_) => result::Result::Fail,
         }
     }
 }
@@ -93,6 +86,12 @@ impl From<pipeline_set::Error> for ExecutorError {
     }
 }
 
+impl From<tester::Error> for ExecutorError {
+    fn from(error: tester::Error) -> ExecutorError {
+        ExecutorError::TestError(error)
+    }
+}
+
 impl fmt::Display for ExecutorError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -100,9 +99,7 @@ impl fmt::Display for ExecutorError {
             ExecutorError::Window(e) => e.fmt(f),
             ExecutorError::PipelineError(e) => e.fmt(f),
             ExecutorError::LoadError(e) => e.fmt(f),
-            ExecutorError::TestFailed => {
-                write!(f, "Test failed")
-            },
+            ExecutorError::TestError(e) => e.fmt(f),
         }
     }
 }
@@ -267,15 +264,14 @@ impl Executor {
             unsafe { (*self.config).show_disassembly },
         )?;
 
-        let test_result = unsafe {
-            vr_test_run(window.as_ref(), &pipeline_set, script)
-        };
+        tester::run(
+            window.as_ref(),
+            &pipeline_set,
+            script,
+            unsafe { &*self.config }.inspector(),
+        )?;
 
-        if test_result {
-            Ok(())
-        } else {
-            Err(ExecutorError::TestFailed)
-        }
+        Ok(())
     }
 
     pub fn execute(

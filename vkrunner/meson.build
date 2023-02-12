@@ -39,8 +39,6 @@ vkrunner_source_files = [
    'vr-vk-device-funcs.h',
    'vr-vk-instance-funcs.h',
    'vr-pipeline.h',
-   'vr-test.c',
-   'vr-test.h',
    'vr-tolerance.h',
    'vr-vbo.h',
    'vr-window.h',
