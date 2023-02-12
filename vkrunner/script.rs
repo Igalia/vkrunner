@@ -35,6 +35,7 @@ use crate::format::Format;
 use crate::hex;
 use crate::parse_num;
 use crate::vk;
+use crate::config::Config;
 use std::cell::RefCell;
 use std::fmt;
 use std::ffi::{c_int, c_char, c_void};
@@ -2103,20 +2104,22 @@ pub extern "C" fn vr_script_replace_shaders_stage_binary(
 
 #[no_mangle]
 pub extern "C" fn vr_script_load(
-    config: *const c_void,
+    config: *const Config,
     source: &Source
 ) -> Option<Box<Script>> {
-    extern "C" {
-        fn vr_error_message_string(config: *const c_void, str: *const c_char);
-    }
-
     match Script::load(source) {
         Err(e) => {
-            let mut message = e.to_string();
-            message.push('\0');
-            unsafe {
-                vr_error_message_string(config, message.as_ptr().cast());
-            }
+            let config = unsafe { &*config };
+            let logger = config.logger();
+
+            use std::fmt::Write;
+
+            let _ = writeln!(
+                logger.borrow_mut(),
+                "{}",
+                e
+            );
+
             None
         },
         Ok(script) => Some(Box::new(script)),
