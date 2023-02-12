@@ -36,6 +36,7 @@ use crate::logger::Logger;
 use std::ffi::{c_void, c_int};
 use std::fmt;
 use std::rc::Rc;
+use std::cell::RefCell;
 
 extern "C" {
     fn vr_test_run(
@@ -118,7 +119,7 @@ struct ExternalData {
 #[derive(Debug)]
 pub struct Executor {
     config: *const Config,
-    logger: Logger,
+    logger: Rc<RefCell<Logger>>,
     window: Option<Rc<Window>>,
     context: Option<Rc<Context>>,
     // A cache of the requirements that the context was created with.
@@ -160,10 +161,7 @@ impl Executor {
             context: None,
             requirements: Requirements::new(),
             external: None,
-            logger: Logger::new(
-                unsafe { &*config }.error_cb,
-                unsafe { &*config }.user_data,
-            ),
+            logger: unsafe { &*config }.logger(),
         }
     }
 
@@ -263,7 +261,7 @@ impl Executor {
         let window = self.window_for_script(script, Rc::clone(&context))?;
 
         let pipeline_set = PipelineSet::new(
-            &mut self.logger,
+            &mut self.logger.borrow_mut(),
             Rc::clone(&window),
             script,
             unsafe { (*self.config).show_disassembly },
