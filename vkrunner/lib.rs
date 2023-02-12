@@ -28,6 +28,7 @@ mod logger;
 mod compiler;
 mod pipeline_set;
 mod flush_memory;
+mod inspect;
 
 #[cfg(test)]
 mod fake_vulkan;
