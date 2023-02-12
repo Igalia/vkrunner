@@ -34,9 +34,9 @@ pub struct Config {
     pub show_disassembly: bool,
     pub device_id: i32,
 
-    pub error_cb: Option<logger::WriteCallback>,
-    pub inspect_cb: Option<inspect::Callback>,
-    pub user_data: *mut c_void,
+    error_cb: Option<logger::WriteCallback>,
+    inspect_cb: Option<inspect::Callback>,
+    user_data: *mut c_void,
 
     logger: Cell<Option<Rc<RefCell<Logger>>>>,
 }
@@ -53,6 +53,10 @@ impl Config {
         self.logger.set(Some(Rc::clone(&logger)));
 
         logger
+    }
+
+    pub fn inspector(&self) -> Option<inspect::Inspector> {
+        self.inspect_cb.map(|cb| inspect::Inspector::new(cb, self.user_data))
     }
 
     fn reset_logger(&self) {
