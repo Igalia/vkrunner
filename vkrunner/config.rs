@@ -22,10 +22,12 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-use crate::logger;
+use crate::logger::{self, Logger};
 use crate::inspect;
 use std::ffi::{c_void, c_int};
 use std::ptr;
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 #[repr(C)]
 pub struct Config {
@@ -35,6 +37,29 @@ pub struct Config {
     pub error_cb: Option<logger::WriteCallback>,
     pub inspect_cb: Option<inspect::Callback>,
     pub user_data: *mut c_void,
+
+    logger: Cell<Option<Rc<RefCell<Logger>>>>,
+}
+
+impl Config {
+    /// Get a logger that will write to the current `error_cb` of the
+    /// `Config`. The logger will be shared between calls to this
+    /// until the callback is changed.
+    pub fn logger(&self) -> Rc<RefCell<Logger>> {
+        let logger = self.logger.take().unwrap_or_else(|| {
+            Rc::new(RefCell::new(Logger::new(self.error_cb, self.user_data)))
+        });
+
+        self.logger.set(Some(Rc::clone(&logger)));
+
+        logger
+    }
+
+    fn reset_logger(&self) {
+        // Reset the logger back to None so that it will be
+        // reconstructed the next time it is requested.
+        self.logger.take();
+    }
 }
 
 #[no_mangle]
@@ -45,6 +70,7 @@ pub extern "C" fn vr_config_new() -> *mut Config {
         error_cb: None,
         inspect_cb: None,
         user_data: ptr::null_mut(),
+        logger: Cell::new(None),
     }))
 }
 
@@ -68,6 +94,7 @@ pub extern "C" fn vr_config_set_user_data(
     user_data: *mut c_void,
 ) {
     config.user_data = user_data;
+    config.reset_logger();
 }
 
 #[no_mangle]
@@ -76,6 +103,7 @@ pub extern "C" fn vr_config_set_error_cb(
     error_cb: Option<logger::WriteCallback>,
 ) {
     config.error_cb = error_cb;
+    config.reset_logger();
 }
 
 #[no_mangle]
@@ -92,4 +120,46 @@ pub extern "C" fn vr_config_set_device_id(
     device_id: c_int,
 ) {
     config.device_id = device_id;
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::ffi::c_char;
+    use std::fmt::Write;
+
+    #[test]
+    fn logger() {
+        extern "C" fn logger_cb(
+            _message: *const c_char,
+            user_data: *mut c_void
+        ) {
+            let flag: *mut bool = user_data.cast();
+
+            unsafe { *flag = true };
+        }
+
+        let mut flag = false;
+
+        let config_ptr = vr_config_new();
+        let config = unsafe { &mut *config_ptr };
+
+        vr_config_set_error_cb(config, Some(logger_cb));
+        vr_config_set_user_data(config, ptr::addr_of_mut!(flag).cast());
+
+        let logger = config.logger();
+
+        logger.borrow_mut().write_str("test\n").unwrap();
+
+        assert!(flag);
+
+        assert!(Rc::ptr_eq(&logger, &config.logger()));
+
+        vr_config_set_error_cb(&mut *config, None);
+        // When the callback or user_data changes a new logger should
+        // be created
+        assert!(!Rc::ptr_eq(&logger, &config.logger()));
+
+        vr_config_free(config_ptr);
+    }
 }
