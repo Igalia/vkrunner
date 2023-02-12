@@ -23,6 +23,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 use crate::logger;
+use crate::inspect;
 use std::ffi::c_void;
 
 #[repr(C)]
@@ -31,6 +32,6 @@ pub struct Config {
     pub device_id: i32,
 
     pub error_cb: Option<logger::WriteCallback>,
-    pub inspect_cb: Option<fn()>,
+    pub inspect_cb: Option<inspect::Callback>,
     pub user_data: *mut c_void,
 }
