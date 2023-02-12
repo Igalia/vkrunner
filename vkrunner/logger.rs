@@ -170,16 +170,6 @@ impl fmt::Write for Logger {
     }
 }
 
-#[macro_use]
-mod macros {
-    macro_rules! log {
-        ($dst:expr, $($arg:tt)*) => {
-            let _ = fmt::Write::write_fmt($dst, format_args!($($arg)*));
-            let _ = fmt::Write::write_char($dst, '\n');
-        };
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -219,13 +209,15 @@ mod test {
     fn multiple_lines() {
         let mut logger = test_logger();
 
-        log!(
+        use std::fmt::Write;
+
+        writeln!(
             &mut logger.logger,
             "This is a line\n\
              This is another line.\n\
              This is followed by a number: {}",
             42,
-        );
+        ).unwrap();
 
         assert_eq!(logger.items.len(), 3);
         assert_eq!(logger.items[0], "This is a line");

@@ -23,7 +23,6 @@ mod window;
 mod allocate_store;
 mod executor;
 mod temp_file;
-#[macro_use]
 mod logger;
 mod compiler;
 mod pipeline_set;
