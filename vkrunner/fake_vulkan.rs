@@ -208,6 +208,9 @@ pub struct FakeVulkan {
     /// is available.
     pub has_enumerate_instance_version: bool,
 
+    /// Log of calls to vkFlushMappedMemoryRanges
+    pub memory_flushes: Vec<vk::VkMappedMemoryRange>,
+
     handles: Vec<Handle>,
 
     // Queue of values to return instead of VK_SUCCESS to simulate
@@ -225,6 +228,7 @@ impl FakeVulkan {
             handles: Vec::new(),
             has_enumerate_instance_version: false,
             result_queue: HashMap::new(),
+            memory_flushes: Vec::new(),
         });
 
         CURRENT_FAKE_VULKAN.with(|f| {
@@ -551,6 +555,11 @@ impl FakeVulkan {
             "vkDestroyPipeline" => unsafe {
                 transmute::<vk::PFN_vkDestroyPipeline, _>(
                     Some(FakeVulkan::destroy_pipeline)
+                )
+            },
+            "vkFlushMappedMemoryRanges" => unsafe {
+                transmute::<vk::PFN_vkFlushMappedMemoryRanges, _>(
+                    Some(FakeVulkan::flush_mapped_memory_ranges)
                 )
             },
             _ => None,
@@ -1789,6 +1798,33 @@ impl FakeVulkan {
         let handle = fake_vulkan.get_handle(pipeline);
         assert!(matches!(handle.data, HandleType::Pipeline { .. }));
         handle.freed = true;
+    }
+
+    extern "C" fn flush_mapped_memory_ranges(
+        device: vk::VkDevice,
+        memory_range_count: u32,
+        memory_ranges: *const vk::VkMappedMemoryRange,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkFlushMappedMemoryRanges");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        let memory_ranges = unsafe {
+            std::slice::from_raw_parts(
+                memory_ranges,
+                memory_range_count as usize,
+            )
+        };
+
+        fake_vulkan.memory_flushes.extend_from_slice(memory_ranges);
+
+        res
     }
 }
 
