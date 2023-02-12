@@ -29,10 +29,9 @@ use std::ptr;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-#[repr(C)]
 pub struct Config {
-    pub show_disassembly: bool,
-    pub device_id: i32,
+    show_disassembly: bool,
+    device_id: Option<usize>,
 
     error_cb: Option<logger::WriteCallback>,
     inspect_cb: Option<inspect::Callback>,
@@ -59,6 +58,14 @@ impl Config {
         self.inspect_cb.map(|cb| inspect::Inspector::new(cb, self.user_data))
     }
 
+    pub fn show_disassembly(&self) -> bool {
+        self.show_disassembly
+    }
+
+    pub fn device_id(&self) -> Option<usize> {
+        self.device_id
+    }
+
     fn reset_logger(&self) {
         // Reset the logger back to None so that it will be
         // reconstructed the next time it is requested.
@@ -70,7 +77,7 @@ impl Config {
 pub extern "C" fn vr_config_new() -> *mut Config {
     Box::into_raw(Box::new(Config {
         show_disassembly: false,
-        device_id: -1,
+        device_id: None,
         error_cb: None,
         inspect_cb: None,
         user_data: ptr::null_mut(),
@@ -123,7 +130,11 @@ pub extern "C" fn vr_config_set_device_id(
     config: &mut Config,
     device_id: c_int,
 ) {
-    config.device_id = device_id;
+    config.device_id = if device_id < 0 {
+        None
+    } else {
+        Some(device_id as usize)
+    };
 }
 
 #[cfg(test)]

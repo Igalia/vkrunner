@@ -196,12 +196,7 @@ impl Executor {
                 )?)
             },
             None => {
-                let device_id = unsafe { (*self.config).device_id };
-                let device_id = if device_id >= 0 {
-                    Some(device_id as usize)
-                } else {
-                    None
-                };
+                let device_id = unsafe { (*self.config).device_id() };
 
                 Ok(Context::new(requirements, device_id)?)
             },
@@ -261,7 +256,7 @@ impl Executor {
             &mut self.logger.borrow_mut(),
             Rc::clone(&window),
             script,
-            unsafe { (*self.config).show_disassembly },
+            unsafe { (*self.config).show_disassembly() },
         )?;
 
         tester::run(
