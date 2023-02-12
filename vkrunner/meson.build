@@ -25,7 +25,6 @@ vkrunner_source_files = [
    'vr-context.h',
    'vr-error-message.c',
    'vr-error-message.h',
-   'vr-flush-memory.c',
    'vr-flush-memory.h',
    'vr-format-private.h',
    'vr-half-float.h',
