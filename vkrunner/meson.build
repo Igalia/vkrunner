@@ -15,24 +15,13 @@ vkrunner_public_headers = [
    'vkrunner.h',
 ]
 
-vkrunner_source_files = vkrunner_public_headers
-
-vkrunner_deps = [m_dep]
-
-if target_machine.system() != 'windows'
-   vkrunner_deps += dependency('dl')
-endif
-
-rust_parts_lib = static_library('rust_parts',
-                                rust_crate_type : 'staticlib',
-                                sources : 'lib.rs')
+vkrunner_deps = []
 
 vkrunner_lib = library('vkrunner',
+                       rust_crate_type : 'staticlib',
                        install : true,
                        dependencies : vkrunner_deps,
-                       sources : vkrunner_source_files,
-                       link_with: rust_parts_lib,
-                       include_directories : include_directories('..'))
+                       sources : 'lib.rs')
 
 install_headers(vkrunner_public_headers, subdir : 'vkrunner')
 
@@ -43,7 +32,7 @@ if rust.found()
     # Fake compiler program to help test compiler.rs
     fake_compiler = executable('fake_compiler', sources: 'fake_compiler.rs')
     rust.test('rust-unit-tests',
-              rust_parts_lib,
+              vkrunner_lib,
               depends: [fake_compiler],
               env: {'PIGLIT_GLSLANG_VALIDATOR_BINARY':
                     fake_compiler.full_path(),
