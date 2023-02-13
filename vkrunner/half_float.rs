@@ -100,16 +100,6 @@ pub fn to_f64(half: u16) -> f64 {
     small_float::load_signed(half as u32, 5, 10)
 }
 
-#[no_mangle]
-pub extern "C" fn vr_half_float_from_float(val: f32) -> u16 {
-    from_f32(val)
-}
-
-#[no_mangle]
-pub extern "C" fn vr_half_float_to_double(half: u16) -> f64 {
-    to_f64(half)
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
