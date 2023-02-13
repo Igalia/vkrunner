@@ -22,10 +22,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-use std::ffi;
-
 #[derive(Debug, Clone, PartialEq)]
-#[repr(C)]
 pub struct Tolerance {
     value: [f64; 4],
     is_percent: bool,
@@ -52,16 +49,6 @@ impl Default for Tolerance {
             is_percent: false,
         }
     }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_tolerance_equal(
-    tolerance: &Tolerance,
-    component: ffi::c_int,
-    a: f64,
-    b: f64
-) -> u8 {
-    tolerance.equal(component as usize, a, b) as u8
 }
 
 #[cfg(test)]
