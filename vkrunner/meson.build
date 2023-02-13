@@ -16,7 +16,6 @@ vkrunner_public_headers = [
 ]
 
 vkrunner_source_files = [
-   'vr-script-private.h',
    'vr-source-private.h',
    'vr-util.c',
    'vr-util.h',

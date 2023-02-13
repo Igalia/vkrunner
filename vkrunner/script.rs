@@ -48,14 +48,12 @@ pub enum Shader {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
 pub enum BufferType {
     Ubo,
     Ssbo,
 }
 
 #[derive(Debug, Clone)]
-#[repr(C)]
 pub struct Buffer {
     pub desc_set: u32,
     pub binding: u32,
@@ -77,7 +75,6 @@ pub struct Script {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[repr(C)]
 pub enum Operation {
     DrawRect {
         x: f32,
@@ -138,7 +135,6 @@ pub enum Operation {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-#[repr(C)]
 pub struct Command {
     pub line_num: usize,
     pub op: Operation,
@@ -2129,84 +2125,6 @@ pub extern "C" fn vr_script_load(
 #[no_mangle]
 pub extern "C" fn vr_script_free(script: *mut Script) {
     unsafe { Box::from_raw(script) };
-}
-
-#[no_mangle]
-pub extern "C" fn vr_script_get_filename(script: &Script) -> *mut c_char {
-    extern "C" {
-        fn vr_strndup(s: *const c_char, len: usize) -> *mut c_char;
-    }
-
-    unsafe {
-        vr_strndup(
-            script.filename().as_ptr().cast(),
-            script.filename().len()
-        ).cast()
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_script_get_n_pipeline_keys(script: &Script) -> usize {
-    script.pipeline_keys().len()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_script_get_pipeline_key(
-    script: &Script,
-    key_num: usize,
-) -> &pipeline_key::Key {
-    &script.pipeline_keys()[key_num]
-}
-
-#[no_mangle]
-pub extern "C" fn vr_script_get_commands(
-    script: &Script,
-    commands_out: &mut *const Command,
-    n_commands_out: &mut usize
-) {
-    *commands_out = script.commands().as_ptr();
-    *n_commands_out = script.commands().len();
-}
-
-#[no_mangle]
-pub extern "C" fn vr_script_get_buffers(
-    script: &Script,
-    buffers_out: &mut *const Buffer,
-    n_buffers_out: &mut usize
-) {
-    *buffers_out = script.buffers().as_ptr();
-    *n_buffers_out = script.buffers().len();
-}
-
-#[no_mangle]
-pub extern "C" fn vr_script_get_indices(
-    script: &Script,
-    indices_out: &mut *const u16,
-    n_indices_out: &mut usize
-) {
-    *indices_out = script.indices().as_ptr();
-    *n_indices_out = script.indices().len();
-}
-
-#[no_mangle]
-pub extern "C" fn vr_script_get_requirements(
-    script: &Script,
-) -> &Requirements {
-    script.requirements()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_script_get_window_format(
-    script: &Script,
-) -> &WindowFormat {
-    script.window_format()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_script_get_vertex_data(
-    script: &Script,
-) -> Option<&vbo::Vbo> {
-    script.vertex_data()
 }
 
 #[cfg(test)]
