@@ -28,8 +28,8 @@ use crate::format::{Format, Component};
 use crate::vk;
 use crate::config::Config;
 use crate::result;
-use crate::allocate_store;
 use crate::vulkan_funcs;
+use crate::buffer::{self, MappedMemory, DeviceMemory, Buffer};
 use std::rc::Rc;
 use std::fmt;
 use std::ffi::c_void;
@@ -91,16 +91,15 @@ pub enum WindowError {
     RenderPassError,
     ImageError,
     ImageViewError,
-    BufferError,
+    BufferError(buffer::Error),
     FramebufferError,
-    MapMemoryError,
-    AllocateStoreError(String),
 }
 
 impl fmt::Display for WindowError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             WindowError::IncompatibleFormat(s) => write!(f, "{}", s),
+            WindowError::BufferError(e) => e.fmt(f),
             WindowError::RenderPassError => write!(
                 f,
                 "Error creating render pass",
@@ -113,19 +112,10 @@ impl fmt::Display for WindowError {
                 f,
                 "Error creating vkImageView",
             ),
-            WindowError::BufferError => write!(
-                f,
-                "Error creating vkBuffer",
-            ),
             WindowError::FramebufferError => write!(
                 f,
                 "Error creating vkFramebuffer",
             ),
-            WindowError::MapMemoryError => write!(
-                f,
-                "vkMapMemory failed",
-            ),
-            WindowError::AllocateStoreError(s) => write!(f, "{}", s),
         }
     }
 }
@@ -137,11 +127,15 @@ impl WindowError {
             WindowError::RenderPassError => result::Result::Fail,
             WindowError::ImageError => result::Result::Fail,
             WindowError::ImageViewError => result::Result::Fail,
-            WindowError::BufferError => result::Result::Fail,
             WindowError::FramebufferError => result::Result::Fail,
-            WindowError::MapMemoryError => result::Result::Fail,
-            WindowError::AllocateStoreError(_) => result::Result::Fail,
+            WindowError::BufferError(_) => result::Result::Fail,
         }
+    }
+}
+
+impl From<buffer::Error> for WindowError {
+    fn from(e: buffer::Error) -> WindowError {
+        WindowError::BufferError(e)
     }
 }
 
@@ -449,173 +443,10 @@ impl Image {
     }
 }
 
-#[derive(Debug)]
-struct DeviceMemory {
-    memory: vk::VkDeviceMemory,
-    memory_type_index: u32,
-    // Needed for the destructor
-    context: Rc<Context>,
-}
-
-impl Drop for DeviceMemory {
-    fn drop(&mut self) {
-        unsafe {
-            self.context.device().vkFreeMemory.unwrap()(
-                self.context.vk_device(),
-                self.memory,
-                ptr::null(), // allocator
-            );
-        }
-    }
-}
-
-impl DeviceMemory {
-    fn new_buffer(
-        context: Rc<Context>,
-        memory_type_flags: vk::VkMemoryPropertyFlags,
-        buffer: vk::VkBuffer,
-    ) -> Result<DeviceMemory, WindowError> {
-        let res = allocate_store::allocate_buffer(
-            context.as_ref(),
-            memory_type_flags,
-            buffer,
-        );
-        DeviceMemory::new_from_result(context, res)
-    }
-
-    fn new_image(
-        context: Rc<Context>,
-        memory_type_flags: vk::VkMemoryPropertyFlags,
-        image: vk::VkImage,
-    ) -> Result<DeviceMemory, WindowError> {
-        let res = allocate_store::allocate_image(
-            context.as_ref(),
-            memory_type_flags,
-            image,
-        );
-        DeviceMemory::new_from_result(context, res)
-    }
-
-    fn new_from_result(
-        context: Rc<Context>,
-        result: Result<(vk::VkDeviceMemory, u32), String>,
-    ) -> Result<DeviceMemory, WindowError> {
-        match result {
-            Ok((memory, memory_type_index)) => Ok(DeviceMemory {
-                memory,
-                memory_type_index,
-                context,
-            }),
-            Err(e) => Err(WindowError::AllocateStoreError(e)),
-        }
-    }
-}
-
 fn color_linear_memory_stride(
     window_format: &WindowFormat
-) -> vk::VkDeviceSize {
-    window_format.color_format.size() as vk::VkDeviceSize
-        * window_format.height as vk::VkDeviceSize
-}
-
-#[derive(Debug)]
-struct Buffer {
-    buffer: vk::VkBuffer,
-    // Needed for the destructor
-    context: Rc<Context>,
-}
-
-impl Drop for Buffer {
-    fn drop(&mut self) {
-        unsafe {
-            self.context.device().vkDestroyBuffer.unwrap()(
-                self.context.vk_device(),
-                self.buffer,
-                ptr::null(), // allocator
-            );
-        }
-    }
-}
-
-impl Buffer {
-    fn new_linear(
-        context: Rc<Context>,
-        window_format: &WindowFormat,
-    ) -> Result<Buffer, WindowError> {
-        let buffer_create_info = vk::VkBufferCreateInfo {
-            sType: vk::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            pNext: ptr::null(),
-            flags: 0,
-            size: color_linear_memory_stride(window_format)
-                * window_format.height as vk::VkDeviceSize,
-            usage: vk::VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-            sharingMode: vk::VK_SHARING_MODE_EXCLUSIVE,
-            queueFamilyIndexCount: 0,
-            pQueueFamilyIndices: ptr::null(),
-        };
-
-        let mut buffer: vk::VkBuffer = ptr::null_mut();
-
-        let res = unsafe {
-            context.device().vkCreateBuffer.unwrap()(
-                context.vk_device(),
-                ptr::addr_of!(buffer_create_info),
-                ptr::null(), // allocator
-                ptr::addr_of_mut!(buffer),
-            )
-        };
-
-        if res == vk::VK_SUCCESS {
-            Ok(Buffer { buffer, context })
-        } else {
-            Err(WindowError::BufferError)
-        }
-    }
-}
-
-#[derive(Debug)]
-struct MappedMemory {
-    pointer: *mut c_void,
-    memory: vk::VkDeviceMemory,
-    // Needed for the destructor
-    context: Rc<Context>,
-}
-
-impl Drop for MappedMemory {
-    fn drop(&mut self) {
-        unsafe {
-            self.context.device().vkUnmapMemory.unwrap()(
-                self.context.vk_device(),
-                self.memory,
-            );
-        }
-    }
-}
-
-impl MappedMemory {
-    fn new(
-        context: Rc<Context>,
-        memory: vk::VkDeviceMemory,
-    ) -> Result<MappedMemory, WindowError> {
-        let mut pointer: *mut c_void = ptr::null_mut();
-
-        let res = unsafe {
-            context.device().vkMapMemory.unwrap()(
-                context.vk_device(),
-                memory,
-                0, // offset
-                vk::VK_WHOLE_SIZE as u64,
-                0, // flags,
-                ptr::addr_of_mut!(pointer),
-            )
-        };
-
-        if res == vk::VK_SUCCESS {
-            Ok(MappedMemory { pointer, memory, context })
-        } else {
-            Err(WindowError::MapMemoryError)
-        }
-    }
+) -> usize {
+    window_format.color_format.size() * window_format.height
 }
 
 #[derive(Debug)]
@@ -834,9 +665,10 @@ impl Window {
             depth_stencil_resources.as_ref().map(|r| r.image_view.image_view),
         )?;
 
-        let linear_buffer = Buffer::new_linear(
+        let linear_buffer = Buffer::new(
             Rc::clone(&context),
-            format,
+            color_linear_memory_stride(format) * format.height,
+            vk::VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         )?;
         let linear_memory = DeviceMemory::new_buffer(
             Rc::clone(&context),
@@ -857,7 +689,7 @@ impl Window {
                 &context,
                 linear_memory.memory_type_index,
             ),
-            linear_memory_stride: color_linear_memory_stride(format) as usize,
+            linear_memory_stride: color_linear_memory_stride(format),
             linear_memory_map,
             linear_memory,
             linear_buffer,
