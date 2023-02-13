@@ -789,57 +789,6 @@ impl Clone for Requirements {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn vr_requirements_get_version(
-    reqs: *const Requirements
-) -> u32 {
-    unsafe { (*reqs).version() }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_requirements_equal(
-    reqs_a: *const Requirements,
-    reqs_b: *const Requirements,
-) -> u8 {
-    unsafe {
-        (*reqs_a).eq(&*reqs_b) as u8
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_requirements_copy(
-    reqs: *const Requirements,
-) -> *mut Requirements {
-    unsafe {
-        Box::into_raw(Box::new((*reqs).clone()))
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_requirements_check(
-    reqs: *const Requirements,
-    vklib: *const vulkan_funcs::Library,
-    vkinst: *const vulkan_funcs::Instance,
-    instance: vk::VkInstance,
-    device: vk::VkPhysicalDevice,
-) -> u8 {
-    let res = unsafe {
-        (*reqs).check(
-            &*vklib,
-            &*vkinst,
-            instance,
-            device,
-        )
-    };
-
-    matches!(res, Ok(())) as u8
-}
-
-#[no_mangle]
-pub extern "C" fn vr_requirements_free(reqs: *mut Requirements) {
-    unsafe { Box::from_raw(reqs) };
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
