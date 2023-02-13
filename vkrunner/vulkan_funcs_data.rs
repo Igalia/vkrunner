@@ -2,7 +2,6 @@
 
 #[derive(Debug, Clone)]
 #[allow(non_snake_case)]
-#[repr(C)]
 pub struct Library {
     lib_vulkan: *const c_void,
     lib_vulkan_is_fake: bool,
@@ -14,7 +13,6 @@ pub struct Library {
 
 #[derive(Debug, Clone)]
 #[allow(non_snake_case)]
-#[repr(C)]
 pub struct Instance {
     pub vkCreateDevice: vk::PFN_vkCreateDevice,
     pub vkDestroyInstance: vk::PFN_vkDestroyInstance,
@@ -30,7 +28,6 @@ pub struct Instance {
 
 #[derive(Debug, Clone)]
 #[allow(non_snake_case)]
-#[repr(C)]
 pub struct Device {
     pub vkAllocateCommandBuffers: vk::PFN_vkAllocateCommandBuffers,
     pub vkAllocateDescriptorSets: vk::PFN_vkAllocateDescriptorSets,

@@ -136,7 +136,6 @@ TEMPLATE = """\
 
 #[derive(Debug, Clone)]
 #[allow(non_snake_case)]
-#[repr(C)]
 pub struct Library {
     lib_vulkan: *const c_void,
     lib_vulkan_is_fake: bool,
@@ -148,7 +147,6 @@ pub struct Library {
 
 #[derive(Debug, Clone)]
 #[allow(non_snake_case)]
-#[repr(C)]
 pub struct Instance {
 % for func in instance_funcs:
     pub ${func}: vk::PFN_${func},
@@ -157,7 +155,6 @@ pub struct Instance {
 
 #[derive(Debug, Clone)]
 #[allow(non_snake_case)]
-#[repr(C)]
 pub struct Device {
 % for func in device_funcs:
     pub ${func}: vk::PFN_${func},

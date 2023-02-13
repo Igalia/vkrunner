@@ -18,9 +18,6 @@ vkrunner_public_headers = [
 vkrunner_source_files = [
    'vr-util.c',
    'vr-util.h',
-   'vr-vk.h',
-   'vr-vk-device-funcs.h',
-   'vr-vk-instance-funcs.h',
    'vr-pipeline.h',
    'vr-tolerance.h',
    'vr-vbo.h',
