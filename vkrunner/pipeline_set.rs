@@ -946,55 +946,6 @@ impl PipelineSet {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn vr_pipeline_get_n_desc_sets(
-    pipeline_set: &PipelineSet,
-) -> usize {
-    pipeline_set.descriptor_set_layouts().len()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_get_stages(
-    pipeline_set: &PipelineSet,
-) -> vk::VkShaderStageFlagBits {
-    pipeline_set.stages()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_get_layout(
-    pipeline_set: &PipelineSet,
-) -> vk::VkPipelineLayout {
-    pipeline_set.layout()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_get_pipelines(
-    pipeline_set: &PipelineSet,
-) -> *const vk::VkPipeline {
-    pipeline_set.pipelines().as_ptr()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_get_n_pipelines(
-    pipeline_set: &PipelineSet,
-) -> usize {
-    pipeline_set.pipelines().len()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_get_descriptor_pool(
-    pipeline_set: &PipelineSet,
-) -> vk::VkDescriptorPool {
-    pipeline_set.descriptor_pool().unwrap_or(ptr::null_mut())
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_get_descriptor_set_layouts(
-    pipeline_set: &PipelineSet,
-) -> *const vk::VkDescriptorSetLayout {
-    pipeline_set.descriptor_set_layouts().as_ptr()
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
