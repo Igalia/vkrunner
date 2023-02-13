@@ -56,7 +56,6 @@ use crate::format::{Format, Mode};
 use crate::{util, parse_num, hex};
 use std::fmt;
 use std::cell::RefCell;
-use std::ffi::{c_void, c_uint};
 
 #[derive(Debug, Clone)]
 pub enum Error {
@@ -605,62 +604,6 @@ impl Parser {
             num_rows: self.num_rows,
         })
     }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vbo_get_raw_data(vbo: *const Vbo) -> *const u8 {
-    unsafe { vbo.as_ref().unwrap().raw_data().as_ptr() }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vbo_get_stride(vbo: *const Vbo) -> usize {
-    unsafe { vbo.as_ref().unwrap().stride() }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vbo_get_num_rows(vbo: *const Vbo) -> usize {
-    unsafe { vbo.as_ref().unwrap().num_rows() }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vbo_get_num_attribs(vbo: *const Vbo) -> usize {
-    unsafe { vbo.as_ref().unwrap().attribs().len() }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vbo_for_each_attrib(
-    vbo: *const Vbo,
-    func: unsafe extern "C" fn(&Attrib, *mut c_void),
-    user_data: *mut c_void
-) {
-    let vbo = unsafe { vbo.as_ref().unwrap() };
-
-    for attrib in vbo.attribs().iter() {
-        unsafe {
-            func(attrib, user_data);
-        }
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vbo_attrib_get_format(
-    attrib: *const Attrib
-) -> &'static Format {
-    unsafe { attrib.as_ref().unwrap().format() }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vbo_attrib_get_location(
-    attrib: *const Attrib
-) -> c_uint {
-    unsafe { attrib.as_ref().unwrap().location() as c_uint }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_vbo_attrib_get_offset(
-    attrib: *const Attrib
-) -> usize {
-    unsafe { attrib.as_ref().unwrap().offset() }
 }
 
 #[cfg(test)]
