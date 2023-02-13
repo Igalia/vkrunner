@@ -17,7 +17,7 @@ vkrunner_public_headers = [
 
 vkrunner_source_files = vkrunner_public_headers
 
-vkrunner_deps = vulkan_deps + [m_dep]
+vkrunner_deps = [m_dep]
 
 if target_machine.system() != 'windows'
    vkrunner_deps += dependency('dl')

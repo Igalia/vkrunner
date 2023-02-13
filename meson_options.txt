@@ -1,2 +1,0 @@
-option('vulkan_header', type : 'string',
-       description : 'Location of the vulkan header')

@@ -32,28 +32,6 @@ endif
 
 configure_file(output : 'config.h', configuration : cdata)
 
-vulkan_header_cdata = configuration_data()
-
-vulkan_deps = []
-vulkan_header = get_option('vulkan_header')
-
-if vulkan_header == ''
-   vulkan_dep = dependency('vulkan', required : false)
-   vulkan_deps += vulkan_dep
-
-   if not vulkan_dep.found()
-      cc.has_header('vulkan/vulkan.h', required : true)
-   endif
-
-   vulkan_header = '<vulkan/vulkan.h>'
-endif
-
-vulkan_header_cdata.set('VULKAN_HEADER', vulkan_header)
-      
-configure_file(output : 'vk-vulkan-header.h',
-               configuration : vulkan_header_cdata,
-               input : 'vk-vulkan-header.h.in')
-
 m_dep = cc.find_library('m', required : false)
 
 subdir('vkrunner')
