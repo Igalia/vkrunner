@@ -18,8 +18,6 @@ vkrunner_public_headers = [
 vkrunner_source_files = [
    'vr-allocate-store.h',
    'vr-box.h',
-   'vr-buffer.c',
-   'vr-buffer.h',
    'vr-context.h',
    'vr-flush-memory.h',
    'vr-format-private.h',
