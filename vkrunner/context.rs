@@ -995,62 +995,6 @@ impl Drop for Context {
     }
 }
 
-#[no_mangle]
-pub extern "C" fn vr_context_get_memory_properties(
-    context: &Context,
-) -> &vk::VkPhysicalDeviceMemoryProperties {
-    context.memory_properties()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_get_vkdev(
-    context: &Context,
-) -> &vulkan_funcs::Device {
-    context.device()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_get_fence(
-    context: &Context,
-) -> vk::VkFence {
-    context.fence()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_get_queue(
-    context: &Context,
-) -> vk::VkQueue {
-    context.queue()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_get_command_buffer(
-    context: &Context,
-) -> vk::VkCommandBuffer {
-    context.command_buffer()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_get_physical_device(
-    context: &Context,
-) -> vk::VkPhysicalDevice {
-    context.physical_device()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_get_vk_device(
-    context: &Context,
-) -> vk::VkDevice {
-    context.vk_device()
-}
-
-#[no_mangle]
-pub extern "C" fn vr_context_get_always_flush_memory(
-    context: &Context,
-) -> bool {
-    context.always_flush_memory()
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
