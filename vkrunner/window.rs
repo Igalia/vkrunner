@@ -877,7 +877,7 @@ impl Window {
     }
 
     /// Retrieve the [Context] that the Window was created with.
-    pub fn context(&self) -> &Context {
+    pub fn context(&self) -> &Rc<Context> {
         &self.context
     }
 
@@ -1139,7 +1139,7 @@ mod test {
             &Default::default() // format
         ).unwrap();
 
-        assert_eq!(ptr::addr_of!(*window.context()), Rc::as_ptr(&context));
+        assert!(Rc::ptr_eq(window.context(), &context));
         assert_eq!(
             window.format().color_format.vk_format,
             vk::VK_FORMAT_B8G8R8A8_UNORM
