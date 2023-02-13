@@ -15,10 +15,7 @@ vkrunner_public_headers = [
    'vkrunner.h',
 ]
 
-vkrunner_source_files = [
-   'vr-util.c',
-   'vr-util.h',
-] + vkrunner_public_headers
+vkrunner_source_files = vkrunner_public_headers
 
 vkrunner_deps = vulkan_deps + [m_dep]
 
