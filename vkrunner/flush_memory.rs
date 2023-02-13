@@ -25,7 +25,6 @@ use crate::context::Context;
 use crate::vk;
 use std::ptr;
 use std::fmt;
-use std::ffi::c_int;
 
 #[derive(Debug)]
 pub struct Error(vk::VkResult);
@@ -254,21 +253,4 @@ mod test {
         assert_eq!(error.to_string(), "vkFlushMappedMemoryRanges failed");
         assert_eq!(error.0, vk::VK_ERROR_UNKNOWN);
     }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_flush_memory(
-    context: &Context,
-    memory_type_index: c_int,
-    memory: vk::VkDeviceMemory,
-    offset: vk::VkDeviceSize,
-    size: vk::VkDeviceSize
-) -> vk::VkResult {
-    flush_memory(
-        context,
-        memory_type_index as usize,
-        memory,
-        offset,
-        size
-    ).map(|_| vk::VK_SUCCESS).unwrap_or_else(|Error(result)| result)
 }
