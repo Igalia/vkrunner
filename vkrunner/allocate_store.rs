@@ -27,7 +27,6 @@
 use crate::context::Context;
 use crate::vk;
 use std::ptr;
-use std::ffi::c_int;
 
 fn find_memory_type(
     context: &Context,
@@ -166,42 +165,6 @@ pub fn allocate_image(
     }
 
     Ok((memory, memory_type_index))
-}
-
-#[no_mangle]
-pub extern "C" fn vr_allocate_store_buffer(
-    context: &Context,
-    memory_type_flags: u32,
-    n_buffers: c_int,
-    buffers: *const vk::VkBuffer,
-    memory_out: *mut vk::VkDeviceMemory,
-    memory_type_index_out: *mut c_int,
-    offsets: *mut c_int,
-) -> vk::VkResult {
-    // The original C functions could allocate memory for multiple
-    // buffers at a time. This isn’t actually used anywhere so for
-    // simplicity we only allow one buffer.
-    assert_eq!(n_buffers, 1);
-
-    match allocate_buffer(
-        context,
-        memory_type_flags as vk::VkMemoryPropertyFlags,
-        unsafe { *buffers },
-    ) {
-        Ok((memory, memory_type_index)) => {
-            unsafe {
-                *memory_out = memory;
-                if !memory_type_index_out.is_null() {
-                    *memory_type_index_out = memory_type_index as c_int;
-                }
-                if !offsets.is_null() {
-                    *offsets = 0;
-                }
-            }
-            vk::VK_SUCCESS
-        },
-        Err(_) => vk::VK_ERROR_UNKNOWN,
-    }
 }
 
 #[cfg(test)]
