@@ -1045,7 +1045,6 @@ mod test {
             ).unwrap());
 
             let window = Rc::new(Window::new(
-                ptr::null(), // config
                 Rc::clone(&context),
                 &Default::default(), // format
             ).unwrap());

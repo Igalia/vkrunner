@@ -238,7 +238,6 @@ impl Executor {
         match &self.window {
             Some(w) => Ok(Rc::clone(w)),
             None => Ok(Rc::clone(self.window.insert(Rc::new(Window::new(
-                self.config,
                 context,
                 script.window_format(),
             )?)))),

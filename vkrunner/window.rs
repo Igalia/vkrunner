@@ -26,7 +26,6 @@ use crate::context::Context;
 use crate::window_format::WindowFormat;
 use crate::format::{Format, Component};
 use crate::vk;
-use crate::config::Config;
 use crate::result;
 use crate::vulkan_funcs;
 use crate::buffer::{self, MappedMemory, DeviceMemory, Buffer};
@@ -42,13 +41,6 @@ use std::ptr;
 /// running tests.
 #[derive(Debug)]
 pub struct Window {
-    // TODO: This is only used for printing error messages, but lots
-    // of different modules get access to it via the Window. Once the
-    // Rust conversion is complete the plan is to get rid of it and
-    // just use the Rust error handling mechanisms instead of directly
-    // printing errors.
-    config: *const Config,
-
     format: WindowFormat,
 
     // These are listed in the reverse order that they are created so
@@ -622,7 +614,6 @@ fn need_linear_memory_invalidate(
 
 impl Window {
     pub fn new(
-        config: *const Config,
         context: Rc<Context>,
         format: &WindowFormat,
     ) -> Result<Window, WindowError> {
@@ -682,7 +673,6 @@ impl Window {
         )?;
 
         Ok(Window {
-            config,
             format: format.clone(),
 
             need_linear_memory_invalidate: need_linear_memory_invalidate(
@@ -819,11 +809,6 @@ pub extern "C" fn vr_window_get_render_pass(
 }
 
 #[no_mangle]
-pub extern "C" fn vr_window_get_config(window: &Window) -> *const Config {
-    window.config
-}
-
-#[no_mangle]
 pub extern "C" fn vr_window_need_linear_memory_invalidate(
     window: &Window
 ) -> bool {
@@ -944,7 +929,6 @@ mod test {
         ).unwrap());
 
         let err = Window::new(
-            ptr::null(), // config
             Rc::clone(&context),
             &Default::default(), // format
         ).unwrap_err();
@@ -966,7 +950,6 @@ mod test {
         ).unwrap());
 
         let window = Window::new(
-            ptr::null(), // config
             Rc::clone(&context),
             &Default::default() // format
         ).unwrap();
@@ -1033,7 +1016,6 @@ mod test {
         ).unwrap());
 
         let window = Window::new(
-            ptr::null(), // config
             Rc::clone(&context),
             &depth_format,
         ).unwrap();
@@ -1100,7 +1082,6 @@ mod test {
         ).unwrap());
 
         let err = Window::new(
-            ptr::null(), // config
             Rc::clone(&context),
             &depth_format,
         ).unwrap_err();
@@ -1126,7 +1107,6 @@ mod test {
         ).unwrap());
 
         let err = Window::new(
-            ptr::null(), // config
             Rc::clone(&context),
             &Default::default(), // format
         ).unwrap_err();
@@ -1157,7 +1137,6 @@ mod test {
         );
 
         let err = Window::new(
-            ptr::null(), // config
             Rc::clone(&res.context),
             &Default::default(), // format
         ).unwrap_err();
@@ -1189,7 +1168,6 @@ mod test {
         ));
 
         let err = Window::new(
-            ptr::null(), // config
             Rc::clone(&res.context),
             &depth_format,
         ).unwrap_err();
@@ -1221,7 +1199,6 @@ mod test {
         ));
 
         let err = Window::new(
-            ptr::null(), // config
             Rc::clone(&res.context),
             &depth_format,
         ).unwrap_err();
@@ -1254,7 +1231,6 @@ mod test {
         ));
 
         let err = Window::new(
-            ptr::null(), // config
             Rc::clone(&res.context),
             &depth_format,
         ).unwrap_err();
@@ -1275,7 +1251,6 @@ mod test {
         ).unwrap());
 
         let err = Window::new(
-            ptr::null(), // config
             Rc::clone(&context),
             &Default::default(), // format
         ).unwrap_err();
