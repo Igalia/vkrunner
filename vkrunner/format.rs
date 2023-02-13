@@ -28,10 +28,8 @@ use crate::vk;
 use std::convert::TryInto;
 use std::num::NonZeroUsize;
 use std::slice;
-use std::ffi::c_char;
 
 #[derive(Debug)]
-#[repr(C)]
 pub struct Format {
     pub vk_format: vk::VkFormat,
     pub name: &'static str,
@@ -41,7 +39,6 @@ pub struct Format {
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-#[repr(C)]
 pub enum Component {
     R,
     G,
@@ -53,7 +50,6 @@ pub enum Component {
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-#[repr(C)]
 pub enum Mode {
     UNORM,
     SNORM,
@@ -67,7 +63,6 @@ pub enum Mode {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-#[repr(C)]
 pub struct Part {
     pub bits: usize,
     pub component: Component,
@@ -403,17 +398,6 @@ pub extern "C" fn vr_format_load_pixel(
     let source = unsafe { slice::from_raw_parts(source, format.size()) };
     let pixel = unsafe { slice::from_raw_parts_mut(pixel, 4) };
     pixel.copy_from_slice(&format.load_pixel(source));
-}
-
-#[no_mangle]
-pub extern "C" fn vr_format_get_name(format: &Format) -> *mut c_char {
-    extern "C" {
-        fn vr_strndup(s: *const c_char, len: usize) -> *mut c_char;
-    }
-
-    unsafe {
-        vr_strndup(format.name.as_ptr().cast(), format.name.len())
-    }
 }
 
 #[cfg(test)]

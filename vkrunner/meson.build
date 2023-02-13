@@ -16,7 +16,6 @@ vkrunner_public_headers = [
 ]
 
 vkrunner_source_files = [
-   'vr-format-private.h',
    'vr-half-float.h',
    'vr-pipeline-key.h',
    'vr-requirements.h',
