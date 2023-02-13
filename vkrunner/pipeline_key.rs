@@ -30,7 +30,6 @@ use crate::util;
 use std::fmt;
 use std::mem;
 
-#[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Type {
     Graphics,
@@ -40,7 +39,6 @@ pub enum Type {
 /// Notes whether the pipeline will be used to draw a rectangle or
 /// whether it will use the data in the `[vertex data]` section of the
 /// script.
-#[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Source {
     Rectangle,
@@ -494,11 +492,6 @@ impl fmt::Debug for Key {
 
         write!(f, " }}")
     }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_pipeline_key_get_type(key: *const Key) -> Type {
-    unsafe { (*key).pipeline_type() }
 }
 
 #[cfg(test)]
