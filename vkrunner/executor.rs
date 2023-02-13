@@ -33,6 +33,7 @@ use crate::vk;
 use crate::requirements::Requirements;
 use crate::pipeline_set::{self, PipelineSet};
 use crate::logger::Logger;
+use crate::inspect::Inspector;
 use crate::tester;
 use std::ffi::{c_void, c_int};
 use std::fmt;
@@ -115,8 +116,12 @@ struct ExternalData {
 
 #[derive(Debug)]
 pub struct Executor {
-    config: *const Config,
+    // Configuration from the Config
     logger: Rc<RefCell<Logger>>,
+    inspector: Option<Inspector>,
+    show_disassembly: bool,
+    device_id: Option<usize>,
+
     window: Option<Rc<Window>>,
     context: Option<Rc<Context>>,
     // A cache of the requirements that the context was created with.
@@ -151,14 +156,17 @@ impl Executor {
         }
     }
 
-    pub fn new(config: *const Config) -> Executor {
+    pub fn new(config: &Config) -> Executor {
         Executor {
-            config,
+            logger: config.logger(),
+            inspector: config.inspector(),
+            show_disassembly: config.show_disassembly(),
+            device_id: config.device_id(),
+
             window: None,
             context: None,
             requirements: Requirements::new(),
             external: None,
-            logger: unsafe { &*config }.logger(),
         }
     }
 
@@ -195,11 +203,7 @@ impl Executor {
                     e.vk_device,
                 )?)
             },
-            None => {
-                let device_id = unsafe { (*self.config).device_id() };
-
-                Ok(Context::new(requirements, device_id)?)
-            },
+            None => Ok(Context::new(requirements, self.device_id)?),
         }
     }
 
@@ -255,14 +259,14 @@ impl Executor {
             &mut self.logger.borrow_mut(),
             Rc::clone(&window),
             script,
-            unsafe { (*self.config).show_disassembly() },
+            self.show_disassembly,
         )?;
 
         tester::run(
             window.as_ref(),
             &pipeline_set,
             script,
-            unsafe { &*self.config }.inspector(),
+            self.inspector.clone(),
         )?;
 
         Ok(())
@@ -277,7 +281,7 @@ impl Executor {
 }
 
 #[no_mangle]
-pub extern "C" fn vr_executor_new(config: *const Config) -> *mut Executor {
+pub extern "C" fn vr_executor_new(config: &Config) -> *mut Executor {
     Box::into_raw(Box::new(Executor::new(config)))
 }
 
