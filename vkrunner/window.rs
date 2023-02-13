@@ -55,7 +55,7 @@ pub struct Window {
     // that they will be destroyed in the right order too
 
     need_linear_memory_invalidate: bool,
-    linear_memory_stride: vk::VkDeviceSize,
+    linear_memory_stride: usize,
     linear_memory_map: MappedMemory,
     linear_memory: DeviceMemory,
     linear_buffer: Buffer,
@@ -857,7 +857,7 @@ impl Window {
                 &context,
                 linear_memory.memory_type_index,
             ),
-            linear_memory_stride: color_linear_memory_stride(format),
+            linear_memory_stride: color_linear_memory_stride(format) as usize,
             linear_memory_map,
             linear_memory,
             linear_buffer,
@@ -929,7 +929,7 @@ impl Window {
     }
 
     /// Get the stride of the linear memory buffer
-    pub fn linear_memory_stride(&self) -> vk::VkDeviceSize {
+    pub fn linear_memory_stride(&self) -> usize {
         self.linear_memory_stride
     }
 
@@ -1009,7 +1009,7 @@ pub extern "C" fn vr_window_get_linear_memory(
 pub extern "C" fn vr_window_get_linear_memory_stride(
     window: &Window
 ) -> vk::VkDeviceSize {
-    window.linear_memory_stride()
+    window.linear_memory_stride() as vk::VkDeviceSize
 }
 
 #[no_mangle]
@@ -1154,7 +1154,7 @@ mod test {
         assert!(!window.linear_buffer().is_null());
         assert!(!window.linear_memory_map().is_null());
         assert_eq!(
-            window.linear_memory_stride() as usize,
+            window.linear_memory_stride(),
             window.format().color_format.size()
                 * window.format().width
         );
