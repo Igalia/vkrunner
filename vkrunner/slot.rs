@@ -32,14 +32,12 @@ use crate::tolerance::Tolerance;
 use crate::half_float;
 use std::mem;
 use std::convert::TryInto;
-use std::ffi::c_void;
 use std::fmt;
 
 /// Describes which layout standard is being used. The only difference
 /// is that with `Std140` the offset between members of an
 /// array or between elements of the minor axis of a matrix is rounded
 /// up to be a multiple of 16 bytes.
-#[repr(C)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LayoutStd {
     Std140,
@@ -57,7 +55,6 @@ pub enum LayoutStd {
 /// [1 4 7]          [3 4 5]
 /// [2 5 8]          [6 7 8]
 /// ```
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MajorAxis {
     Column,
@@ -67,7 +64,6 @@ pub enum MajorAxis {
 /// Combines the [MajorAxis] and the [LayoutStd] to provide a complete
 /// description of the layout options used for accessing the
 /// components of a type.
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Layout {
     pub std: LayoutStd,
@@ -76,7 +72,6 @@ pub struct Layout {
 
 /// An enum representing all of the types that can be stored in a
 /// slot. These correspond to the types in GLSL.
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Type {
     Int = 0,
@@ -144,7 +139,6 @@ pub enum Type {
 }
 
 /// The type of a component of the types in [Type].
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BaseType {
     Int,
@@ -171,7 +165,6 @@ pub struct BaseTypeInSlice<'a> {
 /// A type of comparison that can be used to compare values stored in
 /// a slot with the chosen criteria. Use the
 /// [compare](Comparison::compare) method to perform the comparison.
-#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Comparison {
     /// The comparison passes if the values are exactly equal.
@@ -802,60 +795,6 @@ impl Comparison {
             Err(_) => None,
         }
     }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_box_for_each_component(
-    slot_type: Type,
-    layout: &Layout,
-    cb: extern "C" fn(
-        base_type: BaseType,
-        offset: usize,
-        user_data: *mut c_void,
-    ) -> u8,
-    user_data: *mut c_void,
-) {
-    let base_type = slot_type.base_type();
-
-    for offset in slot_type.offsets(*layout) {
-        let ret = cb(base_type, offset, user_data);
-
-        if ret == 0 {
-            break;
-        }
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vr_box_compare(
-    comparison: Comparison,
-    tolerance: &Tolerance,
-    slot_type: Type,
-    layout: &Layout,
-    a: *const u8,
-    b: *const u8,
-) -> u8 {
-    let size = slot_type.size(*layout);
-    let a = unsafe { std::slice::from_raw_parts(a, size) };
-    let b = unsafe { std::slice::from_raw_parts(b, size) };
-
-    comparison.compare(tolerance, slot_type, *layout, a, b) as u8
-}
-
-#[no_mangle]
-pub extern "C" fn vr_box_type_array_stride(
-    slot_type: Type,
-    layout: &Layout
-) -> usize {
-    slot_type.array_stride(*layout)
-}
-
-#[no_mangle]
-pub extern "C" fn vr_box_type_size(
-    slot_type: Type,
-    layout: &Layout
-) -> usize {
-    slot_type.size(*layout)
 }
 
 #[cfg(test)]
