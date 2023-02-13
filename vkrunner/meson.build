@@ -18,7 +18,6 @@ vkrunner_public_headers = [
 vkrunner_source_files = [
    'vr-util.c',
    'vr-util.h',
-   'vr-window-format.h',
 ] + vkrunner_public_headers
 
 vkrunner_deps = vulkan_deps + [m_dep]

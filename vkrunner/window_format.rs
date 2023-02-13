@@ -24,7 +24,6 @@
 use crate::format::Format;
 use crate::vk;
 
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct WindowFormat {
     pub color_format: &'static Format,
