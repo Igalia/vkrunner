@@ -33,6 +33,7 @@ use crate::half_float;
 use std::mem;
 use std::convert::TryInto;
 use std::ffi::c_void;
+use std::fmt;
 
 /// Describes which layout standard is being used. The only difference
 /// is that with `Std140` the offset between members of an
@@ -157,6 +158,14 @@ pub enum BaseType {
     Float16,
     Float,
     Double,
+}
+
+/// A base type combined with a slice of bytes. This implements
+/// [Display](std::fmt::Display) so it can be used to extract a base
+/// type from a byte array and present it as a human-readable string.
+pub struct BaseTypeInSlice<'a> {
+    base_type: BaseType,
+    slice: &'a [u8],
 }
 
 /// A type of comparison that can be used to compare values stored in
@@ -359,6 +368,72 @@ impl BaseType {
             BaseType::Float16 => mem::size_of::<u16>(),
             BaseType::Float => mem::size_of::<u32>(),
             BaseType::Double => mem::size_of::<u64>(),
+        }
+    }
+}
+
+impl<'a> BaseTypeInSlice<'a> {
+    /// Combines the given base type and slice into a
+    /// `BaseTypeInSlice` so that it can be displayed with the
+    /// [Display](std::fmt::Display) trait. The slice is expected to
+    /// contain a representation of the base type in native-endian
+    /// order. The slice needs to have the same size as
+    /// `base_type.size()` or the constructor will panic.
+    pub fn new(base_type: BaseType, slice: &'a [u8]) -> BaseTypeInSlice<'a> {
+        assert_eq!(slice.len(), base_type.size());
+
+        BaseTypeInSlice { base_type, slice }
+    }
+}
+
+impl<'a> fmt::Display for BaseTypeInSlice<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.base_type {
+            BaseType::Int => {
+                let v = i32::from_ne_bytes(self.slice.try_into().unwrap());
+                write!(f, "{}", v)
+            },
+            BaseType::UInt => {
+                let v = u32::from_ne_bytes(self.slice.try_into().unwrap());
+                write!(f, "{}", v)
+            },
+            BaseType::Int8 => {
+                let v = i8::from_ne_bytes(self.slice.try_into().unwrap());
+                write!(f, "{}", v)
+            },
+            BaseType::UInt8 => {
+                let v = u8::from_ne_bytes(self.slice.try_into().unwrap());
+                write!(f, "{}", v)
+            },
+            BaseType::Int16 => {
+                let v = i16::from_ne_bytes(self.slice.try_into().unwrap());
+                write!(f, "{}", v)
+            },
+            BaseType::UInt16 => {
+                let v = u16::from_ne_bytes(self.slice.try_into().unwrap());
+                write!(f, "{}", v)
+            },
+            BaseType::Int64 => {
+                let v = i64::from_ne_bytes(self.slice.try_into().unwrap());
+                write!(f, "{}", v)
+            },
+            BaseType::UInt64 => {
+                let v = u64::from_ne_bytes(self.slice.try_into().unwrap());
+                write!(f, "{}", v)
+            },
+            BaseType::Float16 => {
+                let v = u16::from_ne_bytes(self.slice.try_into().unwrap());
+                let v = half_float::to_f64(v);
+                write!(f, "{}", v)
+            },
+            BaseType::Float => {
+                let v = f32::from_ne_bytes(self.slice.try_into().unwrap());
+                write!(f, "{}", v)
+            },
+            BaseType::Double => {
+                let v = f64::from_ne_bytes(self.slice.try_into().unwrap());
+                write!(f, "{}", v)
+            },
         }
     }
 }
@@ -1340,5 +1415,56 @@ mod test {
         );
 
         assert_eq!(Comparison::from_operator("<=>"), None);
+    }
+
+    #[track_caller]
+    fn check_base_type_format(
+        base_type: BaseType,
+        bytes: &[u8],
+        expected: &str,
+    ) {
+        assert_eq!(
+            &BaseTypeInSlice::new(base_type, bytes).to_string(),
+            expected
+        );
+    }
+
+    #[test]
+    fn base_type_format() {
+        check_base_type_format(BaseType::Int, &1234i32.to_ne_bytes(), "1234");
+        check_base_type_format(
+            BaseType::UInt,
+            &u32::MAX.to_ne_bytes(),
+            "4294967295",
+        );
+        check_base_type_format(BaseType::Int8, &(-4i8).to_ne_bytes(), "-4");
+        check_base_type_format(BaseType::UInt8, &129u8.to_ne_bytes(), "129");
+        check_base_type_format(BaseType::Int16, &(-4i16).to_ne_bytes(), "-4");
+        check_base_type_format(
+            BaseType::UInt16,
+            &32769u16.to_ne_bytes(),
+            "32769"
+        );
+        check_base_type_format(BaseType::Int64, &(-4i64).to_ne_bytes(), "-4");
+        check_base_type_format(
+            BaseType::UInt64,
+            &u64::MAX.to_ne_bytes(),
+            "18446744073709551615"
+        );
+        check_base_type_format(
+            BaseType::Float16,
+            &0xc000u16.to_ne_bytes(),
+            "-2"
+        );
+        check_base_type_format(
+            BaseType::Float,
+            &2.0f32.to_ne_bytes(),
+            "2"
+        );
+        check_base_type_format(
+            BaseType::Double,
+            &2.0f64.to_ne_bytes(),
+            "2"
+        );
     }
 }
