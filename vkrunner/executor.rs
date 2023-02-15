@@ -32,8 +32,6 @@ use crate::result;
 use crate::vk;
 use crate::requirements::Requirements;
 use crate::pipeline_set::{self, PipelineSet};
-use crate::logger::Logger;
-use crate::inspect::Inspector;
 use crate::tester;
 use std::ffi::{c_void, c_int};
 use std::fmt;
@@ -116,11 +114,7 @@ struct ExternalData {
 
 #[derive(Debug)]
 pub struct Executor {
-    // Configuration from the Config
-    logger: Rc<RefCell<Logger>>,
-    inspector: Option<Inspector>,
-    show_disassembly: bool,
-    device_id: Option<usize>,
+    config: Rc<RefCell<Config>>,
 
     window: Option<Rc<Window>>,
     context: Option<Rc<Context>>,
@@ -156,12 +150,9 @@ impl Executor {
         }
     }
 
-    pub fn new(config: &Config) -> Executor {
+    pub fn new(config: Rc<RefCell<Config>>) -> Executor {
         Executor {
-            logger: config.logger(),
-            inspector: config.inspector(),
-            show_disassembly: config.show_disassembly(),
-            device_id: config.device_id(),
+            config,
 
             window: None,
             context: None,
@@ -203,7 +194,10 @@ impl Executor {
                     e.vk_device,
                 )?)
             },
-            None => Ok(Context::new(requirements, self.device_id)?),
+            None => Ok(Context::new(
+                requirements,
+                self.config.borrow().device_id()
+            )?),
         }
     }
 
@@ -256,17 +250,17 @@ impl Executor {
         let window = self.window_for_script(script, Rc::clone(&context))?;
 
         let pipeline_set = PipelineSet::new(
-            &mut self.logger.borrow_mut(),
+            &mut self.config.borrow().logger().borrow_mut(),
             Rc::clone(&window),
             script,
-            self.show_disassembly,
+            self.config.borrow().show_disassembly(),
         )?;
 
         tester::run(
             window.as_ref(),
             &pipeline_set,
             script,
-            self.inspector.clone(),
+            self.config.borrow().inspector().clone(),
         )?;
 
         Ok(())
@@ -281,8 +275,18 @@ impl Executor {
 }
 
 #[no_mangle]
-pub extern "C" fn vr_executor_new(config: &RefCell<Config>) -> *mut Executor {
-    Box::into_raw(Box::new(Executor::new(&config.borrow())))
+pub extern "C" fn vr_executor_new(
+    config: *const RefCell<Config>
+) -> *mut Executor {
+    let config = unsafe { Rc::from_raw(config) };
+
+    let executor = Box::into_raw(Box::new(Executor::new(Rc::clone(&config))));
+
+    // Forget the config because we don’t want to steal the caller’s
+    // reference
+    std::mem::forget(config);
+
+    executor
 }
 
 #[no_mangle]
