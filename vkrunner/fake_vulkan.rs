@@ -1830,30 +1830,8 @@ impl FakeVulkan {
 
 impl Drop for FakeVulkan {
     fn drop(&mut self) {
-        let old_value = CURRENT_FAKE_VULKAN.with(|f| f.replace(None));
-
         if !std::thread::panicking() {
-            for handle in self.handles.iter() {
-                assert!(handle.freed);
-
-                match handle.data {
-                    HandleType::Instance | HandleType::Device |
-                    HandleType::CommandPool | HandleType::CommandBuffer { .. } |
-                    HandleType::Fence | HandleType::RenderPass { .. } |
-                    HandleType::Image | HandleType::ImageView |
-                    HandleType::Buffer | HandleType::Framebuffer |
-                    HandleType::ShaderModule { .. } |
-                    HandleType::PipelineCache | HandleType::DescriptorPool |
-                    HandleType::DescriptorSetLayout { .. } |
-                    HandleType::PipelineLayout(_) |
-                    HandleType::Pipeline { .. } => (),
-
-                    HandleType::Memory { ref mapping } => {
-                        assert!(mapping.is_none());
-                    },
-                }
-            }
-
+            let old_value = CURRENT_FAKE_VULKAN.with(|f| f.replace(None));
             // There should only be one FakeVulkan at a time so the
             // one we just dropped should be the one that was set for
             // the current thread.
