@@ -497,34 +497,3 @@ This can by compiled using a command like the following after running
 `make install` on VkRunner:
 
     cc -o myrunner myrunner.c $(pkg-config --cflags --libs vkrunner)
-
-## Android
-
-VkRunner supports Android NDK build which generates the VkRunner static library
-and executable for Android.
-
-- Download [Android NDK](https://developer.android.com/ndk/downloads/).
-- Run the following commands:
-
-```
-export ANDROID_NDK=/path/to/your/ndk
-
-cd <vkrunner-dir>
-mkdir build && cd build
-
-mkdir libs
-mkdir app
-
-$ANDROID_NDK/ndk-build -C ../android_test     \
-                      NDK_PROJECT_PATH=.      \
-                      NDK_LIBS_OUT=`pwd`/libs \
-                      NDK_APP_OUT=`pwd`/app
-```
-
-- You can see the generated shared library in
-`build/app/local/arm64-v8a/libvkrunner.a`.
-
-- The vkrunner executable which you can run directly on a device will
-  be in `build/app/local/arm64-v8a/vkrunner`. You may want to
-  first convert any shader scripts to binary SPIR-V using
-  `precompile-script.py` as described above.

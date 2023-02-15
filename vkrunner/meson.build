@@ -15,7 +15,7 @@ vkrunner_public_headers = [
    'vkrunner.h',
 ]
 
-vkrunner_deps = []
+vkrunner_deps = [m_dep]
 
 vkrunner_lib = library('vkrunner',
                        rust_crate_type : 'staticlib',
