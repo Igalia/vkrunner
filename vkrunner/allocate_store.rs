@@ -170,8 +170,36 @@ pub fn allocate_image(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::fake_vulkan::FakeVulkan;
+    use crate::fake_vulkan::{FakeVulkan, HandleType};
     use crate::requirements::Requirements;
+
+    fn call_with_temp_buffer(
+        fake_vulkan: &mut FakeVulkan,
+        context: &Context,
+        memory_type_flags: vk::VkMemoryPropertyFlags,
+    ) -> Result<(vk::VkDeviceMemory, u32), String> {
+        let buffer = fake_vulkan.add_handle(HandleType::Buffer);
+
+        let res = allocate_buffer(context, memory_type_flags, buffer);
+
+        fake_vulkan.get_handle_mut(buffer).freed = true;
+
+        res
+    }
+
+    fn call_with_temp_image(
+        fake_vulkan: &mut FakeVulkan,
+        context: &Context,
+        memory_type_flags: vk::VkMemoryPropertyFlags,
+    ) -> Result<(vk::VkDeviceMemory, u32), String> {
+        let image = fake_vulkan.add_handle(HandleType::Image);
+
+        let res = allocate_image(context, memory_type_flags, image);
+
+        fake_vulkan.get_handle_mut(image).freed = true;
+
+        res
+    }
 
     fn do_allocate_buffer(
         memory_property_flags: &[u32],
@@ -193,10 +221,10 @@ mod test {
 
         fake_vulkan.set_override();
         let context = Context::new(&mut Requirements::new(), None).unwrap();
-        allocate_buffer(
+        call_with_temp_buffer(
+            &mut fake_vulkan,
             &context,
             memory_type_flags,
-            1usize as vk::VkBuffer, // fake buffer handle
         ).map(|(memory, memory_type)| (
             memory,
             memory_type,
@@ -282,12 +310,12 @@ mod test {
 
     #[test]
     fn buffer_error() {
-        let (_fake_vulkan, context) = make_error_context();
+        let (mut fake_vulkan, context) = make_error_context();
 
-        let err = allocate_buffer(
+        let err = call_with_temp_buffer(
+            &mut fake_vulkan,
             &context,
             0, // memory_type_flags
-            1usize as vk::VkBuffer, // fake buffer handle
         ).unwrap_err();
 
         assert_eq!(err, "vkAllocateMemory failed");
@@ -295,12 +323,12 @@ mod test {
 
     #[test]
     fn image_error() {
-        let (_fake_vulkan, context) = make_error_context();
+        let (mut fake_vulkan, context) = make_error_context();
 
-        let err = allocate_image(
+        let err = call_with_temp_image(
+            &mut fake_vulkan,
             &context,
             0, // memory_type_flags
-            1usize as vk::VkImage, // fake image handle
         ).unwrap_err();
 
         assert_eq!(err, "vkAllocateMemory failed");
@@ -317,10 +345,10 @@ mod test {
         fake_vulkan.set_override();
         let context = Context::new(&mut Requirements::new(), None).unwrap();
 
-        let (device_memory, memory_type) = allocate_image(
+        let (device_memory, memory_type) = call_with_temp_image(
+            &mut fake_vulkan,
             &context,
             0, // memory_type_flags
-            1usize as vk::VkImage, // fake buffer handle
         ).unwrap();
 
         assert!(!device_memory.is_null());
