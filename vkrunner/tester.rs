@@ -1622,3 +1622,660 @@ pub fn run(
         Err(Error::CommandErrors(errors))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::fake_vulkan::{FakeVulkan, Command, HandleType, ClearAttachment};
+    use crate::requirements::Requirements;
+    use crate::logger::Logger;
+    use crate::source::Source;
+    use crate::window_format::WindowFormat;
+    use std::ffi::c_void;
+
+    #[derive(Debug)]
+    struct TestData {
+        pipeline_set: PipelineSet,
+        window: Rc<Window>,
+        context: Rc<Context>,
+        fake_vulkan: Box<FakeVulkan>,
+    }
+
+    impl TestData {
+        fn new_full(
+            source: &str,
+            inspector: Option<Inspector>,
+        ) -> Result<TestData, Error> {
+            let mut fake_vulkan = FakeVulkan::new();
+
+            fake_vulkan.physical_devices.push(Default::default());
+            fake_vulkan.physical_devices[0].format_properties.insert(
+                vk::VK_FORMAT_B8G8R8A8_UNORM,
+                vk::VkFormatProperties {
+                    linearTilingFeatures: 0,
+                    optimalTilingFeatures:
+                    vk::VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT
+                        | vk::VK_FORMAT_FEATURE_BLIT_SRC_BIT,
+                    bufferFeatures: 0,
+                },
+            );
+            fake_vulkan.physical_devices[0].format_properties.insert(
+                vk::VK_FORMAT_D24_UNORM_S8_UINT,
+                vk::VkFormatProperties {
+                    linearTilingFeatures: 0,
+                    optimalTilingFeatures:
+                    vk::VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                    bufferFeatures: 0,
+                },
+            );
+
+            let memory_properties =
+                &mut fake_vulkan.physical_devices[0].memory_properties;
+            memory_properties.memoryTypes[0].propertyFlags =
+                vk::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+            memory_properties.memoryTypeCount = 1;
+            fake_vulkan.memory_requirements.memoryTypeBits = 1;
+
+            fake_vulkan.set_override();
+            let context = Rc::new(Context::new(
+                &Requirements::new(),
+                None, // device_id
+            ).unwrap());
+
+            let source = Source::from_string(source.to_string());
+            let script = Script::load(&source).unwrap();
+
+            let window = Rc::new(Window::new(
+                Rc::clone(&context),
+                script.window_format(),
+            ).unwrap());
+
+            let mut logger = Logger::new(None, ptr::null_mut());
+
+            let pipeline_set = PipelineSet::new(
+                &mut logger,
+                Rc::clone(&window),
+                &script,
+                false, // show_disassembly
+            ).unwrap();
+
+            run(
+                &window,
+                &pipeline_set,
+                &script,
+                inspector,
+            )?;
+
+            Ok(TestData {
+                pipeline_set,
+                window,
+                context,
+                fake_vulkan,
+            })
+        }
+
+        fn new(source: &str) -> Result<TestData, Error> {
+            TestData::new_full(
+                source,
+                None, // inspector
+            )
+        }
+    }
+
+    #[test]
+    fn rectangle() {
+        let test_data = TestData::new(
+            "[test]\n\
+             draw rect -1 -1 2 2"
+        ).unwrap();
+
+        let mut commands = test_data.fake_vulkan.commands.iter();
+
+        let &Command::BeginRenderPass(ref begin_info) = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(begin_info.renderPass, test_data.window.render_passes()[0]);
+        assert_eq!(begin_info.framebuffer, test_data.window.framebuffer());
+        assert_eq!(begin_info.renderArea.offset.x, 0);
+        assert_eq!(begin_info.renderArea.offset.y, 0);
+        assert_eq!(
+            begin_info.renderArea.extent.width as usize,
+            WindowFormat::default().width,
+        );
+        assert_eq!(
+            begin_info.renderArea.extent.height as usize,
+            WindowFormat::default().height,
+        );
+        assert_eq!(begin_info.clearValueCount, 0);
+
+        let &Command::BindPipeline {
+            bind_point,
+            pipeline,
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(test_data.pipeline_set.pipelines().len(), 1);
+        assert_eq!(test_data.pipeline_set.pipelines()[0], pipeline);
+        assert_eq!(bind_point, vk::VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+        let &Command::BindVertexBuffers {
+            first_binding,
+            ref buffers,
+            ref offsets,
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(first_binding, 0);
+        assert_eq!(buffers.len(), 1);
+        assert_eq!(offsets, &[0]);
+
+        let HandleType::Buffer { memory: Some(memory), .. } =
+            test_data.fake_vulkan.get_freed_handle(buffers[0]).data
+        else { unreachable!("Failed to get buffer memory"); };
+
+        let HandleType::Memory { ref contents, .. } =
+            test_data.fake_vulkan.get_freed_handle(memory).data
+        else { unreachable!("Mismatched handle"); };
+
+        let mut expected_contents = Vec::<u8>::new();
+        for component in [
+            -1f32, -1f32, 0f32,
+            1f32, -1f32, 0f32,
+            -1f32, 1f32, 0f32,
+            1f32, 1f32, 0f32,
+        ] {
+            expected_contents.extend(&component.to_ne_bytes());
+        }
+        assert_eq!(contents, &expected_contents);
+
+        let &Command::Draw {
+            vertex_count,
+            instance_count,
+            first_vertex,
+            first_instance,
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(vertex_count, 4);
+        assert_eq!(instance_count, 1);
+        assert_eq!(first_vertex, 0);
+        assert_eq!(first_instance, 0);
+
+        assert!(matches!(commands.next(), Some(Command::EndRenderPass)));
+
+        let &Command::PipelineBarrier {
+            ref image_memory_barriers,
+            ..
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+        assert_eq!(image_memory_barriers.len(), 1);
+        assert_eq!(
+            image_memory_barriers[0].image,
+            test_data.window.color_image()
+        );
+
+        let &Command::CopyImageToBuffer {
+            src_image,
+            dst_buffer,
+            ..
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(src_image, test_data.window.color_image());
+        assert_eq!(dst_buffer, test_data.window.linear_buffer());
+
+        let &Command::PipelineBarrier {
+            ref image_memory_barriers,
+            ..
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+        assert_eq!(image_memory_barriers.len(), 1);
+        assert_eq!(
+            image_memory_barriers[0].image,
+            test_data.window.color_image()
+        );
+
+        let &Command::PipelineBarrier {
+            ref buffer_memory_barriers,
+            ..
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+        assert_eq!(buffer_memory_barriers.len(), 1);
+        assert_eq!(
+            buffer_memory_barriers[0].buffer,
+            test_data.window.linear_buffer()
+        );
+
+        assert!(commands.next().is_none());
+
+        // There should only be one flush with the RectangleVertex vbo
+        assert_eq!(test_data.fake_vulkan.memory_flushes.len(), 1);
+
+        assert_eq!(test_data.fake_vulkan.memory_invalidations.len(), 1);
+        assert_eq!(
+            test_data.fake_vulkan.memory_invalidations[0].memory,
+            test_data.window.linear_memory(),
+        );
+
+        let HandleType::Fence { reset_count, wait_count } =
+            test_data.fake_vulkan.get_freed_handle(
+                test_data.context.fence()
+            ).data
+        else { unreachable!("Bad handle"); };
+
+        assert_eq!(reset_count, 1);
+        assert_eq!(wait_count, 1);
+    }
+
+    #[test]
+    fn vbo() {
+        let test_data = TestData::new(
+            "[vertex data]\n\
+             0/R32_SFLOAT\n\
+             1\n\
+             2\n\
+             3\n\
+             [test]\n\
+             draw arrays TRIANGLE_LIST 0 3"
+        ).unwrap();
+
+        let mut commands = test_data.fake_vulkan.commands.iter();
+
+        assert!(matches!(
+            commands.next(),
+            Some(Command::BeginRenderPass { .. })
+        ));
+
+        let &Command::BindVertexBuffers {
+            first_binding,
+            ref buffers,
+            ref offsets,
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(first_binding, 0);
+        assert_eq!(buffers.len(), 1);
+        assert_eq!(offsets, &[0]);
+
+        let HandleType::Buffer { memory: Some(memory), .. } =
+            test_data.fake_vulkan.get_freed_handle(buffers[0]).data
+        else { unreachable!("Failed to get buffer memory"); };
+
+        let HandleType::Memory { ref contents, .. } =
+            test_data.fake_vulkan.get_freed_handle(memory).data
+        else { unreachable!("Mismatched handle"); };
+
+        let mut expected_contents = Vec::<u8>::new();
+        for component in [1f32, 2f32, 3f32] {
+            expected_contents.extend(&component.to_ne_bytes());
+        }
+        assert_eq!(contents, &expected_contents);
+
+        assert!(matches!(commands.next(), Some(Command::BindPipeline { .. })));
+
+        let &Command::Draw {
+            vertex_count,
+            instance_count,
+            first_vertex,
+            first_instance,
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(vertex_count, 3);
+        assert_eq!(instance_count, 1);
+        assert_eq!(first_vertex, 0);
+        assert_eq!(first_instance, 0);
+    }
+
+    #[test]
+    fn dispatch_compute() {
+        let test_data = TestData::new(
+            "[test]\n\
+             compute 1 2 3"
+        ).unwrap();
+
+        let mut commands = test_data.fake_vulkan.commands.iter();
+
+        assert!(matches!(commands.next(), Some(Command::BindPipeline { .. })));
+
+        let &Command::Dispatch { x, y, z } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!((x, y, z), (1, 2, 3));
+
+        assert!(commands.next().is_none());
+    }
+
+    #[test]
+    fn clear() {
+        let test_data = TestData::new(
+            "[test]\n\
+             clear color 1 2 3 4
+             clear"
+        ).unwrap();
+
+        let mut commands = test_data.fake_vulkan.commands.iter();
+
+        assert!(matches!(
+            commands.next(),
+            Some(Command::BeginRenderPass { .. })
+        ));
+
+        let &Command::ClearAttachments {
+            ref attachments,
+            ref rects,
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(attachments.len(), 1);
+
+        match &attachments[0] {
+            &ClearAttachment::Color { attachment, value } => {
+                assert_eq!(attachment, 0);
+                assert_eq!(value, [1f32, 2f32, 3f32, 4f32]);
+            },
+            _ => unreachable!("unexepected clear attachment type"),
+        }
+
+        assert_eq!(rects.len(), 1);
+        assert_eq!(
+            rects[0].rect.extent.width as usize,
+            WindowFormat::default().width
+        );
+        assert_eq!(
+            rects[0].rect.extent.height as usize,
+            WindowFormat::default().height
+        );
+    }
+
+    #[test]
+    fn clear_depth_stencil() {
+        let test_data = TestData::new(
+            "[require]\n\
+             depthstencil D24_UNORM_S8_UINT\n\
+             [test]\n\
+             clear depth 2.0\n\
+             clear stencil 5\n\
+             clear"
+        ).unwrap();
+
+        let mut commands = test_data.fake_vulkan.commands.iter();
+
+        assert!(matches!(
+            commands.next(),
+            Some(Command::BeginRenderPass { .. })
+        ));
+
+        let &Command::ClearAttachments {
+            ref attachments,
+            ref rects,
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(attachments.len(), 2);
+
+        match &attachments[1] {
+            &ClearAttachment::DepthStencil { aspect_mask, value } => {
+                assert_eq!(
+                    aspect_mask,
+                    vk::VK_IMAGE_ASPECT_DEPTH_BIT
+                        | vk::VK_IMAGE_ASPECT_STENCIL_BIT
+                );
+                assert_eq!(value.depth, 2.0);
+                assert_eq!(value.stencil, 5);
+            },
+            _ => unreachable!("unexepected clear attachment type"),
+        }
+
+        assert_eq!(rects.len(), 1);
+        assert_eq!(
+            rects[0].rect.extent.width as usize,
+            WindowFormat::default().width
+        );
+        assert_eq!(
+            rects[0].rect.extent.height as usize,
+            WindowFormat::default().height
+        );
+    }
+
+    #[test]
+    fn push_constants() {
+        let test_data = TestData::new(
+            "[test]\n\
+             push uint8_t 1 12\n\
+             push u8vec2 2 13 14"
+        ).unwrap();
+
+        let mut commands = test_data.fake_vulkan.commands.iter();
+
+        let &Command::PushConstants {
+            layout,
+            stage_flags,
+            offset,
+            ref values,
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(layout, test_data.pipeline_set.layout());
+        assert_eq!(stage_flags, 0);
+        assert_eq!(offset, 1);
+        assert_eq!(values.as_slice(), [12].as_slice());
+
+        let &Command::PushConstants {
+            layout,
+            stage_flags,
+            offset,
+            ref values,
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(layout, test_data.pipeline_set.layout());
+        assert_eq!(stage_flags, 0);
+        assert_eq!(offset, 2);
+        assert_eq!(values.as_slice(), [13, 14].as_slice());
+    }
+
+    #[test]
+    fn set_buffer_data() {
+        let test_data = TestData::new(
+            "[fragment shader]\n\
+             03 02 23 07\n\
+             [test]\n\
+             ssbo 5 subdata uint8_t 1 1 2 3\n\
+             # draw command to make it flush the memory\n\
+             draw rect -1 -1 2 2"
+        ).unwrap();
+
+        let &Command::BindDescriptorSets {
+            first_set,
+            ref descriptor_sets,
+            ..
+        } = test_data.fake_vulkan.commands.iter().find(|command| {
+            matches!(command, Command::BindDescriptorSets { .. })
+        }).unwrap()
+        else { unreachable!() };
+
+        assert_eq!(first_set, 0);
+        assert_eq!(descriptor_sets.len(), 1);
+
+        let HandleType::DescriptorSet {
+            ref bindings
+        } = test_data.fake_vulkan.get_freed_handle(descriptor_sets[0]).data
+        else { unreachable!("bad handle"); };
+
+        let buffer_handle = bindings[&5].info.buffer;
+
+        let HandleType::Buffer {
+            memory: Some(memory_handle),
+            ..
+        } = test_data.fake_vulkan.get_freed_handle(buffer_handle).data
+        else { unreachable!("failed to get buffer memory"); };
+
+        let HandleType::Memory {
+            ref contents,
+            ..
+        } = test_data.fake_vulkan.get_freed_handle(memory_handle).data
+        else { unreachable!("bad handle"); };
+
+        assert_eq!(contents, &[0, 1, 2, 3]);
+
+        test_data.fake_vulkan.memory_flushes.iter().find(|flush| {
+            flush.memory == memory_handle
+        }).expect("expected ssbo memory to be flushed");
+    }
+
+    #[test]
+    fn probe_ssbo_success() {
+        TestData::new(
+            "[test]\n\
+             ssbo 5 subdata uint8_t 1 1 2 3\n\
+             probe ssbo u8vec4 5 0 == 0 1 2 3"
+        ).expect("expected ssbo probe to succeed");
+    }
+
+    #[test]
+    fn probe_ssbo_fail() {
+        let error = TestData::new(
+            "[test]\n\
+             ssbo 5 subdata uint8_t 1 1 2 3\n\
+             probe ssbo u8vec4 5 0 == 0 1 2 4"
+        ).unwrap_err();
+
+        assert_eq!(
+            &error.to_string(),
+            "line 3: SSBO probe failed\n\
+             \x20 Reference: 0 1 2 4\n\
+             \x20 Observed:  0 1 2 3",
+        );
+    }
+
+    #[test]
+    fn probe_rect_success() {
+        TestData::new(
+            "[test]\n\
+             probe all rgba 0 0 0 0"
+        ).expect("expected probe to succeed");
+    }
+
+    #[test]
+    fn probe_rect_fail() {
+        let error = TestData::new(
+            "[test]\n\
+             probe all rgba 1 0 0 0\n\
+             probe all rgba 1 2 0 0"
+        ).unwrap_err();
+
+        assert_eq!(
+            &error.to_string(),
+            "line 2: Probe color at (0,0)\n\
+             \x20 Expected: 1 0 0 0\n\
+             \x20 Observed: 0 0 0 0\n\
+             line 3: Probe color at (0,0)\n\
+             \x20 Expected: 1 2 0 0\n\
+             \x20 Observed: 0 0 0 0"
+        );
+    }
+
+    #[test]
+    fn indices() {
+        let test_data = TestData::new(
+            "[indices]\n\
+             0 1 2\n\
+             [test]\n\
+             draw arrays indexed TRIANGLE_LIST 0 3"
+        ).unwrap();
+
+        let mut commands = test_data.fake_vulkan.commands.iter();
+
+        println!("{:#?}",commands);
+
+        assert!(matches!(
+            commands.next(),
+            Some(Command::BeginRenderPass { .. })
+        ));
+
+        assert!(matches!(commands.next(), Some(Command::BindPipeline { .. })));
+
+        let &Command::BindIndexBuffer {
+            buffer,
+            offset,
+            index_type,
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(offset, 0);
+        assert_eq!(index_type, vk::VK_INDEX_TYPE_UINT16);
+
+        let HandleType::Buffer { memory: Some(memory), .. } =
+            test_data.fake_vulkan.get_freed_handle(buffer).data
+        else { unreachable!("Failed to get buffer memory"); };
+
+        let HandleType::Memory { ref contents, .. } =
+            test_data.fake_vulkan.get_freed_handle(memory).data
+        else { unreachable!("Mismatched handle"); };
+
+        let mut expected_contents = Vec::<u8>::new();
+        for component in 0u16..3u16 {
+            expected_contents.extend(&component.to_ne_bytes());
+        }
+        assert_eq!(contents, &expected_contents);
+
+        let &Command::DrawIndexed {
+            index_count,
+            instance_count,
+            first_index,
+            vertex_offset,
+            first_instance,
+        } = commands.next().unwrap()
+        else { unreachable!("Bad command"); };
+
+        assert_eq!(index_count, 3);
+        assert_eq!(instance_count, 1);
+        assert_eq!(first_index, 0);
+        assert_eq!(vertex_offset, 0);
+        assert_eq!(first_instance, 0);
+    }
+
+    extern "C" fn inspector_cb(data: &inspect::Data, user_data: *mut c_void) {
+        unsafe {
+            *(user_data as *mut bool) = true;
+        }
+
+        let window_format = WindowFormat::default();
+
+        assert_eq!(data.color_buffer.width as usize, window_format.width);
+        assert_eq!(data.color_buffer.height as usize, window_format.height);
+        assert!(data.color_buffer.stride >= window_format.width * 4);
+        assert_eq!(
+            data.color_buffer.format,
+            window_format.color_format as *const Format
+        );
+        assert!(!data.color_buffer.data.is_null());
+
+        assert_eq!(data.n_buffers, 1);
+
+        let buffer = unsafe { &*data.buffers };
+
+        assert_eq!(buffer.binding, 5);
+        assert_eq!(buffer.size, 1024);
+        assert!(!buffer.data.is_null());
+    }
+
+    #[test]
+    fn inspector() {
+        let mut inspector_called = false;
+
+        let inspector = inspect::Inspector::new(
+            inspector_cb,
+            ptr::addr_of_mut!(inspector_called).cast(),
+        );
+
+        TestData::new_full(
+            "[test]\n\
+             ssbo 5 1024",
+            Some(inspector),
+        ).expect("expected test to pass");
+
+        assert!(inspector_called);
+    }
+}
