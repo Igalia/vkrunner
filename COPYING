@@ -34,11 +34,8 @@ project.
 
 The following files borrowed from Piglit have the copyright message below:
 
-vr-half-float.c
-vr-hex.c
-vr-hex.h
-vr-subprocess.c
-vr-subprocess.h
+half_float.rs
+hex.rs
 
 /*
  * Copyright (c) The Piglit project 2007
