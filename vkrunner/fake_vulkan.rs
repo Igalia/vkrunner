@@ -163,17 +163,113 @@ pub struct PipelineLayoutCreateInfo {
 }
 
 #[derive(Debug)]
+// It would be nice to just store the VkClearAttachment directly but
+// that can’t derive Debug because it is a union and it would be
+// annoying to have to manually implement Debug.
+pub enum ClearAttachment {
+    Color {
+        attachment: u32,
+        value: [f32; 4],
+    },
+    DepthStencil {
+        aspect_mask: vk::VkImageAspectFlags,
+        value: vk::VkClearDepthStencilValue,
+    },
+}
+
+#[derive(Debug)]
+pub enum Command {
+    BeginRenderPass(vk::VkRenderPassBeginInfo),
+    EndRenderPass,
+    BindPipeline {
+        bind_point: vk::VkPipelineBindPoint,
+        pipeline: vk::VkPipeline,
+    },
+    BindVertexBuffers {
+        first_binding: u32,
+        buffers: Vec<vk::VkBuffer>,
+        offsets: Vec<vk::VkDeviceSize>,
+    },
+    BindIndexBuffer {
+        buffer: vk::VkBuffer,
+        offset: vk::VkDeviceSize,
+        index_type: vk::VkIndexType,
+    },
+    Draw {
+        vertex_count: u32,
+        instance_count: u32,
+        first_vertex: u32,
+        first_instance: u32,
+    },
+    DrawIndexed {
+        index_count: u32,
+        instance_count: u32,
+        first_index: u32,
+        vertex_offset: i32,
+        first_instance: u32,
+    },
+    Dispatch {
+        x: u32,
+        y: u32,
+        z: u32,
+    },
+    ClearAttachments {
+        attachments: Vec<ClearAttachment>,
+        rects: Vec<vk::VkClearRect>,
+    },
+    PipelineBarrier {
+        src_stage_mask: vk::VkPipelineStageFlags,
+        dst_stage_mask: vk::VkPipelineStageFlags,
+        dependency_flags: vk::VkDependencyFlags,
+        memory_barriers: Vec<vk::VkMemoryBarrier>,
+        buffer_memory_barriers: Vec<vk::VkBufferMemoryBarrier>,
+        image_memory_barriers: Vec<vk::VkImageMemoryBarrier>,
+    },
+    CopyImageToBuffer {
+        src_image: vk::VkImage,
+        src_image_layout: vk::VkImageLayout,
+        dst_buffer: vk::VkBuffer,
+        regions: Vec<vk::VkBufferImageCopy>,
+    },
+    PushConstants {
+        layout: vk::VkPipelineLayout,
+        stage_flags: vk::VkShaderStageFlags,
+        offset: u32,
+        values: Vec<u8>,
+    },
+    BindDescriptorSets {
+        pipeline_bind_point: vk::VkPipelineBindPoint,
+        layout: vk::VkPipelineLayout,
+        first_set: u32,
+        descriptor_sets: Vec<vk::VkDescriptorSet>,
+    },
+}
+
+#[derive(Debug)]
 pub enum HandleType {
     Instance,
     Device,
     CommandPool,
-    CommandBuffer { command_pool: usize },
-    Fence,
-    Memory { mapping: Option<Vec<u8>> },
+    CommandBuffer {
+        command_pool: usize,
+        commands: Vec<Command>,
+        begun: bool,
+    },
+    Fence {
+        reset_count: usize,
+        wait_count: usize,
+    },
+    Memory {
+        contents: Vec<u8>,
+        mapped: bool,
+    },
     RenderPass { attachments: Vec<vk::VkAttachmentDescription> },
     Image,
     ImageView,
-    Buffer,
+    Buffer {
+        create_info: vk::VkBufferCreateInfo,
+        memory: Option<vk::VkDeviceMemory>,
+    },
     Framebuffer,
     ShaderModule { code: Vec<u32> },
     PipelineCache,
@@ -181,6 +277,13 @@ pub enum HandleType {
     DescriptorSetLayout { bindings: Vec<vk::VkDescriptorSetLayoutBinding> },
     PipelineLayout(PipelineLayoutCreateInfo),
     Pipeline(PipelineCreateInfo),
+    DescriptorSet { bindings: HashMap<u32, Binding> },
+}
+
+#[derive(Debug)]
+pub struct Binding {
+    pub descriptor_type: vk::VkDescriptorType,
+    pub info: vk::VkDescriptorBufferInfo,
 }
 
 #[derive(Debug)]
@@ -210,6 +313,12 @@ pub struct FakeVulkan {
 
     /// Log of calls to vkFlushMappedMemoryRanges
     pub memory_flushes: Vec<vk::VkMappedMemoryRange>,
+    /// Log of calls to vkInvalidateMappedMemoryRanges
+    pub memory_invalidations: Vec<vk::VkMappedMemoryRange>,
+
+    /// All of the commands from command queues that were submitted
+    /// with vkQueueSubmit
+    pub commands: Vec<Command>,
 
     handles: Vec<Handle>,
 
@@ -229,6 +338,8 @@ impl FakeVulkan {
             has_enumerate_instance_version: false,
             result_queue: HashMap::new(),
             memory_flushes: Vec::new(),
+            memory_invalidations: Vec::new(),
+            commands: Vec::new(),
         });
 
         CURRENT_FAKE_VULKAN.with(|f| {
@@ -560,6 +671,116 @@ impl FakeVulkan {
             "vkFlushMappedMemoryRanges" => unsafe {
                 transmute::<vk::PFN_vkFlushMappedMemoryRanges, _>(
                     Some(FakeVulkan::flush_mapped_memory_ranges)
+                )
+            },
+            "vkInvalidateMappedMemoryRanges" => unsafe {
+                transmute::<vk::PFN_vkInvalidateMappedMemoryRanges, _>(
+                    Some(FakeVulkan::invalidate_mapped_memory_ranges)
+                )
+            },
+            "vkQueueSubmit" => unsafe {
+                transmute::<vk::PFN_vkQueueSubmit, _>(
+                    Some(FakeVulkan::queue_submit)
+                )
+            },
+            "vkAllocateDescriptorSets" => unsafe {
+                transmute::<vk::PFN_vkAllocateDescriptorSets, _>(
+                    Some(FakeVulkan::allocate_descriptor_sets)
+                )
+            },
+            "vkFreeDescriptorSets" => unsafe {
+                transmute::<vk::PFN_vkFreeDescriptorSets, _>(
+                    Some(FakeVulkan::free_descriptor_sets)
+                )
+            },
+            "vkUpdateDescriptorSets" => unsafe {
+                transmute::<vk::PFN_vkUpdateDescriptorSets, _>(
+                    Some(FakeVulkan::update_descriptor_sets)
+                )
+            },
+            "vkBeginCommandBuffer" => unsafe {
+                transmute::<vk::PFN_vkBeginCommandBuffer, _>(
+                    Some(FakeVulkan::begin_command_buffer)
+                )
+            },
+            "vkEndCommandBuffer" => unsafe {
+                transmute::<vk::PFN_vkEndCommandBuffer, _>(
+                    Some(FakeVulkan::end_command_buffer)
+                )
+            },
+            "vkCmdBeginRenderPass" => unsafe {
+                transmute::<vk::PFN_vkCmdBeginRenderPass, _>(
+                    Some(FakeVulkan::begin_render_pass)
+                )
+            },
+            "vkCmdEndRenderPass" => unsafe {
+                transmute::<vk::PFN_vkCmdEndRenderPass, _>(
+                    Some(FakeVulkan::end_render_pass)
+                )
+            },
+            "vkCmdBindPipeline" => unsafe {
+                transmute::<vk::PFN_vkCmdBindPipeline, _>(
+                    Some(FakeVulkan::bind_pipeline)
+                )
+            },
+            "vkCmdBindVertexBuffers" => unsafe {
+                transmute::<vk::PFN_vkCmdBindVertexBuffers, _>(
+                    Some(FakeVulkan::bind_vertex_buffers)
+                )
+            },
+            "vkCmdBindIndexBuffer" => unsafe {
+                transmute::<vk::PFN_vkCmdBindIndexBuffer, _>(
+                    Some(FakeVulkan::bind_index_buffer)
+                )
+            },
+            "vkCmdDraw" => unsafe {
+                transmute::<vk::PFN_vkCmdDraw, _>(
+                    Some(FakeVulkan::draw)
+                )
+            },
+            "vkCmdDrawIndexed" => unsafe {
+                transmute::<vk::PFN_vkCmdDrawIndexed, _>(
+                    Some(FakeVulkan::draw_indexed)
+                )
+            },
+            "vkCmdDispatch" => unsafe {
+                transmute::<vk::PFN_vkCmdDispatch, _>(
+                    Some(FakeVulkan::dispatch)
+                )
+            },
+            "vkCmdClearAttachments" => unsafe {
+                transmute::<vk::PFN_vkCmdClearAttachments, _>(
+                    Some(FakeVulkan::clear_attachments)
+                )
+            },
+            "vkCmdPipelineBarrier" => unsafe {
+                transmute::<vk::PFN_vkCmdPipelineBarrier, _>(
+                    Some(FakeVulkan::pipeline_barrier)
+                )
+            },
+            "vkCmdCopyImageToBuffer" => unsafe {
+                transmute::<vk::PFN_vkCmdCopyImageToBuffer, _>(
+                    Some(FakeVulkan::copy_image_to_buffer)
+                )
+            },
+            "vkCmdPushConstants" => unsafe {
+                transmute::<vk::PFN_vkCmdPushConstants, _>(
+                    Some(FakeVulkan::push_constants)
+                )
+            },
+            "vkCmdBindDescriptorSets" => unsafe {
+                transmute::<vk::PFN_vkCmdBindDescriptorSets, _>(
+                    Some(FakeVulkan::bind_descriptor_sets)
+                )
+            },
+            "vkResetFences" => unsafe {
+                transmute::<vk::PFN_vkResetFences, _>(
+                    Some(FakeVulkan::reset_fences)
+                )
+            },
+            "vkWaitForFences" => unsafe {
+                transmute::<vk::PFN_vkWaitForFences, _>(
+                    Some(FakeVulkan::wait_for_fences)
                 )
             },
             _ => None,
@@ -906,6 +1127,10 @@ impl FakeVulkan {
         handle
     }
 
+    pub fn get_freed_handle<T>(&self, handle: *mut T) -> &Handle {
+        &self.handles[FakeVulkan::handle_to_index(handle)]
+    }
+
     pub fn get_handle_mut<T>(&mut self, handle: *mut T) -> &mut Handle {
         let handle = &mut self.handles[FakeVulkan::handle_to_index(handle)];
 
@@ -929,6 +1154,11 @@ impl FakeVulkan {
         assert!(matches!(handle.data, HandleType::Image));
     }
 
+    fn check_descriptor_pool(&self, descriptor_pool: vk::VkDescriptorPool) {
+        let handle = self.get_handle(descriptor_pool);
+        assert!(matches!(handle.data, HandleType::DescriptorPool));
+    }
+
     fn check_image_view(&self, image_view: vk::VkImageView) {
         let handle = self.get_handle(image_view);
         assert!(matches!(handle.data, HandleType::ImageView));
@@ -937,6 +1167,36 @@ impl FakeVulkan {
     fn check_pipeline_cache(&self, pipeline_cache: vk::VkPipelineCache) {
         let handle = self.get_handle(pipeline_cache);
         assert!(matches!(handle.data, HandleType::PipelineCache));
+    }
+
+    fn check_fence(&self, fence: vk::VkFence) {
+        let handle = self.get_handle(fence);
+        assert!(matches!(handle.data, HandleType::Fence { .. }));
+    }
+
+    fn check_framebuffer(&self, framebuffer: vk::VkFramebuffer) {
+        let handle = self.get_handle(framebuffer);
+        assert!(matches!(handle.data, HandleType::Framebuffer));
+    }
+
+    fn check_render_pass(&self, render_pass: vk::VkRenderPass) {
+        let handle = self.get_handle(render_pass);
+        assert!(matches!(handle.data, HandleType::RenderPass { .. }));
+    }
+
+    fn check_pipeline(&self, pipeline: vk::VkPipeline) {
+        let handle = self.get_handle(pipeline);
+        assert!(matches!(handle.data, HandleType::Pipeline { .. }));
+    }
+
+    fn check_buffer(&self, buffer: vk::VkBuffer) {
+        let handle = self.get_handle(buffer);
+        assert!(matches!(handle.data, HandleType::Buffer { .. }));
+    }
+
+    fn check_memory(&self, memory: vk::VkDeviceMemory) {
+        let handle = self.get_handle(memory);
+        assert!(matches!(handle.data, HandleType::Memory { .. }));
     }
 
     extern "C" fn create_instance(
@@ -1067,6 +1327,8 @@ impl FakeVulkan {
                         command_pool: FakeVulkan::handle_to_index(
                             command_pool_handle
                         ),
+                        commands: Vec::new(),
+                        begun: false,
                     },
                 );
             }
@@ -1096,7 +1358,7 @@ impl FakeVulkan {
                 fake_vulkan.get_handle_mut(command_buffer);
 
             match command_buffer_handle.data {
-                HandleType::CommandBuffer { command_pool: handle_pool } => {
+                HandleType::CommandBuffer { command_pool: handle_pool, .. } => {
                     assert_eq!(
                         handle_pool,
                         FakeVulkan::handle_to_index(command_pool),
@@ -1125,7 +1387,10 @@ impl FakeVulkan {
         fake_vulkan.check_device(device);
 
         unsafe {
-            *fence_out = fake_vulkan.add_handle(HandleType::Fence);
+            *fence_out = fake_vulkan.add_handle(HandleType::Fence {
+                reset_count: 0,
+                wait_count: 0,
+            });
         }
 
         res
@@ -1141,7 +1406,7 @@ impl FakeVulkan {
         fake_vulkan.check_device(device);
 
         let handle = fake_vulkan.get_handle_mut(fence);
-        assert!(matches!(handle.data, HandleType::Fence));
+        assert!(matches!(handle.data, HandleType::Fence { .. }));
         handle.freed = true;
     }
 
@@ -1267,7 +1532,7 @@ impl FakeVulkan {
 
     extern "C" fn create_buffer(
         device: vk::VkDevice,
-        _create_info: *const vk::VkBufferCreateInfo,
+        create_info: *const vk::VkBufferCreateInfo,
         _allocator: *const vk::VkAllocationCallbacks,
         buffer_out: *mut vk::VkBuffer,
     ) -> vk::VkResult {
@@ -1281,8 +1546,15 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
+        let create_info = unsafe { &*create_info };
+
         unsafe {
-            *buffer_out = fake_vulkan.add_handle(HandleType::Buffer);
+            *buffer_out = fake_vulkan.add_handle(
+                HandleType::Buffer {
+                    create_info: create_info.clone(),
+                    memory: None,
+                }
+            );
         }
 
         res
@@ -1298,7 +1570,7 @@ impl FakeVulkan {
         fake_vulkan.check_device(device);
 
         let handle = fake_vulkan.get_handle_mut(buffer);
-        assert!(matches!(handle.data, HandleType::Buffer));
+        assert!(matches!(handle.data, HandleType::Buffer { .. }));
         handle.freed = true;
     }
 
@@ -1359,34 +1631,44 @@ impl FakeVulkan {
         fake_vulkan.next_result("vkEnumerateInstanceVersion")
     }
 
-    fn get_memory_requirements(
+    extern "C" fn get_buffer_memory_requirements(
+        device: vk::VkDevice,
+        buffer: vk::VkBuffer,
         memory_requirements: *mut vk::VkMemoryRequirements,
     ) {
         let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let size = match fake_vulkan.get_handle(buffer).data {
+            HandleType::Buffer { ref create_info, .. } => create_info.size,
+            _ => unreachable!("mismatched handle"),
+        };
+
         unsafe {
             *memory_requirements = fake_vulkan.memory_requirements.clone();
+            (*memory_requirements).size = size;
         }
     }
 
-    extern "C" fn get_buffer_memory_requirements(
-        _device: vk::VkDevice,
-        _buffer: vk::VkBuffer,
-        memory_requirements: *mut vk::VkMemoryRequirements,
-    ) {
-        FakeVulkan::get_memory_requirements(memory_requirements);
-    }
-
     extern "C" fn get_image_memory_requirements(
-        _device: vk::VkDevice,
-        _buffer: vk::VkImage,
+        device: vk::VkDevice,
+        image: vk::VkImage,
         memory_requirements: *mut vk::VkMemoryRequirements,
     ) {
-        FakeVulkan::get_memory_requirements(memory_requirements);
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+        fake_vulkan.check_image(image);
+
+        unsafe {
+            *memory_requirements = fake_vulkan.memory_requirements;
+        }
     }
 
     extern "C" fn allocate_memory(
         device: vk::VkDevice,
-        _allocate_info: *const vk::VkMemoryAllocateInfo,
+        allocate_info: *const vk::VkMemoryAllocateInfo,
         _allocator: *const vk::VkAllocationCallbacks,
         memory: *mut vk::VkDeviceMemory,
     ) -> vk::VkResult {
@@ -1402,7 +1684,11 @@ impl FakeVulkan {
 
         unsafe {
             *memory = fake_vulkan.add_handle(HandleType::Memory {
-                mapping: None,
+                contents: vec![
+                    0u8;
+                    (*allocate_info).allocationSize as usize
+                ],
+                mapped: false,
             });
         }
 
@@ -1421,7 +1707,7 @@ impl FakeVulkan {
         let handle = fake_vulkan.get_handle_mut(memory);
 
         match handle.data {
-            HandleType::Memory { ref mapping } => assert!(mapping.is_none()),
+            HandleType::Memory { mapped, .. } => assert!(!mapped),
             _ => unreachable!("mismatched handle"),
         }
 
@@ -1429,13 +1715,31 @@ impl FakeVulkan {
     }
 
     extern "C" fn bind_buffer_memory(
-        _device: vk::VkDevice,
-        _buffer: vk::VkBuffer,
-        _memory: vk::VkDeviceMemory,
+        device: vk::VkDevice,
+        buffer: vk::VkBuffer,
+        memory: vk::VkDeviceMemory,
         _memory_offset: vk::VkDeviceSize,
     ) -> vk::VkResult {
         let fake_vulkan = FakeVulkan::current();
-        fake_vulkan.next_result("vkBindBufferMemory")
+
+        let res = fake_vulkan.next_result("vkBindBufferMemory");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+        fake_vulkan.check_memory(memory);
+
+        let HandleType::Buffer { memory: ref mut buffer_memory, .. } =
+            fake_vulkan.get_handle_mut(buffer).data
+        else { unreachable!("mismatched handle"); };
+
+        assert!(buffer_memory.is_none());
+
+        *buffer_memory = Some(memory);
+
+        res
     }
 
     extern "C" fn bind_image_memory(
@@ -1451,7 +1755,7 @@ impl FakeVulkan {
     extern "C" fn map_memory(
         device: vk::VkDevice,
         memory: vk::VkDeviceMemory,
-        _offset: vk::VkDeviceSize,
+        offset: vk::VkDeviceSize,
         size: vk::VkDeviceSize,
         _flags: vk::VkMemoryMapFlags,
         data_out: *mut *mut c_void,
@@ -1466,25 +1770,21 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let mapping = match fake_vulkan.get_handle_mut(memory).data {
-            HandleType::Memory { ref mut mapping } => mapping,
-            _ => unreachable!("mismatched handle"),
-        };
+        let HandleType::Memory { ref mut mapped, ref mut contents } =
+            fake_vulkan.get_handle_mut(memory).data
+        else { unreachable!("mismatched handle"); };
 
-        assert!(mapping.is_none());
-
-        let size = if size == vk::VK_WHOLE_SIZE as vk::VkDeviceSize {
-            10 * 1024 * 1024
-        } else {
-            size as usize
-        };
-
-        let mut data = Vec::new();
-        data.resize(size, 0);
+        assert!(!*mapped);
+        assert!(
+            size == vk::VK_WHOLE_SIZE as vk::VkDeviceSize
+                || (offset + size) as usize <= contents.len()
+        );
 
         unsafe {
-            *data_out = mapping.insert(data).as_mut_ptr().cast();
+            *data_out = contents[offset as usize..].as_mut_ptr().cast();
         }
+
+        *mapped = true;
 
         res
     }
@@ -1497,13 +1797,12 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let mapping = match fake_vulkan.get_handle_mut(memory).data {
-            HandleType::Memory { ref mut mapping } => mapping,
-            _ => unreachable!("mismatched handle"),
-        };
+        let HandleType::Memory { ref mut mapped, .. } =
+            fake_vulkan.get_handle_mut(memory).data
+        else { unreachable!("mismatched handle"); };
 
-        assert!(mapping.is_some());
-        *mapping = None;
+        assert!(*mapped);
+        *mapped = false;
     }
 
     extern "C" fn create_shader_module(
@@ -1832,6 +2131,668 @@ impl FakeVulkan {
         };
 
         fake_vulkan.memory_flushes.extend_from_slice(memory_ranges);
+
+        res
+    }
+
+    extern "C" fn invalidate_mapped_memory_ranges(
+        device: vk::VkDevice,
+        memory_range_count: u32,
+        memory_ranges: *const vk::VkMappedMemoryRange,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkInvalidateMappedMemoryRanges");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        let memory_ranges = unsafe {
+            std::slice::from_raw_parts(
+                memory_ranges,
+                memory_range_count as usize,
+            )
+        };
+
+        fake_vulkan.memory_invalidations.extend_from_slice(memory_ranges);
+
+        res
+    }
+
+    extern "C" fn queue_submit(
+        _queue: vk::VkQueue,
+        submit_count: u32,
+        submits: *const vk::VkSubmitInfo,
+        fence: vk::VkFence,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_fence(fence);
+
+        let res = fake_vulkan.next_result("vkQueueSubmit");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        let submits = unsafe {
+            std::slice::from_raw_parts(
+                submits,
+                submit_count as usize,
+            )
+        };
+
+        for submit in submits.iter() {
+            let command_buffers = unsafe {
+                std::slice::from_raw_parts(
+                    submit.pCommandBuffers,
+                    submit.commandBufferCount as usize,
+                )
+            };
+
+            for &command_buffer in command_buffers.iter() {
+                let HandleType::CommandBuffer { ref mut commands, begun, .. } =
+                    fake_vulkan.get_handle_mut(command_buffer).data
+                else {
+                    unreachable!("bad handle type")
+                };
+
+                assert!(!begun);
+
+                let commands = mem::take(commands);
+                fake_vulkan.commands.extend(commands);
+            }
+        }
+
+        res
+    }
+
+    extern "C" fn allocate_descriptor_sets(
+        device: vk::VkDevice,
+        allocate_info: *const vk::VkDescriptorSetAllocateInfo,
+        descriptor_sets: *mut vk::VkDescriptorSet,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkAllocateDescriptorSets");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        let descriptor_pool_handle = unsafe { (*allocate_info).descriptorPool };
+
+        fake_vulkan.check_descriptor_pool(descriptor_pool_handle);
+
+        let n_buffers = unsafe { (*allocate_info).descriptorSetCount };
+
+        for i in 0..(n_buffers as usize) {
+            unsafe {
+                *descriptor_sets.add(i) = fake_vulkan.add_handle(
+                    HandleType::DescriptorSet { bindings: HashMap::new() }
+                );
+            }
+        }
+
+        res
+    }
+
+    extern "C" fn free_descriptor_sets(
+        device: vk::VkDevice,
+        descriptor_pool: vk::VkDescriptorPool,
+        descriptor_set_count: u32,
+        descriptor_sets: *const vk::VkDescriptorSet,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkAllocateDescriptorSets");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        fake_vulkan.check_device(device);
+
+        fake_vulkan.check_descriptor_pool(descriptor_pool);
+
+        for i in 0..descriptor_set_count as usize {
+            let descriptor_set = unsafe {
+                *descriptor_sets.add(i)
+            };
+
+            let descriptor_set_handle =
+                fake_vulkan.get_handle_mut(descriptor_set);
+
+            match descriptor_set_handle.data {
+                HandleType::DescriptorSet { .. } => {
+                    descriptor_set_handle.freed = true;
+                },
+                _ => unreachable!("mismatched handle"),
+            }
+        }
+
+        res
+    }
+
+    extern "C" fn update_descriptor_sets(
+        device: vk::VkDevice,
+        descriptor_write_count: u32,
+        descriptor_writes: *const vk::VkWriteDescriptorSet,
+        _descriptor_copy_count: u32,
+        _descriptor_copies: *const vk::VkCopyDescriptorSet,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let descriptor_writes = unsafe {
+            std::slice::from_raw_parts(
+                descriptor_writes,
+                descriptor_write_count as usize,
+            )
+        };
+
+        for write in descriptor_writes.iter() {
+            assert_eq!(write.sType, vk::VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+            assert_eq!(write.descriptorCount, 1);
+
+            let HandleType::DescriptorSet { ref mut bindings } =
+                fake_vulkan.get_handle_mut(write.dstSet).data
+            else { unreachable!("mismatched handle type"); };
+
+            bindings.insert(
+                write.dstBinding,
+                Binding {
+                    descriptor_type: write.descriptorType,
+                    info: unsafe { &*write.pBufferInfo }.clone(),
+                },
+            );
+        }
+    }
+
+    extern "C" fn begin_command_buffer(
+        command_buffer: vk::VkCommandBuffer,
+        _begin_info: *const vk::VkCommandBufferBeginInfo,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkBeginCommandBuffer");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        let HandleType::CommandBuffer { ref mut begun, .. } =
+            fake_vulkan.get_handle_mut(command_buffer).data
+        else { unreachable!("mismatched handle"); };
+
+        assert!(!*begun);
+        *begun = true;
+
+        res
+    }
+
+    extern "C" fn end_command_buffer(
+        command_buffer: vk::VkCommandBuffer,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        let res = fake_vulkan.next_result("vkEndCommandBuffer");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        let HandleType::CommandBuffer { ref mut begun, .. } =
+            fake_vulkan.get_handle_mut(command_buffer).data
+        else { unreachable!("mismatched handle"); };
+
+        assert!(*begun);
+        *begun = false;
+
+        res
+    }
+
+    fn add_command(
+        &mut self,
+        command_buffer: vk::VkCommandBuffer,
+        command: Command,
+    ) {
+        let HandleType::CommandBuffer { ref mut commands, begun, .. } =
+            self.get_handle_mut(command_buffer).data
+        else { unreachable!("mismatched handle"); };
+
+        assert!(begun);
+
+        commands.push(command);
+    }
+
+    extern "C" fn begin_render_pass(
+        command_buffer: vk::VkCommandBuffer,
+        render_pass_begin: *const vk::VkRenderPassBeginInfo,
+        _contents: vk::VkSubpassContents,
+    ) {
+        let render_pass_begin = unsafe { &*render_pass_begin };
+
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_render_pass(render_pass_begin.renderPass);
+        fake_vulkan.check_framebuffer(render_pass_begin.framebuffer);
+
+        fake_vulkan.add_command(
+            command_buffer,
+            Command::BeginRenderPass(render_pass_begin.clone()),
+        );
+    }
+
+    extern "C" fn end_render_pass(
+        command_buffer: vk::VkCommandBuffer,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.add_command(command_buffer, Command::EndRenderPass);
+    }
+
+    extern "C" fn bind_pipeline(
+        command_buffer: vk::VkCommandBuffer,
+        pipeline_bind_point: vk::VkPipelineBindPoint,
+        pipeline: vk::VkPipeline,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_pipeline(pipeline);
+
+        fake_vulkan.add_command(
+            command_buffer,
+            Command::BindPipeline {
+                bind_point: pipeline_bind_point,
+                pipeline,
+            },
+        );
+    }
+
+    extern "C" fn bind_vertex_buffers(
+        command_buffer: vk::VkCommandBuffer,
+        first_binding: u32,
+        binding_count: u32,
+        buffers: *const vk::VkBuffer,
+        offsets: *const vk::VkDeviceSize,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        let buffers = unsafe {
+            std::slice::from_raw_parts(
+                buffers,
+                binding_count as usize,
+            )
+        }.to_owned();
+
+        for &buffer in buffers.iter() {
+            fake_vulkan.check_buffer(buffer);
+        }
+
+        let offsets = unsafe {
+            std::slice::from_raw_parts(
+                offsets,
+                binding_count as usize,
+            )
+        }.to_owned();
+
+        fake_vulkan.add_command(
+            command_buffer,
+            Command::BindVertexBuffers {
+                first_binding,
+                buffers,
+                offsets,
+            },
+        );
+    }
+
+    extern "C" fn bind_index_buffer(
+        command_buffer: vk::VkCommandBuffer,
+        buffer: vk::VkBuffer,
+        offset: vk::VkDeviceSize,
+        index_type: vk::VkIndexType,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.add_command(
+            command_buffer,
+            Command::BindIndexBuffer {
+                buffer,
+                offset,
+                index_type,
+            },
+        );
+    }
+
+    extern "C" fn draw(
+        command_buffer: vk::VkCommandBuffer,
+        vertex_count: u32,
+        instance_count: u32,
+        first_vertex: u32,
+        first_instance: u32,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.add_command(
+            command_buffer,
+            Command::Draw {
+                vertex_count,
+                instance_count,
+                first_vertex,
+                first_instance,
+            },
+        );
+    }
+
+    extern "C" fn draw_indexed(
+        command_buffer: vk::VkCommandBuffer,
+        index_count: u32,
+        instance_count: u32,
+        first_index: u32,
+        vertex_offset: i32,
+        first_instance: u32,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.add_command(
+            command_buffer,
+            Command::DrawIndexed {
+                index_count,
+                instance_count,
+                first_index,
+                vertex_offset,
+                first_instance,
+            },
+        );
+    }
+
+    extern "C" fn dispatch(
+        command_buffer: vk::VkCommandBuffer,
+        x: u32,
+        y: u32,
+        z: u32
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.add_command(command_buffer, Command::Dispatch { x, y, z });
+    }
+
+    extern "C" fn clear_attachments(
+        command_buffer: vk::VkCommandBuffer,
+        attachment_count: u32,
+        attachments: *const vk::VkClearAttachment,
+        rect_count: u32,
+        rects: *const vk::VkClearRect,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        let attachments = unsafe {
+            std::slice::from_raw_parts(
+                attachments,
+                attachment_count as usize,
+            )
+        }.iter().map(|attachment| {
+            if attachment.aspectMask == vk::VK_IMAGE_ASPECT_COLOR_BIT {
+                ClearAttachment::Color {
+                    attachment: attachment.colorAttachment,
+                    value: unsafe {
+                        attachment.clearValue.color.float32.clone()
+                    },
+                }
+            } else {
+                assert!(
+                    attachment.aspectMask
+                        & (vk::VK_IMAGE_ASPECT_DEPTH_BIT
+                           | vk::VK_IMAGE_ASPECT_STENCIL_BIT)
+                        != 0
+                );
+                assert_eq!(
+                    attachment.aspectMask
+                        & !(vk::VK_IMAGE_ASPECT_DEPTH_BIT
+                            | vk::VK_IMAGE_ASPECT_STENCIL_BIT),
+                    0,
+                );
+                ClearAttachment::DepthStencil {
+                    aspect_mask: attachment.aspectMask,
+                    value: unsafe {
+                        attachment.clearValue.depthStencil
+                    },
+                }
+            }
+        }).collect::<Vec<ClearAttachment>>();
+
+        let rects = unsafe {
+            std::slice::from_raw_parts(
+                rects,
+                rect_count as usize,
+            )
+        }.to_owned();
+
+        fake_vulkan.add_command(
+            command_buffer,
+            Command::ClearAttachments {
+                attachments,
+                rects,
+            }
+        );
+    }
+
+    extern "C" fn pipeline_barrier(
+        command_buffer: vk::VkCommandBuffer,
+        src_stage_mask: vk::VkPipelineStageFlags,
+        dst_stage_mask: vk::VkPipelineStageFlags,
+        dependency_flags: vk::VkDependencyFlags,
+        memory_barrier_count: u32,
+        memory_barriers: *const vk::VkMemoryBarrier,
+        buffer_memory_barrier_count: u32,
+        buffer_memory_barriers: *const vk::VkBufferMemoryBarrier,
+        image_memory_barrier_count: u32,
+        image_memory_barriers: *const vk::VkImageMemoryBarrier,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        let memory_barriers = unsafe {
+            std::slice::from_raw_parts(
+                memory_barriers,
+                memory_barrier_count as usize,
+            )
+        }.to_owned();
+
+        let buffer_memory_barriers = unsafe {
+            std::slice::from_raw_parts(
+                buffer_memory_barriers,
+                buffer_memory_barrier_count as usize,
+            )
+        }.to_owned();
+
+        for barrier in buffer_memory_barriers.iter() {
+            fake_vulkan.check_buffer(barrier.buffer);
+        }
+
+        let image_memory_barriers = unsafe {
+            std::slice::from_raw_parts(
+                image_memory_barriers,
+                image_memory_barrier_count as usize,
+            )
+        }.to_owned();
+
+        for barrier in image_memory_barriers.iter() {
+            fake_vulkan.check_image(barrier.image);
+        }
+
+        fake_vulkan.add_command(
+            command_buffer,
+            Command::PipelineBarrier {
+                src_stage_mask,
+                dst_stage_mask,
+                dependency_flags,
+                memory_barriers,
+                buffer_memory_barriers,
+                image_memory_barriers,
+            },
+        );
+    }
+
+    extern "C" fn copy_image_to_buffer(
+        command_buffer: vk::VkCommandBuffer,
+        src_image: vk::VkImage,
+        src_image_layout: vk::VkImageLayout,
+        dst_buffer: vk::VkBuffer,
+        region_count: u32,
+        regions: *const vk::VkBufferImageCopy,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_image(src_image);
+        fake_vulkan.check_buffer(dst_buffer);
+
+        let regions = unsafe {
+            std::slice::from_raw_parts(
+                regions,
+                region_count as usize,
+            )
+        }.to_owned();
+
+        fake_vulkan.add_command(
+            command_buffer,
+            Command::CopyImageToBuffer {
+                src_image,
+                src_image_layout,
+                dst_buffer,
+                regions,
+            },
+        );
+    }
+
+    extern "C" fn push_constants(
+        command_buffer: vk::VkCommandBuffer,
+        layout: vk::VkPipelineLayout,
+        stage_flags: vk::VkShaderStageFlags,
+        offset: u32,
+        size: u32,
+        values: *const c_void,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        let values = unsafe {
+            std::slice::from_raw_parts(
+                values as *const u8,
+                size as usize,
+            )
+        }.to_owned();
+
+        fake_vulkan.add_command(
+            command_buffer,
+            Command::PushConstants {
+                layout,
+                stage_flags,
+                offset,
+                values,
+            },
+        );
+    }
+
+    extern "C" fn bind_descriptor_sets(
+        command_buffer: vk::VkCommandBuffer,
+        pipeline_bind_point: vk::VkPipelineBindPoint,
+        layout: vk::VkPipelineLayout,
+        first_set: u32,
+        descriptor_set_count: u32,
+        descriptor_sets: *const vk::VkDescriptorSet,
+        _dynamic_offset_count: u32,
+        _dynamic_offsets: *const u32,
+    ) {
+        let fake_vulkan = FakeVulkan::current();
+
+        let descriptor_sets = unsafe {
+            std::slice::from_raw_parts(
+                descriptor_sets,
+                descriptor_set_count as usize,
+            )
+        }.to_owned();
+
+        fake_vulkan.add_command(
+            command_buffer,
+            Command::BindDescriptorSets {
+                pipeline_bind_point,
+                layout,
+                first_set,
+                descriptor_sets,
+            },
+        );
+    }
+
+    extern "C" fn reset_fences(
+        device: vk::VkDevice,
+        fence_count: u32,
+        fences: *const vk::VkFence,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let res = fake_vulkan.next_result("vkResetFences");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        let fences = unsafe {
+            std::slice::from_raw_parts(
+                fences,
+                fence_count as usize,
+            )
+        };
+
+        for &fence in fences.iter() {
+            let HandleType::Fence { ref mut reset_count, .. } =
+                fake_vulkan.get_handle_mut(fence).data
+            else { unreachable!("bad handle"); };
+
+            *reset_count += 1;
+        }
+
+        res
+    }
+
+    extern "C" fn wait_for_fences(
+        device: vk::VkDevice,
+        fence_count: u32,
+        fences: *const vk::VkFence,
+        _wait_all: vk::VkBool32,
+        _timeout: u64,
+    ) -> vk::VkResult {
+        let fake_vulkan = FakeVulkan::current();
+
+        fake_vulkan.check_device(device);
+
+        let res = fake_vulkan.next_result("vkWaitForFences");
+
+        if res != vk::VK_SUCCESS {
+            return res;
+        }
+
+        let fences = unsafe {
+            std::slice::from_raw_parts(
+                fences,
+                fence_count as usize,
+            )
+        };
+
+        for &fence in fences.iter() {
+            let HandleType::Fence { ref mut wait_count, .. } =
+                fake_vulkan.get_handle_mut(fence).data
+            else { unreachable!("bad handle"); };
+
+            *wait_count += 1;
+        }
 
         res
     }

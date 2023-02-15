@@ -178,7 +178,12 @@ mod test {
         context: &Context,
         memory_type_flags: vk::VkMemoryPropertyFlags,
     ) -> Result<(vk::VkDeviceMemory, u32), String> {
-        let buffer = fake_vulkan.add_handle(HandleType::Buffer);
+        let buffer = fake_vulkan.add_handle(
+            HandleType::Buffer {
+                create_info: Default::default(),
+                memory: None,
+            }
+        );
 
         let res = allocate_buffer(context, memory_type_flags, buffer);
 
