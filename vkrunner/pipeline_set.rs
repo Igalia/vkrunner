@@ -735,7 +735,7 @@ impl PipelineVec {
             width: window_format.width as f32,
             height: window_format.height as f32,
             minDepth: 0.0,
-            maxDepth: 0.0,
+            maxDepth: 1.0,
         };
 
         let scissor = vk::VkRect2D {
