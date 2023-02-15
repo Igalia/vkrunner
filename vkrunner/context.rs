@@ -1393,6 +1393,6 @@ mod test {
 
         drop(context);
 
-        fake_vulkan.get_handle(device).freed = true;
+        fake_vulkan.get_handle_mut(device).freed = true;
     }
 }

@@ -898,7 +898,15 @@ impl FakeVulkan {
         handle_num - 1
     }
 
-    pub fn get_handle<T>(&mut self, handle: *mut T) -> &mut Handle {
+    pub fn get_handle<T>(&self, handle: *mut T) -> &Handle {
+        let handle = &self.handles[FakeVulkan::handle_to_index(handle)];
+
+        assert!(!handle.freed);
+
+        handle
+    }
+
+    pub fn get_handle_mut<T>(&mut self, handle: *mut T) -> &mut Handle {
         let handle = &mut self.handles[FakeVulkan::handle_to_index(handle)];
 
         assert!(!handle.freed);
@@ -906,27 +914,27 @@ impl FakeVulkan {
         handle
     }
 
-    fn check_device(&mut self, device: vk::VkDevice) {
+    fn check_device(&self, device: vk::VkDevice) {
         let handle = self.get_handle(device);
         assert!(matches!(handle.data, HandleType::Device));
     }
 
-    fn check_command_pool(&mut self, command_pool: vk::VkCommandPool) {
+    fn check_command_pool(&self, command_pool: vk::VkCommandPool) {
         let handle = self.get_handle(command_pool);
         assert!(matches!(handle.data, HandleType::CommandPool));
     }
 
-    fn check_image(&mut self, image: vk::VkImage) {
+    fn check_image(&self, image: vk::VkImage) {
         let handle = self.get_handle(image);
         assert!(matches!(handle.data, HandleType::Image));
     }
 
-    fn check_image_view(&mut self, image_view: vk::VkImageView) {
+    fn check_image_view(&self, image_view: vk::VkImageView) {
         let handle = self.get_handle(image_view);
         assert!(matches!(handle.data, HandleType::ImageView));
     }
 
-    fn check_pipeline_cache(&mut self, pipeline_cache: vk::VkPipelineCache) {
+    fn check_pipeline_cache(&self, pipeline_cache: vk::VkPipelineCache) {
         let handle = self.get_handle(pipeline_cache);
         assert!(matches!(handle.data, HandleType::PipelineCache));
     }
@@ -978,7 +986,7 @@ impl FakeVulkan {
     ) {
         let fake_vulkan = FakeVulkan::current();
 
-        let handle = fake_vulkan.get_handle(device);
+        let handle = fake_vulkan.get_handle_mut(device);
         assert!(matches!(handle.data, HandleType::Device));
         handle.freed = true;
     }
@@ -989,7 +997,7 @@ impl FakeVulkan {
     ) {
         let fake_vulkan = FakeVulkan::current();
 
-        let handle = fake_vulkan.get_handle(instance);
+        let handle = fake_vulkan.get_handle_mut(instance);
         assert!(matches!(handle.data, HandleType::Instance));
         handle.freed = true;
     }
@@ -1026,7 +1034,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(command_pool);
+        let handle = fake_vulkan.get_handle_mut(command_pool);
         assert!(matches!(handle.data, HandleType::CommandPool));
         handle.freed = true;
     }
@@ -1084,7 +1092,8 @@ impl FakeVulkan {
                 *command_buffers.add(i)
             };
 
-            let command_buffer_handle = fake_vulkan.get_handle(command_buffer);
+            let command_buffer_handle =
+                fake_vulkan.get_handle_mut(command_buffer);
 
             match command_buffer_handle.data {
                 HandleType::CommandBuffer { command_pool: handle_pool } => {
@@ -1131,7 +1140,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(fence);
+        let handle = fake_vulkan.get_handle_mut(fence);
         assert!(matches!(handle.data, HandleType::Fence));
         handle.freed = true;
     }
@@ -1175,7 +1184,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(render_pass);
+        let handle = fake_vulkan.get_handle_mut(render_pass);
         assert!(matches!(handle.data, HandleType::RenderPass { .. }));
         handle.freed = true;
     }
@@ -1214,7 +1223,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(image_view);
+        let handle = fake_vulkan.get_handle_mut(image_view);
         assert!(matches!(handle.data, HandleType::ImageView));
         handle.freed = true;
     }
@@ -1251,7 +1260,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(image);
+        let handle = fake_vulkan.get_handle_mut(image);
         assert!(matches!(handle.data, HandleType::Image));
         handle.freed = true;
     }
@@ -1288,7 +1297,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(buffer);
+        let handle = fake_vulkan.get_handle_mut(buffer);
         assert!(matches!(handle.data, HandleType::Buffer));
         handle.freed = true;
     }
@@ -1337,7 +1346,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(framebuffer);
+        let handle = fake_vulkan.get_handle_mut(framebuffer);
         assert!(matches!(handle.data, HandleType::Framebuffer));
         handle.freed = true;
     }
@@ -1409,7 +1418,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(memory);
+        let handle = fake_vulkan.get_handle_mut(memory);
 
         match handle.data {
             HandleType::Memory { ref mapping } => assert!(mapping.is_none()),
@@ -1457,7 +1466,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let mapping = match fake_vulkan.get_handle(memory).data {
+        let mapping = match fake_vulkan.get_handle_mut(memory).data {
             HandleType::Memory { ref mut mapping } => mapping,
             _ => unreachable!("mismatched handle"),
         };
@@ -1488,7 +1497,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let mapping = match fake_vulkan.get_handle(memory).data {
+        let mapping = match fake_vulkan.get_handle_mut(memory).data {
             HandleType::Memory { ref mut mapping } => mapping,
             _ => unreachable!("mismatched handle"),
         };
@@ -1538,7 +1547,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(shader_module);
+        let handle = fake_vulkan.get_handle_mut(shader_module);
         assert!(matches!(handle.data, HandleType::ShaderModule { .. }));
         handle.freed = true;
     }
@@ -1577,7 +1586,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(pipeline_cache);
+        let handle = fake_vulkan.get_handle_mut(pipeline_cache);
         assert!(matches!(handle.data, HandleType::PipelineCache));
         handle.freed = true;
     }
@@ -1616,7 +1625,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(descriptor_pool);
+        let handle = fake_vulkan.get_handle_mut(descriptor_pool);
         assert!(matches!(handle.data, HandleType::DescriptorPool));
         handle.freed = true;
     }
@@ -1660,7 +1669,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(descriptor_set_layout);
+        let handle = fake_vulkan.get_handle_mut(descriptor_set_layout);
         assert!(matches!(handle.data, HandleType::DescriptorSetLayout { .. }));
         handle.freed = true;
     }
@@ -1713,7 +1722,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(pipeline_layout);
+        let handle = fake_vulkan.get_handle_mut(pipeline_layout);
         assert!(matches!(handle.data, HandleType::PipelineLayout(_)));
         handle.freed = true;
     }
@@ -1795,7 +1804,7 @@ impl FakeVulkan {
 
         fake_vulkan.check_device(device);
 
-        let handle = fake_vulkan.get_handle(pipeline);
+        let handle = fake_vulkan.get_handle_mut(pipeline);
         assert!(matches!(handle.data, HandleType::Pipeline { .. }));
         handle.freed = true;
     }
