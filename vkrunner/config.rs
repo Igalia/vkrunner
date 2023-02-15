@@ -28,6 +28,7 @@ use std::ffi::{c_void, c_int};
 use std::ptr;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::fmt;
 
 pub struct Config {
     show_disassembly: bool,
@@ -137,6 +138,18 @@ pub extern "C" fn vr_config_set_device_id(
     } else {
         Some(device_id as usize)
     };
+}
+
+// Need to implement this manually because the derive macro can’t
+// handle Cells
+impl fmt::Debug for Config {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Config")
+            .field("show_disassembly", &self.show_disassembly)
+            .field("device_id", &self.device_id)
+            .field("user_data", &self.user_data)
+            .finish()
+    }
 }
 
 #[cfg(test)]
