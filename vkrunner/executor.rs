@@ -281,8 +281,8 @@ impl Executor {
 }
 
 #[no_mangle]
-pub extern "C" fn vr_executor_new(config: &Config) -> *mut Executor {
-    Box::into_raw(Box::new(Executor::new(config)))
+pub extern "C" fn vr_executor_new(config: &RefCell<Config>) -> *mut Executor {
+    Box::into_raw(Box::new(Executor::new(&config.borrow())))
 }
 
 #[no_mangle]

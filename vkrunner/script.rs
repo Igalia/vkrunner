@@ -2100,13 +2100,12 @@ pub extern "C" fn vr_script_replace_shaders_stage_binary(
 
 #[no_mangle]
 pub extern "C" fn vr_script_load(
-    config: *const Config,
+    config: &RefCell<Config>,
     source: &Source
 ) -> Option<Box<Script>> {
     match Script::load(source) {
         Err(e) => {
-            let config = unsafe { &*config };
-            let logger = config.logger();
+            let logger = config.borrow().logger();
 
             use std::fmt::Write;
 

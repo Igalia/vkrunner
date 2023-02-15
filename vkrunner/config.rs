@@ -74,63 +74,65 @@ impl Config {
 }
 
 #[no_mangle]
-pub extern "C" fn vr_config_new() -> *mut Config {
-    Box::into_raw(Box::new(Config {
+pub extern "C" fn vr_config_new() -> *const RefCell<Config> {
+    Rc::into_raw(Rc::new(RefCell::new(Config {
         show_disassembly: false,
         device_id: None,
         error_cb: None,
         inspect_cb: None,
         user_data: ptr::null_mut(),
         logger: Cell::new(None),
-    }))
+    })))
 }
 
 #[no_mangle]
-pub extern "C" fn vr_config_free(config: *mut Config)
+pub extern "C" fn vr_config_free(config: *const RefCell<Config>)
 {
-    unsafe { Box::from_raw(config) };
+    unsafe { Rc::from_raw(config) };
 }
 
 #[no_mangle]
 pub extern "C" fn vr_config_set_show_disassembly(
-    config: &mut Config,
+    config: &RefCell<Config>,
     show_disassembly: bool,
 ) {
-  config.show_disassembly = show_disassembly;
+    config.borrow_mut().show_disassembly = show_disassembly;
 }
 
 #[no_mangle]
 pub extern "C" fn vr_config_set_user_data(
-    config: &mut Config,
+    config: &RefCell<Config>,
     user_data: *mut c_void,
 ) {
+    let mut config = config.borrow_mut();
     config.user_data = user_data;
     config.reset_logger();
 }
 
 #[no_mangle]
 pub extern "C" fn vr_config_set_error_cb(
-    config: &mut Config,
+    config: &RefCell<Config>,
     error_cb: Option<logger::WriteCallback>,
 ) {
+    let mut config = config.borrow_mut();
     config.error_cb = error_cb;
     config.reset_logger();
 }
 
 #[no_mangle]
 pub extern "C" fn vr_config_set_inspect_cb(
-    config: &mut Config,
+    config: &RefCell<Config>,
     inspect_cb: Option<inspect::Callback>,
 ) {
-    config.inspect_cb = inspect_cb;
+    config.borrow_mut().inspect_cb = inspect_cb;
 }
 
 #[no_mangle]
 pub extern "C" fn vr_config_set_device_id(
-    config: &mut Config,
+    config: &RefCell<Config>,
     device_id: c_int,
 ) {
-    config.device_id = if device_id < 0 {
+    config.borrow_mut().device_id = if device_id < 0 {
         None
     } else {
         Some(device_id as usize)
@@ -157,23 +159,23 @@ mod test {
         let mut flag = false;
 
         let config_ptr = vr_config_new();
-        let config = unsafe { &mut *config_ptr };
+        let config = unsafe { &*config_ptr };
 
         vr_config_set_error_cb(config, Some(logger_cb));
         vr_config_set_user_data(config, ptr::addr_of_mut!(flag).cast());
 
-        let logger = config.logger();
+        let logger = config.borrow().logger();
 
         logger.borrow_mut().write_str("test\n").unwrap();
 
         assert!(flag);
 
-        assert!(Rc::ptr_eq(&logger, &config.logger()));
+        assert!(Rc::ptr_eq(&logger, &config.borrow().logger()));
 
-        vr_config_set_error_cb(&mut *config, None);
+        vr_config_set_error_cb(config, None);
         // When the callback or user_data changes a new logger should
         // be created
-        assert!(!Rc::ptr_eq(&logger, &config.logger()));
+        assert!(!Rc::ptr_eq(&logger, &config.borrow().logger()));
 
         vr_config_free(config_ptr);
     }
