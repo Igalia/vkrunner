@@ -876,15 +876,6 @@ impl Context {
         )
     }
 
-    /// Get the vkInstance handle. This can be NULL if the context was
-    /// created with an external device. In that case it is usually
-    /// fine to call the [Instance](vulkan_funcs::Instance) functions
-    /// with the NULL handle.
-    #[inline]
-    pub fn vk_instance(&self) -> vk::VkInstance {
-        self.instance_pair.vk_instance
-    }
-
     /// Get the instance function pointers
     #[inline]
     pub fn instance(&self) -> &vulkan_funcs::Instance {
@@ -984,7 +975,7 @@ mod test {
         fake_vulkan.set_override();
         let context = Context::new(&Requirements::new(), None).unwrap();
 
-        assert!(!context.vk_instance().is_null());
+        assert!(!context.instance_pair.vk_instance.is_null());
         assert!(context.instance().vkCreateDevice.is_some());
         assert!(!context.vk_device().is_null());
         assert!(context.device().vkCreateCommandPool.is_some());
@@ -1350,7 +1341,7 @@ mod test {
             device,
         ).unwrap();
 
-        assert_eq!(context.vk_instance(), ptr::null_mut());
+        assert_eq!(context.instance_pair.vk_instance, ptr::null_mut());
         assert_eq!(
             fake_vulkan.physical_device_to_index(context.physical_device()),
             0
