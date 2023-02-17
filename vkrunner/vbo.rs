@@ -75,8 +75,6 @@ pub struct Vbo {
     raw_data: Box<[u8]>,
     // Number of bytes in each row of raw_data
     stride: usize,
-    // Number of rows in raw_data
-    num_rows: usize,
 }
 
 #[derive(Debug)]
@@ -113,11 +111,6 @@ impl Vbo {
     pub fn stride(&self) -> usize {
         self.stride
     }
-
-    #[inline]
-    pub fn num_rows(&self) -> usize {
-        self.num_rows
-    }
 }
 
 impl Attrib {
@@ -151,8 +144,6 @@ pub struct Parser {
     raw_data: RefCell<Vec<u8>>,
 
     stride: usize,
-
-    num_rows: usize,
 }
 
 macro_rules! invalid_header {
@@ -187,7 +178,6 @@ impl Parser {
             raw_data: RefCell::new(Vec::new()),
             stride: 0,
             attribs: None,
-            num_rows: 0,
         }
     }
 
@@ -564,8 +554,6 @@ impl Parser {
             invalid_data!(self, "Extra data at end of line");
         }
 
-        self.num_rows += 1;
-
         Ok(())
     }
 
@@ -601,7 +589,6 @@ impl Parser {
             attribs,
             raw_data: self.raw_data.into_inner().into_boxed_slice(),
             stride: self.stride,
-            num_rows: self.num_rows,
         })
     }
 }
@@ -624,7 +611,6 @@ mod test {
 
         assert_eq!(vbo.attribs().len(), 2);
         assert_eq!(vbo.stride(), 4 * 3);
-        assert_eq!(vbo.num_rows(), 2);
 
         assert_eq!(
             vbo.attribs()[0].format(),
@@ -639,7 +625,7 @@ mod test {
         assert_eq!(vbo.attribs()[1].location(), 1);
         assert_eq!(vbo.attribs()[1].offset(), 8);
 
-        assert_eq!(vbo.raw_data().len(), vbo.stride() * vbo.num_rows());
+        assert_eq!(vbo.raw_data().len() % vbo.stride(), 0);
 
         let mut expected_data = Vec::<u8>::new();
         expected_data.extend(&(-1.0f32).to_ne_bytes());
