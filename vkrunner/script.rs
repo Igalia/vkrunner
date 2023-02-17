@@ -225,7 +225,6 @@ macro_rules! parse_num_func {
 type ParseResult = Result<MatchResult, LoadError>;
 
 struct Loader<'a> {
-    source: &'a Source,
     stream: Stream<'a>,
     current_section: Section,
     had_sections: u32,
@@ -414,7 +413,6 @@ fn trim_line_or_skip(line: &str) -> Option<&str> {
 impl<'a> Loader<'a> {
     fn new(source: &Source) -> Result<Loader, LoadError> {
         Ok(Loader {
-            source,
             stream: Stream::new(source)?,
             current_section: Section::None,
             had_sections: 0,
