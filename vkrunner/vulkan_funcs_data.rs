@@ -20,6 +20,7 @@ pub struct Instance {
     pub vkEnumeratePhysicalDevices: vk::PFN_vkEnumeratePhysicalDevices,
     pub vkGetDeviceProcAddr: vk::PFN_vkGetDeviceProcAddr,
     pub vkGetPhysicalDeviceFeatures: vk::PFN_vkGetPhysicalDeviceFeatures,
+    pub vkGetPhysicalDeviceFeatures2KHR: vk::PFN_vkGetPhysicalDeviceFeatures2KHR,
     pub vkGetPhysicalDeviceFormatProperties: vk::PFN_vkGetPhysicalDeviceFormatProperties,
     pub vkGetPhysicalDeviceMemoryProperties: vk::PFN_vkGetPhysicalDeviceMemoryProperties,
     pub vkGetPhysicalDeviceProperties: vk::PFN_vkGetPhysicalDeviceProperties,
@@ -131,6 +132,10 @@ impl Instance {
             )),
             vkGetPhysicalDeviceFeatures: std::mem::transmute(get_instance_proc_cb(
                 "vkGetPhysicalDeviceFeatures\0".as_ptr().cast(),
+                user_data,
+            )),
+            vkGetPhysicalDeviceFeatures2KHR: std::mem::transmute(get_instance_proc_cb(
+                "vkGetPhysicalDeviceFeatures2KHR\0".as_ptr().cast(),
                 user_data,
             )),
             vkGetPhysicalDeviceFormatProperties: std::mem::transmute(get_instance_proc_cb(

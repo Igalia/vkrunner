@@ -583,27 +583,17 @@ impl Requirements {
 
     fn check_structures(
         &self,
-        vklib: &vulkan_funcs::Library,
-        instance: vk::VkInstance,
+        vkinst: &vulkan_funcs::Instance,
         device: vk::VkPhysicalDevice
     ) -> Result<(), CheckError> {
         if self.features.is_empty() {
             return Ok(());
         }
 
-        let get_features: vk::PFN_vkGetPhysicalDeviceFeatures2 = unsafe {
-            std::mem::transmute(
-                vklib.vkGetInstanceProcAddr.unwrap()(
-                    instance,
-                    "vkGetPhysicalDeviceFeatures2KHR\0".as_ptr().cast(),
-                )
-            )
-        };
-
         // If vkGetPhysicalDeviceFeatures2KHR isn’t available then we
         // can probably assume that none of the extensions are
         // available.
-        let get_features = match get_features {
+        let get_features = match vkinst.vkGetPhysicalDeviceFeatures2KHR {
             None => {
                 // Find the first feature and report that as missing
                 for (&extension, features) in self.features.iter() {
@@ -722,7 +712,7 @@ impl Requirements {
     ) -> Result<(), CheckError> {
         self.check_base_features(vkinst, device)?;
         self.check_extensions(vkinst, device)?;
-        self.check_structures(vklib, instance, device)?;
+        self.check_structures(vkinst, device)?;
         self.check_version(vklib, vkinst, instance, device)?;
 
         Ok(())

@@ -48,6 +48,7 @@ INSTANCE_FUNCS = [
     "vkEnumeratePhysicalDevices",
     "vkGetDeviceProcAddr",
     "vkGetPhysicalDeviceFeatures",
+    "vkGetPhysicalDeviceFeatures2KHR",
     "vkGetPhysicalDeviceFormatProperties",
     "vkGetPhysicalDeviceMemoryProperties",
     "vkGetPhysicalDeviceProperties",
