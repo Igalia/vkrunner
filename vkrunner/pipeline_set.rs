@@ -515,8 +515,10 @@ impl PipelineLayout {
 #[derive(Debug)]
 struct VertexInputState {
     create_info: vk::VkPipelineVertexInputStateCreateInfo,
-    input_bindings: Vec::<vk::VkVertexInputBindingDescription>,
-    attribs: Vec::<vk::VkVertexInputAttributeDescription>,
+    // These are not read put the create_info struct keeps pointers to
+    // them so they need to be kept alive
+    _input_bindings: Vec::<vk::VkVertexInputBindingDescription>,
+    _attribs: Vec::<vk::VkVertexInputAttributeDescription>,
 }
 
 impl VertexInputState {
@@ -560,8 +562,8 @@ impl VertexInputState {
                 vertexAttributeDescriptionCount: attribs.len() as u32,
                 pVertexAttributeDescriptions: attribs.as_ptr(),
             },
-            input_bindings,
-            attribs,
+            _input_bindings: input_bindings,
+            _attribs: attribs,
         }
     }
 
