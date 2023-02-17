@@ -96,16 +96,6 @@ impl Source {
     pub fn data(&self) -> &Data {
         &self.data
     }
-
-    /// Returns a filename that can be used to display to the user. If
-    /// the source was constructed from a filename it will just return
-    /// that, otherwise it will return `"(string source)"`.
-    pub fn filename(&self) -> &str {
-        match &self.data {
-            Data::File { filename } => &filename,
-            Data::String { .. } => "(string source)",
-        }
-    }
 }
 
 #[no_mangle]
@@ -157,14 +147,12 @@ mod test {
             source.data(),
             Data::String { source } if source == "my script"
         ));
-        assert_eq!(source.filename(), "(string source)");
 
         let source = Source::from_file("my_script.shader_test".to_owned());
         assert!(matches!(
             source.data(),
             Data::File { filename } if filename == "my_script.shader_test"
         ));
-        assert_eq!(source.filename(), "my_script.shader_test");
     }
 
     #[test]
