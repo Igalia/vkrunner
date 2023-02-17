@@ -29,7 +29,7 @@ from __future__ import (
 # automatically as part of the build process but if need be it can be
 # used to update the file as follows:
 #
-# ./make-vulkan-pointers.py > vulkan_funcs_data.rs
+# ./make-vulkan-funcs-data.py > vulkan_funcs_data.rs
 
 from mako.template import Template
 
