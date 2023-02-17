@@ -40,7 +40,9 @@ pub struct Context {
     // dropped in the correct order.
     device_pair: DevicePair,
     instance_pair: InstancePair,
-    vklib: Option<Box<vulkan_funcs::Library>>,
+    // This isn’t read anywhere but we want to keep it alive for the
+    // duration of the Context so that the library won’t be unloaded.
+    _vklib: Option<Box<vulkan_funcs::Library>>,
 
     physical_device: vk::VkPhysicalDevice,
 
@@ -794,7 +796,7 @@ impl Context {
         drop(resources);
 
         Ok(Context {
-            vklib,
+            _vklib: vklib,
             instance_pair,
             device_pair,
             physical_device,
@@ -884,13 +886,6 @@ impl Context {
             queue_family,
             device_pair,
         )
-    }
-
-    /// Get the library function pointers. This can be None if the
-    /// context was created with an external device.
-    #[inline]
-    pub fn library(&self) -> Option<&vulkan_funcs::Library> {
-        self.vklib.as_ref().map(|boxed_library| boxed_library.as_ref())
     }
 
     /// Get the vkInstance handle. This can be NULL if the context was
@@ -1010,7 +1005,6 @@ mod test {
         fake_vulkan.set_override();
         let context = Context::new(&Requirements::new(), None).unwrap();
 
-        assert!(context.library().is_some());
         assert!(!context.vk_instance().is_null());
         assert!(context.instance().vkCreateDevice.is_some());
         assert!(!context.vk_device().is_null());
@@ -1389,7 +1383,6 @@ mod test {
         assert_eq!(context.vk_device(), device);
         assert!(context.device_pair.is_external);
         assert!(context.instance_pair.is_external);
-        assert!(context.library().is_none());
 
         drop(context);
 
