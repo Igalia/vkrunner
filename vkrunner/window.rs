@@ -54,7 +54,7 @@ pub struct Window {
 
     framebuffer: Framebuffer,
 
-    depth_stencil_resources: Option<DepthStencilResources>,
+    _depth_stencil_resources: Option<DepthStencilResources>,
 
     color_image_view: ImageView,
     memory: DeviceMemory,
@@ -73,8 +73,8 @@ struct DepthStencilResources {
     // These are listed in the reverse order that they are created so
     // that they will be destroyed in the right order too
     image_view: ImageView,
-    memory: DeviceMemory,
-    image: Image,
+    _memory: DeviceMemory,
+    _image: Image,
 }
 
 #[derive(Debug)]
@@ -533,7 +533,7 @@ impl DepthStencilResources {
             vk::VK_IMAGE_ASPECT_DEPTH_BIT,
         )?;
 
-        Ok(DepthStencilResources { image, memory, image_view })
+        Ok(DepthStencilResources { _image: image, _memory: memory, image_view })
     }
 }
 
@@ -686,7 +686,7 @@ impl Window {
 
             framebuffer,
 
-            depth_stencil_resources,
+            _depth_stencil_resources: depth_stencil_resources,
 
             color_image_view,
             memory,
