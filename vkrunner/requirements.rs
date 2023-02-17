@@ -109,7 +109,7 @@ pub struct Requirements {
 
 /// Error returned by [Requirements::check]
 #[derive(Debug)]
-pub enum CheckError<'a> {
+pub enum Error<'a> {
     /// The driver returned invalid data. The string explains the error.
     Invalid(String),
     /// A required base feature from VkPhysicalDeviceFeatures is missing.
@@ -123,21 +123,21 @@ pub enum CheckError<'a> {
     VersionTooLow { required_version: u32, actual_version: u32 },
 }
 
-impl<'a> fmt::Display for CheckError<'a> {
+impl<'a> fmt::Display for Error<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            CheckError::Invalid(s) => write!(f, "{}", s),
-            &CheckError::MissingBaseFeature(feature_num) => {
+            Error::Invalid(s) => write!(f, "{}", s),
+            &Error::MissingBaseFeature(feature_num) => {
                 write!(
                     f,
                     "Missing required feature: {}",
                     BASE_FEATURES[feature_num],
                 )
             },
-            &CheckError::MissingExtension(s) => {
+            &Error::MissingExtension(s) => {
                 write!(f, "Missing required extension: {}", s)
             },
-            &CheckError::MissingFeature { extension, feature } => {
+            &Error::MissingFeature { extension, feature } => {
                 write!(
                     f,
                     "Missing required feature “{}” from extension “{}”",
@@ -145,7 +145,7 @@ impl<'a> fmt::Display for CheckError<'a> {
                     EXTENSIONS[extension].name(),
                 )
             },
-            &CheckError::VersionTooLow { required_version, actual_version } => {
+            &Error::VersionTooLow { required_version, actual_version } => {
                 let (req_major, req_minor, req_patch) =
                     extract_version(required_version);
                 let (actual_major, actual_minor, actual_patch) =
@@ -466,7 +466,7 @@ impl Requirements {
         &self,
         vkinst: &vulkan_funcs::Instance,
         device: vk::VkPhysicalDevice
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), Error> {
         let mut actual_features: [vk::VkBool32; N_BASE_FEATURES] =
             [0; N_BASE_FEATURES];
 
@@ -479,7 +479,7 @@ impl Requirements {
 
         for (feature_num, &required) in self.base_features.iter().enumerate() {
             if required && actual_features[feature_num] == 0 {
-                return Err(CheckError::MissingBaseFeature(feature_num));
+                return Err(Error::MissingBaseFeature(feature_num));
             }
         }
 
@@ -490,7 +490,7 @@ impl Requirements {
         &self,
         vkinst: &vulkan_funcs::Instance,
         device: vk::VkPhysicalDevice
-    ) -> Result<HashSet::<String>, CheckError> {
+    ) -> Result<HashSet::<String>, Error> {
         let mut property_count = 0u32;
 
         let res = unsafe {
@@ -503,7 +503,7 @@ impl Requirements {
         };
 
         if res != vk::VK_SUCCESS {
-            return Err(CheckError::Invalid(
+            return Err(Error::Invalid(
                 "vkEnumerateDeviceExtensionProperties failed".to_string()
             ));
         }
@@ -521,7 +521,7 @@ impl Requirements {
             );
 
             if res != vk::VK_SUCCESS {
-                return Err(CheckError::Invalid(
+                return Err(Error::Invalid(
                     "vkEnumerateDeviceExtensionProperties failed".to_string()
                 ));
             }
@@ -539,7 +539,7 @@ impl Requirements {
             let name = &extension.extensionName;
             // Make sure it has a NULL terminator
             if let None = name.iter().find(|&&b| b == 0) {
-                return Err(CheckError::Invalid(
+                return Err(Error::Invalid(
                     "NULL terminator missing in string returned from \
                      vkEnumerateDeviceExtensionProperties".to_string()
                 ));
@@ -548,7 +548,7 @@ impl Requirements {
             let name = unsafe { CStr::from_ptr(name.as_ptr()) };
             let name = match name.to_str() {
                 Err(_) => {
-                    return Err(CheckError::Invalid(
+                    return Err(Error::Invalid(
                         "Invalid UTF-8 in string returned from \
                          vkEnumerateDeviceExtensionProperties".to_string()
                     ));
@@ -565,7 +565,7 @@ impl Requirements {
         &self,
         vkinst: &vulkan_funcs::Instance,
         device: vk::VkPhysicalDevice
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), Error> {
         if self.extensions.is_empty() {
             return Ok(());
         }
@@ -574,7 +574,7 @@ impl Requirements {
 
         for extension in self.extensions.iter() {
             if !actual_extensions.contains(extension) {
-                return Err(CheckError::MissingExtension(extension));
+                return Err(Error::MissingExtension(extension));
             }
         }
 
@@ -585,7 +585,7 @@ impl Requirements {
         &self,
         vkinst: &vulkan_funcs::Instance,
         device: vk::VkPhysicalDevice
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), Error> {
         if self.features.is_empty() {
             return Ok(());
         }
@@ -599,7 +599,7 @@ impl Requirements {
                 for (&extension, features) in self.features.iter() {
                     for (feature, &enabled) in features.iter().enumerate() {
                         if enabled {
-                            return Err(CheckError::MissingFeature {
+                            return Err(Error::MissingFeature {
                                 extension,
                                 feature,
                             });
@@ -648,7 +648,7 @@ impl Requirements {
                 );
 
                 if actual_value == 0 {
-                    return Err(CheckError::MissingFeature {
+                    return Err(Error::MissingFeature {
                         extension: extension_num,
                         feature: feature_num,
                     });
@@ -663,7 +663,7 @@ impl Requirements {
         &self,
         vkinst: &vulkan_funcs::Instance,
         device: vk::VkPhysicalDevice
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), Error> {
         let mut props = vk::VkPhysicalDeviceProperties::default();
 
         unsafe {
@@ -674,7 +674,7 @@ impl Requirements {
         }
 
         if props.apiVersion < self.version() {
-            Err(CheckError::VersionTooLow {
+            Err(Error::VersionTooLow {
                 required_version: self.version(),
                 actual_version: props.apiVersion,
             })
@@ -687,7 +687,7 @@ impl Requirements {
         &self,
         vkinst: &vulkan_funcs::Instance,
         device: vk::VkPhysicalDevice
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), Error> {
         self.check_base_features(vkinst, device)?;
         self.check_extensions(vkinst, device)?;
         self.check_structures(vkinst, device)?;
@@ -1111,7 +1111,7 @@ mod test {
     fn check_base_features<'a>(
         reqs: &'a Requirements,
         features: &vk::VkPhysicalDeviceFeatures
-    ) -> Result<(), CheckError<'a>> {
+    ) -> Result<(), Error<'a>> {
         let mut data = FakeVulkanData::new();
 
         data.fake_vulkan.physical_devices[0].features = features.clone();
@@ -1146,7 +1146,7 @@ mod test {
         match check_base_features(&reqs, &features) {
             Ok(()) => unreachable!("Requirements::check was supposed to fail"),
             Err(e) => {
-                assert!(matches!(e, CheckError::MissingBaseFeature(_)));
+                assert!(matches!(e, Error::MissingBaseFeature(_)));
                 assert_eq!(
                     e.to_string(),
                     "Missing required feature: depthBounds"
@@ -1172,7 +1172,7 @@ mod test {
             Err(e) => {
                 assert!(matches!(
                     e,
-                    CheckError::MissingExtension("fake_extension"),
+                    Error::MissingExtension("fake_extension"),
                 ));
                 assert_eq!(
                     e.to_string(),
@@ -1196,7 +1196,7 @@ mod test {
             Err(e) => {
                 assert!(matches!(
                     e,
-                    CheckError::MissingExtension("VK_KHR_multiview")
+                    Error::MissingExtension("VK_KHR_multiview")
                 ));
                 assert_eq!(
                     e.to_string(),
@@ -1212,7 +1212,7 @@ mod test {
             Err(e) => {
                 assert!(matches!(
                     e,
-                    CheckError::MissingFeature { .. },
+                    Error::MissingFeature { .. },
                 ));
                 assert_eq!(
                     e.to_string(),
@@ -1239,7 +1239,7 @@ mod test {
                     "Invalid UTF-8 in string returned from \
                      vkEnumerateDeviceExtensionProperties"
                 );
-                assert!(matches!(e, CheckError::Invalid(_)));
+                assert!(matches!(e, Error::Invalid(_)));
             },
         };
 
@@ -1254,7 +1254,7 @@ mod test {
                     "NULL terminator missing in string returned from \
                      vkEnumerateDeviceExtensionProperties"
                 );
-                assert!(matches!(e, CheckError::Invalid(_)));
+                assert!(matches!(e, Error::Invalid(_)));
             },
         };
     }
@@ -1277,7 +1277,7 @@ mod test {
                 );
                 assert!(matches!(
                     e,
-                    CheckError::MissingFeature { .. },
+                    Error::MissingFeature { .. },
                 ));
             },
         };
@@ -1304,7 +1304,7 @@ mod test {
                 );
                 assert!(matches!(
                     e,
-                    CheckError::MissingFeature { .. },
+                    Error::MissingFeature { .. },
                 ));
             },
         };
@@ -1342,7 +1342,7 @@ mod test {
                 );
                 assert!(matches!(
                     e,
-                    CheckError::VersionTooLow { .. },
+                    Error::VersionTooLow { .. },
                 ));
             },
         };
