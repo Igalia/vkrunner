@@ -63,7 +63,6 @@ pub struct Buffer {
 
 #[derive(Debug)]
 pub struct Script {
-    filename: String,
     stages: [Box<[Shader]>; N_STAGES],
     commands: Box<[Command]>,
     pipeline_keys: Box<[pipeline_key::Key]>,
@@ -1937,7 +1936,6 @@ impl<'a> Loader<'a> {
         });
 
         Ok(Script {
-            filename: self.source.filename().to_owned(),
             stages: self.stages.map(|stage| stage.into_boxed_slice()),
             commands: self.commands.into_boxed_slice(),
             pipeline_keys: self.pipeline_keys.into_boxed_slice(),
@@ -1953,10 +1951,6 @@ impl<'a> Loader<'a> {
 impl Script {
     pub fn load(source: &Source) -> Result<Script, LoadError> {
         Loader::new(source)?.parse()
-    }
-
-    pub fn filename(&self) -> &str {
-        self.filename.as_str()
     }
 
     pub fn shaders(&self, stage: Stage) -> &[Shader] {
@@ -3633,12 +3627,6 @@ mod test {
              65536",
             "line 3: number too large to fit in target type"
         );
-    }
-
-    #[test]
-    fn test_filename() {
-        let script = script_from_string(String::new());
-        assert_eq!(script.filename(), "(string source)");
     }
 
     #[test]
