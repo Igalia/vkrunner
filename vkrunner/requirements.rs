@@ -685,9 +685,7 @@ impl Requirements {
 
     pub fn check(
         &self,
-        _vklib: &vulkan_funcs::Library,
         vkinst: &vulkan_funcs::Instance,
-        _instance: vk::VkInstance,
         device: vk::VkPhysicalDevice
     ) -> Result<(), CheckError> {
         self.check_base_features(vkinst, device)?;
@@ -1026,7 +1024,7 @@ mod test {
 
     struct FakeVulkanData {
         fake_vulkan: Box<fake_vulkan::FakeVulkan>,
-        vklib: vulkan_funcs::Library,
+        _vklib: vulkan_funcs::Library,
         vkinst: vulkan_funcs::Instance,
         instance: vk::VkInstance,
         device: vk::VkPhysicalDevice,
@@ -1089,7 +1087,7 @@ mod test {
 
             FakeVulkanData {
                 fake_vulkan,
-                vklib,
+                _vklib: vklib,
                 vkinst,
                 instance,
                 device,
@@ -1118,12 +1116,7 @@ mod test {
 
         data.fake_vulkan.physical_devices[0].features = features.clone();
 
-        reqs.check(
-            &data.vklib,
-            &data.vkinst,
-            data.instance,
-            data.device,
-        )
+        reqs.check(&data.vkinst, data.device)
     }
 
     #[test]
@@ -1168,23 +1161,13 @@ mod test {
         let mut reqs = Requirements::new();
 
         assert!(matches!(
-            reqs.check(
-                &data.vklib,
-                &data.vkinst,
-                data.instance,
-                data.device,
-            ),
+            reqs.check(&data.vkinst, data.device),
             Ok(()),
         ));
 
         reqs.add("fake_extension");
 
-        match reqs.check(
-            &data.vklib,
-            &data.vkinst,
-            data.instance,
-            data.device,
-        ) {
+        match reqs.check(&data.vkinst, data.device) {
             Ok(()) => unreachable!("expected extensions check to fail"),
             Err(e) => {
                 assert!(matches!(
@@ -1201,24 +1184,14 @@ mod test {
         data.fake_vulkan.physical_devices[0].add_extension("fake_extension");
 
         assert!(matches!(
-            reqs.check(
-                &data.vklib,
-                &data.vkinst,
-                data.instance,
-                data.device,
-            ),
+            reqs.check(&data.vkinst, data.device),
             Ok(()),
         ));
 
         // Add an extension via a feature
         reqs.add("multiviewGeometryShader");
 
-        match reqs.check(
-            &data.vklib,
-            &data.vkinst,
-            data.instance,
-            data.device,
-        ) {
+        match reqs.check(&data.vkinst, data.device) {
             Ok(()) => unreachable!("expected extensions check to fail"),
             Err(e) => {
                 assert!(matches!(
@@ -1234,12 +1207,7 @@ mod test {
 
         data.fake_vulkan.physical_devices[0].add_extension("VK_KHR_multiview");
 
-        match reqs.check(
-            &data.vklib,
-            &data.vkinst,
-            data.instance,
-            data.device,
-        ) {
+        match reqs.check(&data.vkinst, data.device) {
             Ok(()) => unreachable!("expected extensions check to fail"),
             Err(e) => {
                 assert!(matches!(
@@ -1263,12 +1231,7 @@ mod test {
         extension_name[0] = -1i8 as c_char;
         extension_name[1] = 0;
 
-        match reqs.check(
-            &data.vklib,
-            &data.vkinst,
-            data.instance,
-            data.device,
-        ) {
+        match reqs.check(&data.vkinst, data.device) {
             Ok(()) => unreachable!("expected extensions check to fail"),
             Err(e) => {
                 assert_eq!(
@@ -1283,12 +1246,7 @@ mod test {
         // No null-terminator in the extension
         extension_name.fill(32);
 
-        match reqs.check(
-            &data.vklib,
-            &data.vkinst,
-            data.instance,
-            data.device,
-        ) {
+        match reqs.check(&data.vkinst, data.device) {
             Ok(()) => unreachable!("expected extensions check to fail"),
             Err(e) => {
                 assert_eq!(
@@ -1309,12 +1267,7 @@ mod test {
         reqs.add("multiview");
         data.fake_vulkan.physical_devices[0].add_extension("VK_KHR_multiview");
 
-        match reqs.check(
-            &data.vklib,
-            &data.vkinst,
-            data.instance,
-            data.device,
-        ) {
+        match reqs.check(&data.vkinst, data.device) {
             Ok(()) => unreachable!("expected features check to fail"),
             Err(e) => {
                 assert_eq!(
@@ -1332,12 +1285,7 @@ mod test {
         data.fake_vulkan.physical_devices[0].multiview.multiview = vk::VK_TRUE;
 
         assert!(matches!(
-            reqs.check(
-                &data.vklib,
-                &data.vkinst,
-                data.instance,
-                data.device,
-            ),
+            reqs.check(&data.vkinst, data.device),
             Ok(()),
         ));
 
@@ -1346,12 +1294,7 @@ mod test {
             "VK_KHR_shader_atomic_int64"
         );
 
-        match reqs.check(
-            &data.vklib,
-            &data.vkinst,
-            data.instance,
-            data.device,
-        ) {
+        match reqs.check(&data.vkinst, data.device) {
             Ok(()) => unreachable!("expected features check to fail"),
             Err(e) => {
                 assert_eq!(
@@ -1373,12 +1316,7 @@ mod test {
             vk::VK_TRUE;
 
         assert!(matches!(
-            reqs.check(
-                &data.vklib,
-                &data.vkinst,
-                data.instance,
-                data.device,
-            ),
+            reqs.check(&data.vkinst, data.device),
             Ok(()),
         ));
     }
@@ -1392,12 +1330,7 @@ mod test {
         data.fake_vulkan.physical_devices[0].properties.apiVersion =
             make_version(1, 1, 0);
 
-        match reqs.check(
-            &data.vklib,
-            &data.vkinst,
-            data.instance,
-            data.device,
-        ) {
+        match reqs.check(&data.vkinst, data.device) {
             Ok(()) => unreachable!("expected version check to fail"),
             Err(e) => {
                 // The check will report that the version is 1.0.0
@@ -1419,12 +1352,7 @@ mod test {
             make_version(1, 3, 0);
 
         assert!(matches!(
-            reqs.check(
-                &data.vklib,
-                &data.vkinst,
-                data.instance,
-                data.device,
-            ),
+            reqs.check(&data.vkinst, data.device),
             Ok(()),
         ));
     }

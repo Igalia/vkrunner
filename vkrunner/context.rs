@@ -639,15 +639,12 @@ fn find_queue_family(
 // appropriate queue family. If so, it returns the index of the queue
 // family, otherwise an error.
 fn check_physical_device(
-    vklib: &vulkan_funcs::Library,
     instance_pair: &InstancePair,
     requirements: &Requirements,
     physical_device: vk::VkPhysicalDevice,
 ) -> Result<u32, ContextError> {
     match requirements.check(
-        vklib,
         instance_pair.vkinst.as_ref(),
-        instance_pair.vk_instance,
         physical_device
     ) {
         Ok(()) => find_queue_family(instance_pair, physical_device),
@@ -661,7 +658,6 @@ fn check_physical_device(
 // with a queue family index of the first graphics queue. Otherwise
 // returns an error.
 fn find_physical_device(
-    vklib: &vulkan_funcs::Library,
     instance_pair: &InstancePair,
     requirements: &Requirements,
     device_id: Option<usize>,
@@ -712,7 +708,6 @@ fn find_physical_device(
             )));
         } else {
             return match check_physical_device(
-                vklib,
                 instance_pair,
                 requirements,
                 devices[device_id]
@@ -730,7 +725,6 @@ fn find_physical_device(
 
     for device in devices {
         match check_physical_device(
-            vklib,
             instance_pair,
             requirements,
             device
@@ -816,7 +810,6 @@ impl Context {
         let instance_pair = InstancePair::new(vklib.as_ref(), requirements)?;
 
         let (physical_device, queue_family) = find_physical_device(
-            vklib.as_ref(),
             &instance_pair,
             requirements,
             device_id,
