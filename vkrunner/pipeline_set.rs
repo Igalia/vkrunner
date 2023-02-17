@@ -43,8 +43,10 @@ pub struct PipelineSet {
     // script
     descriptor_data: Option<DescriptorData>,
     stages: vk::VkShaderStageFlagBits,
-    pipeline_cache: PipelineCache,
-    modules: [Option<ShaderModule>; shader_stage::N_STAGES],
+    // These are never read but they should probably be kept alive
+    // until the pipelines are destroyed.
+    _pipeline_cache: PipelineCache,
+    _modules: [Option<ShaderModule>; shader_stage::N_STAGES],
 }
 
 #[repr(C)]
@@ -913,8 +915,8 @@ impl PipelineSet {
         )?;
 
         Ok(PipelineSet {
-            modules,
-            pipeline_cache,
+            _modules: modules,
+            _pipeline_cache: pipeline_cache,
             stages,
             descriptor_data,
             layout,
@@ -1041,7 +1043,7 @@ mod test {
             &mut self,
             stage: shader_stage::Stage,
         ) -> Vec<u32> {
-            let module = self.pipeline_set.modules[stage as usize]
+            let module = self.pipeline_set._modules[stage as usize]
                 .as_ref()
                 .unwrap()
                 .handle;
