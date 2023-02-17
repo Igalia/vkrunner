@@ -47,7 +47,6 @@ pub struct Context {
     physical_device: vk::VkPhysicalDevice,
 
     memory_properties: vk::VkPhysicalDeviceMemoryProperties,
-    device_properties: vk::VkPhysicalDeviceProperties,
 
     command_pool: vk::VkCommandPool,
     command_buffer: vk::VkCommandBuffer,
@@ -754,16 +753,6 @@ impl Context {
         queue_family: u32,
         device_pair: DevicePair,
     ) -> Result<Context, ContextError> {
-        let mut device_properties =
-            vk::VkPhysicalDeviceProperties::default();
-
-        unsafe {
-            instance_pair.vkinst.vkGetPhysicalDeviceProperties.unwrap()(
-                physical_device,
-                ptr::addr_of_mut!(device_properties),
-            );
-        }
-
         let mut memory_properties =
             vk::VkPhysicalDeviceMemoryProperties::default();
 
@@ -801,7 +790,6 @@ impl Context {
             device_pair,
             physical_device,
             memory_properties,
-            device_properties,
             command_pool,
             command_buffer,
             fence,
@@ -930,15 +918,6 @@ impl Context {
         &self.memory_properties
     }
 
-    /// Get the device properties struct for the physical device. This
-    /// is queried from the physical device once when the context is
-    /// constructed and cached for later use so this method is very
-    /// cheap.
-    #[inline]
-    pub fn device_properties(&self) -> &vk::VkPhysicalDeviceProperties {
-        &self.device_properties
-    }
-
     /// Get the single shared command buffer that is associated with
     /// the context.
     #[inline]
@@ -1014,10 +993,6 @@ mod test {
             fake_vulkan.index_to_physical_device(0)
         );
         assert_eq!(context.memory_properties().memoryTypeCount, 3);
-        assert_eq!(
-            context.device_properties().apiVersion,
-            crate::requirements::make_version(1, 0, 0)
-        );
         assert!(!context.command_buffer().is_null());
         assert!(!context.fence().is_null());
         assert_eq!(FakeVulkan::unmake_queue(context.queue()), (0, 0));
