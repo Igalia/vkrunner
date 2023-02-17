@@ -56,8 +56,8 @@ pub struct Window {
 
     _depth_stencil_resources: Option<DepthStencilResources>,
 
-    color_image_view: ImageView,
-    memory: DeviceMemory,
+    _color_image_view: ImageView,
+    _memory: DeviceMemory,
     color_image: Image,
 
     // The first render pass is used for the first render and has a
@@ -688,8 +688,8 @@ impl Window {
 
             _depth_stencil_resources: depth_stencil_resources,
 
-            color_image_view,
-            memory,
+            _color_image_view: color_image_view,
+            _memory: memory,
             color_image,
 
             render_pass,
