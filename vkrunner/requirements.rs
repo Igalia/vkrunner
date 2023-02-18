@@ -111,8 +111,9 @@ pub struct Requirements {
 /// Error returned by [Requirements::check]
 #[derive(Debug)]
 pub enum Error<'a> {
-    /// The driver returned invalid data. The string explains the error.
-    Invalid(String),
+    EnumerateDeviceExtensionPropertiesFailed,
+    ExtensionMissingNullTerminator,
+    ExtensionInvalidUtf8,
     /// A required base feature from VkPhysicalDeviceFeatures is missing.
     MissingBaseFeature(usize),
     /// A required extension is missing. The string slice is the name
@@ -127,7 +128,11 @@ pub enum Error<'a> {
 impl<'a> Error<'a> {
     pub fn result(&self) -> result::Result {
         match self {
-            Error::Invalid(_) => result::Result::Fail,
+            Error::EnumerateDeviceExtensionPropertiesFailed => {
+                result::Result::Fail
+            },
+            Error::ExtensionMissingNullTerminator => result::Result::Fail,
+            Error::ExtensionInvalidUtf8 => result::Result::Fail,
             Error::MissingBaseFeature(_) => result::Result::Skip,
             Error::MissingExtension(_) => result::Result::Skip,
             Error::MissingFeature { .. } => result::Result::Skip,
@@ -139,7 +144,23 @@ impl<'a> Error<'a> {
 impl<'a> fmt::Display for Error<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Invalid(s) => write!(f, "{}", s),
+            Error::EnumerateDeviceExtensionPropertiesFailed => {
+                write!(f, "vkEnumerateDeviceExtensionProperties failed")
+            },
+            Error::ExtensionMissingNullTerminator => {
+                write!(
+                    f,
+                    "NULL terminator missing in string returned from \
+                     vkEnumerateDeviceExtensionProperties"
+                )
+            },
+            Error::ExtensionInvalidUtf8 => {
+                write!(
+                    f,
+                    "Invalid UTF-8 in string returned from \
+                     vkEnumerateDeviceExtensionProperties"
+                )
+            },
             &Error::MissingBaseFeature(feature_num) => {
                 write!(
                     f,
@@ -516,9 +537,7 @@ impl Requirements {
         };
 
         if res != vk::VK_SUCCESS {
-            return Err(Error::Invalid(
-                "vkEnumerateDeviceExtensionProperties failed".to_string()
-            ));
+            return Err(Error::EnumerateDeviceExtensionPropertiesFailed);
         }
 
         let mut extensions = Vec::<vk::VkExtensionProperties>::with_capacity(
@@ -534,9 +553,7 @@ impl Requirements {
             );
 
             if res != vk::VK_SUCCESS {
-                return Err(Error::Invalid(
-                    "vkEnumerateDeviceExtensionProperties failed".to_string()
-                ));
+                return Err(Error::EnumerateDeviceExtensionPropertiesFailed);
             }
 
             // SAFETY: The FFI call to
@@ -552,19 +569,13 @@ impl Requirements {
             let name = &extension.extensionName;
             // Make sure it has a NULL terminator
             if let None = name.iter().find(|&&b| b == 0) {
-                return Err(Error::Invalid(
-                    "NULL terminator missing in string returned from \
-                     vkEnumerateDeviceExtensionProperties".to_string()
-                ));
+                return Err(Error::ExtensionMissingNullTerminator);
             }
             // SAFETY: we just checked that the array has a null terminator
             let name = unsafe { CStr::from_ptr(name.as_ptr()) };
             let name = match name.to_str() {
                 Err(_) => {
-                    return Err(Error::Invalid(
-                        "Invalid UTF-8 in string returned from \
-                         vkEnumerateDeviceExtensionProperties".to_string()
-                    ));
+                    return Err(Error::ExtensionInvalidUtf8);
                 },
                 Ok(s) => s,
             };
@@ -1256,7 +1267,7 @@ mod test {
                     "Invalid UTF-8 in string returned from \
                      vkEnumerateDeviceExtensionProperties"
                 );
-                assert!(matches!(e, Error::Invalid(_)));
+                assert!(matches!(e, Error::ExtensionInvalidUtf8));
                 assert_eq!(e.result(), result::Result::Fail);
             },
         };
@@ -1272,7 +1283,7 @@ mod test {
                     "NULL terminator missing in string returned from \
                      vkEnumerateDeviceExtensionProperties"
                 );
-                assert!(matches!(e, Error::Invalid(_)));
+                assert!(matches!(e, Error::ExtensionMissingNullTerminator));
                 assert_eq!(e.result(), result::Result::Fail);
             },
         };
