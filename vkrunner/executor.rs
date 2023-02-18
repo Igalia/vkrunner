@@ -33,6 +33,7 @@ use crate::vk;
 use crate::requirements::Requirements;
 use crate::pipeline_set::{self, PipelineSet};
 use crate::tester;
+use crate::requirements;
 use std::ffi::{c_void, c_int};
 use std::fmt;
 use std::rc::Rc;
@@ -44,6 +45,7 @@ pub enum Error {
     PipelineError(pipeline_set::Error),
     LoadError(LoadError),
     TestError(tester::Error),
+    ExternalDeviceRequirementsError(requirements::Error),
 }
 
 impl Error {
@@ -51,6 +53,7 @@ impl Error {
         match self {
             Error::Context(e) => e.result(),
             Error::Window(e) => e.result(),
+            Error::ExternalDeviceRequirementsError(e) => e.result(),
             Error::PipelineError(_) => result::Result::Fail,
             Error::LoadError(_) => result::Result::Fail,
             Error::TestError(_) => result::Result::Fail,
@@ -96,6 +99,7 @@ impl fmt::Display for Error {
             Error::PipelineError(e) => e.fmt(f),
             Error::LoadError(e) => e.fmt(f),
             Error::TestError(e) => e.fmt(f),
+            Error::ExternalDeviceRequirementsError(e) => e.fmt(f),
         }
     }
 }
@@ -244,6 +248,16 @@ impl Executor {
         script: &Script
     ) -> Result<(), Error> {
         let context = self.context_for_script(script)?;
+
+        if self.external.is_some() {
+            if let Err(e) = script.requirements().check(
+                context.instance(),
+                context.physical_device(),
+            ) {
+                return Err(Error::ExternalDeviceRequirementsError(e));
+            }
+        }
+
         let window = self.window_for_script(script, Rc::clone(&context))?;
 
         let pipeline_set = PipelineSet::new(
