@@ -38,7 +38,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-pub enum ExecutorError {
+pub enum Error {
     Context(context::Error),
     Window(WindowError),
     PipelineError(pipeline_set::Error),
@@ -46,56 +46,56 @@ pub enum ExecutorError {
     TestError(tester::Error),
 }
 
-impl ExecutorError {
+impl Error {
     pub fn result(&self) -> result::Result {
         match self {
-            ExecutorError::Context(e) => e.result(),
-            ExecutorError::Window(e) => e.result(),
-            ExecutorError::PipelineError(_) => result::Result::Fail,
-            ExecutorError::LoadError(_) => result::Result::Fail,
-            ExecutorError::TestError(_) => result::Result::Fail,
+            Error::Context(e) => e.result(),
+            Error::Window(e) => e.result(),
+            Error::PipelineError(_) => result::Result::Fail,
+            Error::LoadError(_) => result::Result::Fail,
+            Error::TestError(_) => result::Result::Fail,
         }
     }
 }
 
-impl From<context::Error> for ExecutorError {
-    fn from(error: context::Error) -> ExecutorError {
-        ExecutorError::Context(error)
+impl From<context::Error> for Error {
+    fn from(error: context::Error) -> Error {
+        Error::Context(error)
     }
 }
 
-impl From<WindowError> for ExecutorError {
-    fn from(error: WindowError) -> ExecutorError {
-        ExecutorError::Window(error)
+impl From<WindowError> for Error {
+    fn from(error: WindowError) -> Error {
+        Error::Window(error)
     }
 }
 
-impl From<LoadError> for ExecutorError {
-    fn from(error: LoadError) -> ExecutorError {
-        ExecutorError::LoadError(error)
+impl From<LoadError> for Error {
+    fn from(error: LoadError) -> Error {
+        Error::LoadError(error)
     }
 }
 
-impl From<pipeline_set::Error> for ExecutorError {
-    fn from(error: pipeline_set::Error) -> ExecutorError {
-        ExecutorError::PipelineError(error)
+impl From<pipeline_set::Error> for Error {
+    fn from(error: pipeline_set::Error) -> Error {
+        Error::PipelineError(error)
     }
 }
 
-impl From<tester::Error> for ExecutorError {
-    fn from(error: tester::Error) -> ExecutorError {
-        ExecutorError::TestError(error)
+impl From<tester::Error> for Error {
+    fn from(error: tester::Error) -> Error {
+        Error::TestError(error)
     }
 }
 
-impl fmt::Display for ExecutorError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ExecutorError::Context(e) => e.fmt(f),
-            ExecutorError::Window(e) => e.fmt(f),
-            ExecutorError::PipelineError(e) => e.fmt(f),
-            ExecutorError::LoadError(e) => e.fmt(f),
-            ExecutorError::TestError(e) => e.fmt(f),
+            Error::Context(e) => e.fmt(f),
+            Error::Window(e) => e.fmt(f),
+            Error::PipelineError(e) => e.fmt(f),
+            Error::LoadError(e) => e.fmt(f),
+            Error::TestError(e) => e.fmt(f),
         }
     }
 }
@@ -180,7 +180,7 @@ impl Executor {
     fn create_context(
         &self,
         requirements: &Requirements,
-    ) -> Result<Context, ExecutorError> {
+    ) -> Result<Context, Error> {
         match &self.external {
             Some(e) => {
                 Ok(Context::new_with_device(
@@ -201,7 +201,7 @@ impl Executor {
     fn context_for_script(
         &mut self,
         script: &Script,
-    ) -> Result<Rc<Context>, ExecutorError> {
+    ) -> Result<Rc<Context>, Error> {
         // Recreate the context if the features or extensions have changed
         if !self.context_is_compatible(script) {
             self.reset_context();
@@ -222,7 +222,7 @@ impl Executor {
         &mut self,
         script: &Script,
         context: Rc<Context>,
-    ) -> Result<Rc<Window>, ExecutorError> {
+    ) -> Result<Rc<Window>, Error> {
         // Recreate the window if the framebuffer format is different
         if let Some(window) = &self.window {
             if !window.format().eq(script.window_format()) {
@@ -242,7 +242,7 @@ impl Executor {
     pub fn execute_script(
         &mut self,
         script: &Script
-    ) -> Result<(), ExecutorError> {
+    ) -> Result<(), Error> {
         let context = self.context_for_script(script)?;
         let window = self.window_for_script(script, Rc::clone(&context))?;
 
@@ -266,7 +266,7 @@ impl Executor {
     pub fn execute(
         &mut self,
         source: &Source,
-    ) -> Result<(), ExecutorError> {
+    ) -> Result<(), Error> {
         self.execute_script(&Script::load(source)?)
     }
 }
@@ -304,7 +304,7 @@ pub extern "C" fn vr_executor_set_device(
     )
 }
 
-fn handle_execute_result(result: Result<(), ExecutorError>) -> result::Result {
+fn handle_execute_result(result: Result<(), Error>) -> result::Result {
     match result {
         Ok(()) => result::Result::Pass,
         Err(e) => {
