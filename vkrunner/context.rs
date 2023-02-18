@@ -23,13 +23,12 @@
 // DEALINGS IN THE SOFTWARE.
 
 use crate::vk;
-use crate::requirements::Requirements;
+use crate::requirements::{self, Requirements};
 use crate::vulkan_funcs;
 use crate::util::env_var_as_boolean;
 use crate::result;
 use std::ffi::{c_char, c_void, CStr};
 use std::fmt;
-use std::fmt::Write;
 use std::ptr;
 
 /// Struct containing the VkDevice and accessories such as a
@@ -61,35 +60,129 @@ pub struct Context {
 /// Error returned by [Context::new]
 #[derive(Debug)]
 pub enum Error {
-    /// An unexpected failure occured such as not being able to find
-    /// the Vulkan library. This should result in a test failure.
-    Failure(String),
-    /// The requirements couldn’t be satisfied. This should result in
-    /// the test being skipped.
-    Incompatible(String),
+    FuncsError(vulkan_funcs::Error),
+    RequirementsError(requirements::Error),
+    EnumerateInstanceExtensionPropertiesFailed,
+    MissingInstanceExtension(String),
+    IncompatibleDriver,
+    CreateInstanceFailed,
+    CreateDeviceFailed,
+    CreateCommandPoolFailed,
+    CommandBufferAllocateFailed,
+    CreateFenceFailed,
+    EnumeratePhysicalDevicesFailed,
+    NoDevices,
+    /// None of the drivers succeeded and the vector is an error for
+    /// each possible driver.
+    DeviceErrors(Vec<Error>),
+    NoGraphicsQueueFamily,
+    InvalidDeviceId { device_id: usize, n_devices: u32 },
 }
 
 impl From<vulkan_funcs::Error> for Error {
     fn from(error: vulkan_funcs::Error) -> Error {
-        Error::Failure(error.to_string())
+        Error::FuncsError(error)
+    }
+}
+
+impl From<requirements::Error> for Error {
+    fn from(error: requirements::Error) -> Error {
+        Error::RequirementsError(error)
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let message = match self {
-            Error::Failure(m) => m,
-            Error::Incompatible(m) => m,
-        };
-        write!(f, "{}", message)
+        match self {
+            Error::FuncsError(e) => e.fmt(f),
+            Error::RequirementsError(e) => e.fmt(f),
+            Error::EnumerateInstanceExtensionPropertiesFailed => {
+                write!(f, "vkEnumerateInstanceExtensionProperties failed")
+            },
+            Error::MissingInstanceExtension(s) => {
+                write!(f, "Missing instance extension: {}", s)
+            },
+            Error::IncompatibleDriver => {
+                write!(
+                    f,
+                    "vkCreateInstance reported VK_ERROR_INCOMPATIBLE_DRIVER",
+                )
+            },
+            Error::CreateInstanceFailed => write!(f, "vkCreateInstance failed"),
+            Error::CreateDeviceFailed => write!(f, "vkCreateDevice failed"),
+            Error::CreateCommandPoolFailed => {
+                write!(f, "vkCreateCommandPool failed")
+            },
+            Error::CommandBufferAllocateFailed => {
+                write!(f, "vkCommandBufferAllocate failed")
+            },
+            Error::CreateFenceFailed => {
+                write!(f, "vkCreateFence failed")
+            },
+            Error::EnumeratePhysicalDevicesFailed => {
+                write!(f, "vkEnumeratePhysicalDevices failed")
+            },
+            Error::NoDevices => {
+                write!(f, "The Vulkan instance reported zero drivers")
+            },
+            Error::DeviceErrors(errors) => {
+                for (i, error) in errors.iter().enumerate() {
+                    if i > 0 {
+                        writeln!(f)?;
+                    }
+
+                    write!(f, "{}: {}", i, error)?;
+                }
+                Ok(())
+            },
+            Error::NoGraphicsQueueFamily => {
+                write!(
+                    f,
+                    "Device has no graphics queue family"
+                )
+            },
+            &Error::InvalidDeviceId { device_id, n_devices } => {
+                write!(
+                    f,
+                    "Device {} was selected but the Vulkan instance only \
+                     reported {} device{}.",
+                    device_id,
+                    n_devices,
+                    if n_devices == 1 { "" } else { "s" },
+                )
+            },
+        }
     }
 }
 
 impl Error {
     pub fn result(&self) -> result::Result {
         match self {
-            Error::Failure(_) => result::Result::Fail,
-            Error::Incompatible(_) => result::Result::Skip,
+            Error::FuncsError(_) => result::Result::Fail,
+            Error::RequirementsError(e) => e.result(),
+            Error::EnumerateInstanceExtensionPropertiesFailed => {
+                result::Result::Fail
+            },
+            Error::MissingInstanceExtension(_) => result::Result::Skip,
+            Error::IncompatibleDriver => result::Result::Skip,
+            Error::CreateInstanceFailed => result::Result::Fail,
+            Error::CreateDeviceFailed => result::Result::Fail,
+            Error::CreateCommandPoolFailed => result::Result::Fail,
+            Error::CommandBufferAllocateFailed => result::Result::Fail,
+            Error::CreateFenceFailed => result::Result::Fail,
+            Error::EnumeratePhysicalDevicesFailed => result::Result::Fail,
+            Error::NoDevices => result::Result::Skip,
+            Error::DeviceErrors(errors) => {
+                // If all of the errors were Fail then we’ll return
+                // failure overall, otherwise we’ll return Skip.
+                if errors.iter().all(|e| e.result() == result::Result::Fail) {
+                    result::Result::Fail
+                } else {
+                    result::Result::Skip
+                }
+            },
+            Error::NoGraphicsQueueFamily => result::Result::Skip,
+            Error::InvalidDeviceId { .. } => result::Result::Fail,
         }
     }
 }
@@ -132,9 +225,7 @@ fn check_instance_extension(
     };
 
     if res != vk::VK_SUCCESS {
-        return Err(Error::Failure(
-            "vkEnumerateInstanceExtensionProperties failed".to_string(),
-        ));
+        return Err(Error::EnumerateInstanceExtensionPropertiesFailed);
     }
 
     let mut props = Vec::<vk::VkExtensionProperties>::new();
@@ -149,9 +240,7 @@ fn check_instance_extension(
     };
 
     if res != vk::VK_SUCCESS {
-        return Err(Error::Failure(
-            "vkEnumerateInstanceExtensionProperties failed".to_string(),
-        ));
+        return Err(Error::EnumerateInstanceExtensionPropertiesFailed);
     }
 
     'prop_loop: for prop in props.iter() {
@@ -173,9 +262,7 @@ fn check_instance_extension(
 
     let ext_name = CStr::from_bytes_with_nul(ext).unwrap();
 
-    Err(Error::Incompatible(
-        format!("Missing instance extension: {}", ext_name.to_string_lossy())
-    ))
+    Err(Error::MissingInstanceExtension(ext_name.to_string_lossy().to_string()))
 }
 
 // Struct that contains a VkInstance and its function pointers from
@@ -241,10 +328,7 @@ impl InstancePair {
         };
 
         match res {
-            vk::VK_ERROR_INCOMPATIBLE_DRIVER => Err(Error::Incompatible(
-                "vkCreateInstance reported VK_ERROR_INCOMPATIBLE_DRIVER"
-                    .to_string()
-            )),
+            vk::VK_ERROR_INCOMPATIBLE_DRIVER => Err(Error::IncompatibleDriver),
             vk::VK_SUCCESS => {
                 let vkinst = unsafe {
                     let closure = GetInstanceProcClosure {
@@ -264,9 +348,7 @@ impl InstancePair {
                     vkinst,
                 })
             },
-            _ => Err(Error::Failure(
-                "vkCreateInstance failed".to_string()
-            )),
+            _ => Err(Error::CreateInstanceFailed),
         }
     }
 
@@ -372,7 +454,7 @@ impl DevicePair {
                 )),
             })
         } else {
-            Err(Error::Failure("vkCreateDevice failed".to_string()))
+            Err(Error::CreateDeviceFailed)
         }
     }
 
@@ -472,9 +554,7 @@ impl<'a> DeviceResources<'a> {
         };
 
         if res != vk::VK_SUCCESS {
-            return Err(Error::Failure(
-                "vkCreateCommandPool failed".to_string()
-            ));
+            return Err(Error::CreateCommandPoolFailed);
         }
 
         self.command_pool = Some(command_pool);
@@ -500,9 +580,7 @@ impl<'a> DeviceResources<'a> {
         };
 
         if res != vk::VK_SUCCESS {
-            return Err(Error::Failure(
-                "vkCommandBufferAllocate failed".to_string()
-            ));
+            return Err(Error::CommandBufferAllocateFailed);
         }
 
         self.command_buffer = Some(command_buffer);
@@ -526,9 +604,7 @@ impl<'a> DeviceResources<'a> {
             )
         };
         if res != vk::VK_SUCCESS {
-            return Err(Error::Failure(
-                "vkCreateFence failed".to_string()
-            ));
+            return Err(Error::CreateFenceFailed);
         }
 
         self.fence = Some(fence);
@@ -563,45 +639,6 @@ impl<'a> Drop for DeviceResources<'a> {
             self.command_buffer.take(),
             self.fence.take(),
         );
-    }
-}
-
-fn combine_device_errors(mut errors: Vec<Error>) -> Error {
-    let n_errors = errors.len();
-
-    match n_errors {
-        0 => {
-            Error::Incompatible(
-                "The Vulkan instance reported zero drivers"
-                    .to_string()
-            )
-        },
-        1 => errors.pop().unwrap(),
-        _ => {
-            // If all of the errors were “Failure” then we’ll return
-            // failure overall, otherwise we’ll return “Incompatible”.
-            let mut all_failures = true;
-            let mut message = String::new();
-
-            for (i, error) in errors.into_iter().enumerate() {
-                if i > 0 {
-                    message.push('\n');
-                }
-
-                write!(&mut message, "{}: {}", i, &error).unwrap();
-
-                match error {
-                    Error::Incompatible(_) => all_failures = false,
-                    Error::Failure(_) => (),
-                }
-            }
-
-            if all_failures {
-                Error::Failure(message)
-            } else {
-                Error::Incompatible(message)
-            }
-        }
     }
 }
 
@@ -640,9 +677,7 @@ fn find_queue_family(
         }
     }
 
-    Err(Error::Incompatible(
-        "Device has no graphics queue family".to_string()
-    ))
+    Err(Error::NoGraphicsQueueFamily)
 }
 
 // Checks whether the chosen physical device can be used and has an
@@ -653,16 +688,12 @@ fn check_physical_device(
     requirements: &Requirements,
     physical_device: vk::VkPhysicalDevice,
 ) -> Result<u32, Error> {
-    match requirements.check(
+    requirements.check(
         instance_pair.vkinst.as_ref(),
         physical_device
-    ) {
-        Ok(()) => find_queue_family(instance_pair, physical_device),
-        Err(e) if e.result() == result::Result::Fail => {
-            Err(Error::Failure(e.to_string()))
-        },
-        Err(e) => Err(Error::Incompatible(e.to_string())),
-    }
+    )?;
+
+    find_queue_family(instance_pair, physical_device)
 }
 
 // Checks all of the physical devices advertised by the instance. If
@@ -687,9 +718,7 @@ fn find_physical_device(
     };
 
     if res != vk::VK_SUCCESS {
-        return Err(Error::Failure(
-            "vkEnumeratePhysicalDevices failed".to_string()
-        ));
+        return Err(Error::EnumeratePhysicalDevicesFailed);
     }
 
     let mut devices = Vec::<vk::VkPhysicalDevice>::new();
@@ -704,20 +733,12 @@ fn find_physical_device(
     };
 
     if res != vk::VK_SUCCESS {
-        return Err(Error::Failure(
-            "vkEnumeratePhysicalDevices failed".to_string()
-        ));
+        return Err(Error::EnumeratePhysicalDevicesFailed);
     }
 
     if let Some(device_id) = device_id {
         if device_id >= count as usize {
-            return Err(Error::Failure(format!(
-                "Device {} was selected but the Vulkan instance only reported \
-                 {} device{}.",
-                device_id,
-                count,
-                if count == 1 { "" } else { "s" },
-            )));
+            return Err(Error::InvalidDeviceId { device_id, n_devices: count });
         } else {
             return match check_physical_device(
                 instance_pair,
@@ -748,7 +769,11 @@ fn find_physical_device(
         }
     }
 
-    Err(combine_device_errors(errors))
+    match errors.len() {
+        0 => Err(Error::NoDevices),
+        1 => Err(errors.pop().unwrap()),
+        _ => Err(Error::DeviceErrors(errors)),
+    }
 }
 
 impl Context {
@@ -1116,7 +1141,7 @@ mod test {
              1: Device has no graphics queue family\n\
              2: Missing required extension: madeup_extension",
         );
-        assert!(matches!(err, Error::Incompatible(_)));
+        assert_eq!(err.result(), result::Result::Skip);
 
         // Try making them one of them fail
         fake_vulkan.queue_result(
@@ -1132,7 +1157,7 @@ mod test {
              1: Device has no graphics queue family\n\
              2: Missing required extension: madeup_extension",
         );
-        assert!(matches!(err, Error::Incompatible(_)));
+        assert_eq!(err.result(), result::Result::Skip);
 
         // Try making all of them fail
         fake_vulkan.physical_devices[0] = Default::default();
@@ -1158,7 +1183,7 @@ mod test {
              1: vkEnumerateDeviceExtensionProperties failed\n\
              2: vkEnumerateDeviceExtensionProperties failed",
         );
-        assert!(matches!(err, Error::Failure(_)));
+        assert_eq!(err.result(), result::Result::Fail);
 
         // Finally add a physical device that will succeed
         fake_vulkan.physical_devices.push(Default::default());
