@@ -661,29 +661,9 @@ impl Requirements {
 
     fn check_version(
         &self,
-        vklib: &vulkan_funcs::Library,
         vkinst: &vulkan_funcs::Instance,
-        instance: vk::VkInstance,
         device: vk::VkPhysicalDevice
     ) -> Result<(), CheckError> {
-        let rversion = self.version();
-
-        if rversion >= make_version(1, 1, 0) {
-            let enum_instance_version = unsafe {
-                vklib.vkGetInstanceProcAddr.unwrap()(
-                    instance,
-                    "vkEnumerateInstanceVersion\0".as_ptr().cast()
-                )
-            };
-
-            if let None = enum_instance_version {
-                return Err(CheckError::VersionTooLow {
-                    required_version: rversion,
-                    actual_version: make_version(1, 0, 0),
-                });
-            }
-        }
-
         let mut props = vk::VkPhysicalDeviceProperties::default();
 
         unsafe {
@@ -693,9 +673,9 @@ impl Requirements {
             );
         }
 
-        if props.apiVersion < rversion {
+        if props.apiVersion < self.version() {
             Err(CheckError::VersionTooLow {
-                required_version: rversion,
+                required_version: self.version(),
                 actual_version: props.apiVersion,
             })
         } else {
@@ -705,15 +685,15 @@ impl Requirements {
 
     pub fn check(
         &self,
-        vklib: &vulkan_funcs::Library,
+        _vklib: &vulkan_funcs::Library,
         vkinst: &vulkan_funcs::Instance,
-        instance: vk::VkInstance,
+        _instance: vk::VkInstance,
         device: vk::VkPhysicalDevice
     ) -> Result<(), CheckError> {
         self.check_base_features(vkinst, device)?;
         self.check_extensions(vkinst, device)?;
         self.check_structures(vkinst, device)?;
-        self.check_version(vklib, vkinst, instance, device)?;
+        self.check_version(vkinst, device)?;
 
         Ok(())
     }
@@ -1425,32 +1405,6 @@ mod test {
                 assert_eq!(
                     e.to_string(),
                     "Vulkan API version 1.2.0 required but the driver \
-                     reported 1.0.0",
-                );
-                assert!(matches!(
-                    e,
-                    CheckError::VersionTooLow { .. },
-                ));
-            },
-        };
-
-        // Now we let it have vkEnumerateInstanceVersion so it will
-        // report the API version but it is still too low.
-        data.fake_vulkan.has_enumerate_instance_version = true;
-
-        match reqs.check(
-            &data.vklib,
-            &data.vkinst,
-            data.instance,
-            data.device,
-        ) {
-            Ok(()) => unreachable!("expected version check to fail"),
-            Err(e) => {
-                // The check will report that the version is 1.0.0
-                // because vkEnumerateInstanceVersion is not available
-                assert_eq!(
-                    e.to_string(),
-                    "Vulkan API version 1.2.0 required but the driver \
                      reported 1.1.0",
                 );
                 assert!(matches!(
@@ -1460,7 +1414,7 @@ mod test {
             },
         };
 
-        // Finally a valid version
+        // Set a valid version
         data.fake_vulkan.physical_devices[0].properties.apiVersion =
             make_version(1, 3, 0);
 
