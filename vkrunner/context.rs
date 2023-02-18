@@ -69,9 +69,9 @@ pub enum ContextError {
     Incompatible(String),
 }
 
-impl From<String> for ContextError {
-    fn from(error: String) -> ContextError {
-        ContextError::Failure(error)
+impl From<vulkan_funcs::Error> for ContextError {
+    fn from(error: vulkan_funcs::Error) -> ContextError {
+        ContextError::Failure(error.to_string())
     }
 }
 

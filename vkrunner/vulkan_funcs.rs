@@ -26,6 +26,7 @@ use crate::vk;
 use crate::util;
 use std::ffi::{c_void, c_int, c_char, CString};
 use std::mem;
+use std::fmt;
 
 /// Offset of the pNext member of the structs that can be chained.
 /// There doesn’t seem to be a nice equivalent to offsetof in Rust so
@@ -45,6 +46,19 @@ pub type GetInstanceProcFunc = unsafe extern "C" fn(
     user_data: *const c_void,
 ) -> *const c_void;
 
+#[derive(Debug)]
+pub enum Error {
+    OpenLibraryFailed(&'static str),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::OpenLibraryFailed(lib) => write!(f, "Error opening {}", lib)
+        }
+    }
+}
+
 include!{"vulkan_funcs_data.rs"}
 
 struct LoaderFunc {
@@ -63,7 +77,7 @@ thread_local! {
 
 impl Library {
     fn get_loader_func(
-    ) -> Result<LoaderFunc, String> {
+    ) -> Result<LoaderFunc, Error> {
         // Override for unit tests. If an override function is set
         // then we will return that instead. `take` is called on it so
         // that it will only be used once and subsequent calls will
@@ -101,7 +115,7 @@ impl Library {
             };
 
             if lib.is_null() {
-                return Err(format!("Error opening {}", lib_name));
+                return Err(Error::OpenLibraryFailed(lib_name));
             }
 
             let get_instance_proc_addr = unsafe {
@@ -122,7 +136,7 @@ impl Library {
         todo!("library opening on non-Unix platforms is not yet implemented");
     }
 
-    pub fn new() -> Result<Library, String> {
+    pub fn new() -> Result<Library, Error> {
         let LoaderFunc {
             lib_vulkan,
             lib_vulkan_is_fake,
