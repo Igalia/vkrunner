@@ -60,7 +60,7 @@ pub struct Context {
 
 /// Error returned by [Context::new]
 #[derive(Debug)]
-pub enum ContextError {
+pub enum Error {
     /// An unexpected failure occured such as not being able to find
     /// the Vulkan library. This should result in a test failure.
     Failure(String),
@@ -69,17 +69,17 @@ pub enum ContextError {
     Incompatible(String),
 }
 
-impl From<vulkan_funcs::Error> for ContextError {
-    fn from(error: vulkan_funcs::Error) -> ContextError {
-        ContextError::Failure(error.to_string())
+impl From<vulkan_funcs::Error> for Error {
+    fn from(error: vulkan_funcs::Error) -> Error {
+        Error::Failure(error.to_string())
     }
 }
 
-impl fmt::Display for ContextError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let message = match self {
-            ContextError::Failure(m) => m,
-            ContextError::Incompatible(m) => m,
+            Error::Failure(m) => m,
+            Error::Incompatible(m) => m,
         };
         write!(f, "{}", message)
     }
@@ -111,7 +111,7 @@ extern "C" fn get_instance_proc(
 fn check_instance_extension(
     vklib: &vulkan_funcs::Library,
     ext: &[u8],
-) -> Result<(), ContextError> {
+) -> Result<(), Error> {
     let mut count: u32 = 0;
 
     let res = unsafe {
@@ -123,7 +123,7 @@ fn check_instance_extension(
     };
 
     if res != vk::VK_SUCCESS {
-        return Err(ContextError::Failure(
+        return Err(Error::Failure(
             "vkEnumerateInstanceExtensionProperties failed".to_string(),
         ));
     }
@@ -140,7 +140,7 @@ fn check_instance_extension(
     };
 
     if res != vk::VK_SUCCESS {
-        return Err(ContextError::Failure(
+        return Err(Error::Failure(
             "vkEnumerateInstanceExtensionProperties failed".to_string(),
         ));
     }
@@ -164,7 +164,7 @@ fn check_instance_extension(
 
     let ext_name = CStr::from_bytes_with_nul(ext).unwrap();
 
-    Err(ContextError::Incompatible(
+    Err(Error::Incompatible(
         format!("Missing instance extension: {}", ext_name.to_string_lossy())
     ))
 }
@@ -184,7 +184,7 @@ impl InstancePair {
     fn new(
         vklib: &vulkan_funcs::Library,
         requirements: &Requirements
-    ) -> Result<InstancePair, ContextError> {
+    ) -> Result<InstancePair, Error> {
         let application_info = vk::VkApplicationInfo {
             sType: vk::VK_STRUCTURE_TYPE_APPLICATION_INFO,
             pNext: ptr::null(),
@@ -232,7 +232,7 @@ impl InstancePair {
         };
 
         match res {
-            vk::VK_ERROR_INCOMPATIBLE_DRIVER => Err(ContextError::Incompatible(
+            vk::VK_ERROR_INCOMPATIBLE_DRIVER => Err(Error::Incompatible(
                 "vkCreateInstance reported VK_ERROR_INCOMPATIBLE_DRIVER"
                     .to_string()
             )),
@@ -255,7 +255,7 @@ impl InstancePair {
                     vkinst,
                 })
             },
-            _ => Err(ContextError::Failure(
+            _ => Err(Error::Failure(
                 "vkCreateInstance failed".to_string()
             )),
         }
@@ -307,7 +307,7 @@ impl DevicePair {
         requirements: &Requirements,
         physical_device: vk::VkPhysicalDevice,
         queue_family: u32,
-    ) -> Result<DevicePair, ContextError> {
+    ) -> Result<DevicePair, Error> {
         let structures = requirements.c_structures();
         let base_features = requirements.c_base_features();
         let extensions = requirements.c_extensions();
@@ -363,7 +363,7 @@ impl DevicePair {
                 )),
             })
         } else {
-            Err(ContextError::Failure("vkCreateDevice failed".to_string()))
+            Err(Error::Failure("vkCreateDevice failed".to_string()))
         }
     }
 
@@ -445,7 +445,7 @@ impl<'a> DeviceResources<'a> {
     fn create_command_pool(
         &mut self,
         queue_family: u32,
-    ) -> Result<(), ContextError> {
+    ) -> Result<(), Error> {
         let command_pool_create_info = vk::VkCommandPoolCreateInfo {
             sType: vk::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             pNext: ptr::null(),
@@ -463,7 +463,7 @@ impl<'a> DeviceResources<'a> {
         };
 
         if res != vk::VK_SUCCESS {
-            return Err(ContextError::Failure(
+            return Err(Error::Failure(
                 "vkCreateCommandPool failed".to_string()
             ));
         }
@@ -473,7 +473,7 @@ impl<'a> DeviceResources<'a> {
         Ok(())
     }
 
-    fn allocate_command_buffer(&mut self) -> Result<(), ContextError> {
+    fn allocate_command_buffer(&mut self) -> Result<(), Error> {
         let command_buffer_allocate_info = vk::VkCommandBufferAllocateInfo {
             sType: vk::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             pNext: ptr::null(),
@@ -491,7 +491,7 @@ impl<'a> DeviceResources<'a> {
         };
 
         if res != vk::VK_SUCCESS {
-            return Err(ContextError::Failure(
+            return Err(Error::Failure(
                 "vkCommandBufferAllocate failed".to_string()
             ));
         }
@@ -501,7 +501,7 @@ impl<'a> DeviceResources<'a> {
         Ok(())
     }
 
-    fn create_fence(&mut self) -> Result<(), ContextError> {
+    fn create_fence(&mut self) -> Result<(), Error> {
         let fence_create_info = vk::VkFenceCreateInfo {
             sType: vk::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             pNext: ptr::null(),
@@ -517,7 +517,7 @@ impl<'a> DeviceResources<'a> {
             )
         };
         if res != vk::VK_SUCCESS {
-            return Err(ContextError::Failure(
+            return Err(Error::Failure(
                 "vkCreateFence failed".to_string()
             ));
         }
@@ -530,7 +530,7 @@ impl<'a> DeviceResources<'a> {
     fn new(
         device_pair: &'a DevicePair,
         queue_family: u32,
-    ) -> Result<DeviceResources<'a>, ContextError> {
+    ) -> Result<DeviceResources<'a>, Error> {
         let mut device_resources = DeviceResources {
             device_pair,
             command_pool: None,
@@ -557,12 +557,12 @@ impl<'a> Drop for DeviceResources<'a> {
     }
 }
 
-fn combine_device_errors(mut errors: Vec<ContextError>) -> ContextError {
+fn combine_device_errors(mut errors: Vec<Error>) -> Error {
     let n_errors = errors.len();
 
     match n_errors {
         0 => {
-            ContextError::Incompatible(
+            Error::Incompatible(
                 "The Vulkan instance reported zero drivers"
                     .to_string()
             )
@@ -582,15 +582,15 @@ fn combine_device_errors(mut errors: Vec<ContextError>) -> ContextError {
                 write!(&mut message, "{}: {}", i, &error).unwrap();
 
                 match error {
-                    ContextError::Incompatible(_) => all_failures = false,
-                    ContextError::Failure(_) => (),
+                    Error::Incompatible(_) => all_failures = false,
+                    Error::Failure(_) => (),
                 }
             }
 
             if all_failures {
-                ContextError::Failure(message)
+                Error::Failure(message)
             } else {
-                ContextError::Incompatible(message)
+                Error::Incompatible(message)
             }
         }
     }
@@ -599,7 +599,7 @@ fn combine_device_errors(mut errors: Vec<ContextError>) -> ContextError {
 fn find_queue_family(
     instance_pair: &InstancePair,
     physical_device: vk::VkPhysicalDevice,
-) -> Result<u32, ContextError> {
+) -> Result<u32, Error> {
     let vkinst = instance_pair.vkinst.as_ref();
 
     let mut count = 0u32;
@@ -631,7 +631,7 @@ fn find_queue_family(
         }
     }
 
-    Err(ContextError::Incompatible(
+    Err(Error::Incompatible(
         "Device has no graphics queue family".to_string()
     ))
 }
@@ -643,16 +643,16 @@ fn check_physical_device(
     instance_pair: &InstancePair,
     requirements: &Requirements,
     physical_device: vk::VkPhysicalDevice,
-) -> Result<u32, ContextError> {
+) -> Result<u32, Error> {
     match requirements.check(
         instance_pair.vkinst.as_ref(),
         physical_device
     ) {
         Ok(()) => find_queue_family(instance_pair, physical_device),
         Err(e) if e.result() == result::Result::Fail => {
-            Err(ContextError::Failure(e.to_string()))
+            Err(Error::Failure(e.to_string()))
         },
-        Err(e) => Err(ContextError::Incompatible(e.to_string())),
+        Err(e) => Err(Error::Incompatible(e.to_string())),
     }
 }
 
@@ -664,7 +664,7 @@ fn find_physical_device(
     instance_pair: &InstancePair,
     requirements: &Requirements,
     device_id: Option<usize>,
-) -> Result<(vk::VkPhysicalDevice, u32), ContextError> {
+) -> Result<(vk::VkPhysicalDevice, u32), Error> {
     let vkinst = instance_pair.vkinst.as_ref();
 
     let mut count = 0u32;
@@ -678,7 +678,7 @@ fn find_physical_device(
     };
 
     if res != vk::VK_SUCCESS {
-        return Err(ContextError::Failure(
+        return Err(Error::Failure(
             "vkEnumeratePhysicalDevices failed".to_string()
         ));
     }
@@ -695,14 +695,14 @@ fn find_physical_device(
     };
 
     if res != vk::VK_SUCCESS {
-        return Err(ContextError::Failure(
+        return Err(Error::Failure(
             "vkEnumeratePhysicalDevices failed".to_string()
         ));
     }
 
     if let Some(device_id) = device_id {
         if device_id >= count as usize {
-            return Err(ContextError::Failure(format!(
+            return Err(Error::Failure(format!(
                 "Device {} was selected but the Vulkan instance only reported \
                  {} device{}.",
                 device_id,
@@ -724,7 +724,7 @@ fn find_physical_device(
     // Collect all of the errors into an array so we can report all of
     // them in a combined error message if we can’t find a good
     // device.
-    let mut errors = Vec::<ContextError>::new();
+    let mut errors = Vec::<Error>::new();
 
     for device in devices {
         match check_physical_device(
@@ -749,7 +749,7 @@ impl Context {
         physical_device: vk::VkPhysicalDevice,
         queue_family: u32,
         device_pair: DevicePair,
-    ) -> Result<Context, ContextError> {
+    ) -> Result<Context, Error> {
         let mut memory_properties =
             vk::VkPhysicalDeviceMemoryProperties::default();
 
@@ -798,16 +798,16 @@ impl Context {
         })
     }
 
-    /// Constructs a Context or returns [ContextError::Failure] if an
+    /// Constructs a Context or returns [Error::Failure] if an
     /// error occurred while constructing it or
-    /// [ContextError::Incompatible] if the requirements couldn’t be
+    /// [Error::Incompatible] if the requirements couldn’t be
     /// met. `device_id` can optionally be set to limit the device
     /// selection to an index in the list returned by
     /// `vkEnumeratePhysicalDevices`.
     pub fn new(
         requirements: &Requirements,
         device_id: Option<usize>,
-    ) -> Result<Context, ContextError> {
+    ) -> Result<Context, Error> {
         let vklib = Box::new(vulkan_funcs::Library::new()?);
 
         let instance_pair = InstancePair::new(vklib.as_ref(), requirements)?;
@@ -852,7 +852,7 @@ impl Context {
         physical_device: vk::VkPhysicalDevice,
         queue_family: u32,
         device: vk::VkDevice
-    ) -> Result<Context, ContextError> {
+    ) -> Result<Context, Error> {
         let instance_pair = InstancePair::new_external(
             get_instance_proc_cb,
             user_data,
@@ -1107,7 +1107,7 @@ mod test {
              1: Device has no graphics queue family\n\
              2: Missing required extension: madeup_extension",
         );
-        assert!(matches!(err, ContextError::Incompatible(_)));
+        assert!(matches!(err, Error::Incompatible(_)));
 
         // Try making them one of them fail
         fake_vulkan.queue_result(
@@ -1123,7 +1123,7 @@ mod test {
              1: Device has no graphics queue family\n\
              2: Missing required extension: madeup_extension",
         );
-        assert!(matches!(err, ContextError::Incompatible(_)));
+        assert!(matches!(err, Error::Incompatible(_)));
 
         // Try making all of them fail
         fake_vulkan.physical_devices[0] = Default::default();
@@ -1149,7 +1149,7 @@ mod test {
              1: vkEnumerateDeviceExtensionProperties failed\n\
              2: vkEnumerateDeviceExtensionProperties failed",
         );
-        assert!(matches!(err, ContextError::Failure(_)));
+        assert!(matches!(err, Error::Failure(_)));
 
         // Finally add a physical device that will succeed
         fake_vulkan.physical_devices.push(Default::default());

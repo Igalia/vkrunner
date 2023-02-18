@@ -23,7 +23,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 use crate::vulkan_funcs;
-use crate::context::{Context, ContextError};
+use crate::context::{self, Context};
 use crate::window::{Window, WindowError};
 use crate::config::Config;
 use crate::script::{Script, LoadError};
@@ -39,7 +39,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 pub enum ExecutorError {
-    Context(ContextError),
+    Context(context::Error),
     Window(WindowError),
     PipelineError(pipeline_set::Error),
     LoadError(LoadError),
@@ -50,8 +50,8 @@ impl ExecutorError {
     pub fn result(&self) -> result::Result {
         match self {
             ExecutorError::Context(e) => match e {
-                ContextError::Failure(_) => result::Result::Fail,
-                ContextError::Incompatible(_) => result::Result::Skip,
+                context::Error::Failure(_) => result::Result::Fail,
+                context::Error::Incompatible(_) => result::Result::Skip,
             },
             ExecutorError::Window(e) => e.result(),
             ExecutorError::PipelineError(_) => result::Result::Fail,
@@ -61,8 +61,8 @@ impl ExecutorError {
     }
 }
 
-impl From<ContextError> for ExecutorError {
-    fn from(error: ContextError) -> ExecutorError {
+impl From<context::Error> for ExecutorError {
+    fn from(error: context::Error) -> ExecutorError {
         ExecutorError::Context(error)
     }
 }
