@@ -969,14 +969,6 @@ impl Context {
     pub fn always_flush_memory(&self) -> bool {
         self.always_flush_memory
     }
-
-    /// Returns whether the context was created from an external
-    /// provided via the API, ie with [Context::new_with_device]
-    /// instead of [Context::new].
-    #[inline]
-    pub fn is_external(&self) -> bool {
-        self.device_pair.is_external
-    }
 }
 
 impl Drop for Context {
@@ -1017,7 +1009,6 @@ mod test {
         assert!(!context.command_buffer().is_null());
         assert!(!context.fence().is_null());
         assert_eq!(FakeVulkan::unmake_queue(context.queue()), (0, 0));
-        assert!(!context.is_external());
     }
 
     #[test]
