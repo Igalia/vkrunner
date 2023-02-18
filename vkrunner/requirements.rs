@@ -110,22 +110,22 @@ pub struct Requirements {
 
 /// Error returned by [Requirements::check]
 #[derive(Debug)]
-pub enum Error<'a> {
+pub enum Error {
     EnumerateDeviceExtensionPropertiesFailed,
     ExtensionMissingNullTerminator,
     ExtensionInvalidUtf8,
     /// A required base feature from VkPhysicalDeviceFeatures is missing.
     MissingBaseFeature(usize),
-    /// A required extension is missing. The string slice is the name
-    /// of the extension.
-    MissingExtension(&'a str),
+    /// A required extension is missing. The string is the name of the
+    /// extension.
+    MissingExtension(String),
     /// A required feature is missing.
     MissingFeature { extension: usize, feature: usize },
     /// The API version reported by the driver is too low
     VersionTooLow { required_version: u32, actual_version: u32 },
 }
 
-impl<'a> Error<'a> {
+impl Error {
     pub fn result(&self) -> result::Result {
         match self {
             Error::EnumerateDeviceExtensionPropertiesFailed => {
@@ -141,7 +141,7 @@ impl<'a> Error<'a> {
     }
 }
 
-impl<'a> fmt::Display for Error<'a> {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::EnumerateDeviceExtensionPropertiesFailed => {
@@ -168,7 +168,7 @@ impl<'a> fmt::Display for Error<'a> {
                     BASE_FEATURES[feature_num],
                 )
             },
-            &Error::MissingExtension(s) => {
+            Error::MissingExtension(s) => {
                 write!(f, "Missing required extension: {}", s)
             },
             &Error::MissingFeature { extension, feature } => {
@@ -598,7 +598,7 @@ impl Requirements {
 
         for extension in self.extensions.iter() {
             if !actual_extensions.contains(extension) {
-                return Err(Error::MissingExtension(extension));
+                return Err(Error::MissingExtension(extension.to_string()));
             }
         }
 
@@ -1135,7 +1135,7 @@ mod test {
     fn check_base_features<'a>(
         reqs: &'a Requirements,
         features: &vk::VkPhysicalDeviceFeatures
-    ) -> Result<(), Error<'a>> {
+    ) -> Result<(), Error> {
         let mut data = FakeVulkanData::new();
 
         data.fake_vulkan.physical_devices[0].features = features.clone();
@@ -1197,7 +1197,7 @@ mod test {
             Err(e) => {
                 assert!(matches!(
                     e,
-                    Error::MissingExtension("fake_extension"),
+                    Error::MissingExtension(_),
                 ));
                 assert_eq!(
                     e.to_string(),
@@ -1222,7 +1222,7 @@ mod test {
             Err(e) => {
                 assert!(matches!(
                     e,
-                    Error::MissingExtension("VK_KHR_multiview")
+                    Error::MissingExtension(_)
                 ));
                 assert_eq!(
                     e.to_string(),
