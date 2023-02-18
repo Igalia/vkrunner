@@ -25,6 +25,7 @@
 use crate::vk;
 use crate::vulkan_funcs;
 use crate::vulkan_funcs::{NEXT_PTR_OFFSET, FIRST_FEATURE_OFFSET};
+use crate::result;
 use std::mem;
 use std::collections::{HashMap, HashSet};
 use std::ffi::CStr;
@@ -121,6 +122,18 @@ pub enum Error<'a> {
     MissingFeature { extension: usize, feature: usize },
     /// The API version reported by the driver is too low
     VersionTooLow { required_version: u32, actual_version: u32 },
+}
+
+impl<'a> Error<'a> {
+    pub fn result(&self) -> result::Result {
+        match self {
+            Error::Invalid(_) => result::Result::Fail,
+            Error::MissingBaseFeature(_) => result::Result::Skip,
+            Error::MissingExtension(_) => result::Result::Skip,
+            Error::MissingFeature { .. } => result::Result::Skip,
+            Error::VersionTooLow { .. } => result::Result::Skip,
+        }
+    }
 }
 
 impl<'a> fmt::Display for Error<'a> {
@@ -1151,6 +1164,7 @@ mod test {
                     e.to_string(),
                     "Missing required feature: depthBounds"
                 );
+                assert_eq!(e.result(), result::Result::Skip);
             },
         }
     }
@@ -1178,6 +1192,7 @@ mod test {
                     e.to_string(),
                     "Missing required extension: fake_extension"
                 );
+                assert_eq!(e.result(), result::Result::Skip);
             },
         };
 
@@ -1202,6 +1217,7 @@ mod test {
                     e.to_string(),
                     "Missing required extension: VK_KHR_multiview",
                 );
+                assert_eq!(e.result(), result::Result::Skip);
             },
         };
 
@@ -1219,6 +1235,7 @@ mod test {
                     "Missing required feature “multiviewGeometryShader” from \
                      extension “VK_KHR_multiview”",
                 );
+                assert_eq!(e.result(), result::Result::Skip);
             },
         };
 
@@ -1240,6 +1257,7 @@ mod test {
                      vkEnumerateDeviceExtensionProperties"
                 );
                 assert!(matches!(e, Error::Invalid(_)));
+                assert_eq!(e.result(), result::Result::Fail);
             },
         };
 
@@ -1255,6 +1273,7 @@ mod test {
                      vkEnumerateDeviceExtensionProperties"
                 );
                 assert!(matches!(e, Error::Invalid(_)));
+                assert_eq!(e.result(), result::Result::Fail);
             },
         };
     }
@@ -1279,6 +1298,7 @@ mod test {
                     e,
                     Error::MissingFeature { .. },
                 ));
+                assert_eq!(e.result(), result::Result::Skip);
             },
         };
 
@@ -1306,6 +1326,7 @@ mod test {
                     e,
                     Error::MissingFeature { .. },
                 ));
+                assert_eq!(e.result(), result::Result::Skip);
             },
         };
 
@@ -1344,6 +1365,7 @@ mod test {
                     e,
                     Error::VersionTooLow { .. },
                 ));
+                assert_eq!(e.result(), result::Result::Skip);
             },
         };
 

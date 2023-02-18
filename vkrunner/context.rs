@@ -23,9 +23,10 @@
 // DEALINGS IN THE SOFTWARE.
 
 use crate::vk;
-use crate::requirements::{self, Requirements};
+use crate::requirements::Requirements;
 use crate::vulkan_funcs;
 use crate::util::env_var_as_boolean;
+use crate::result;
 use std::ffi::{c_char, c_void, CStr};
 use std::fmt;
 use std::fmt::Write;
@@ -648,8 +649,8 @@ fn check_physical_device(
         physical_device
     ) {
         Ok(()) => find_queue_family(instance_pair, physical_device),
-        Err(requirements::Error::Invalid(s)) => {
-            Err(ContextError::Failure(s))
+        Err(e) if e.result() == result::Result::Fail => {
+            Err(ContextError::Failure(e.to_string()))
         },
         Err(e) => Err(ContextError::Incompatible(e.to_string())),
     }
