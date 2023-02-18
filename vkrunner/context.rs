@@ -85,6 +85,15 @@ impl fmt::Display for Error {
     }
 }
 
+impl Error {
+    pub fn result(&self) -> result::Result {
+        match self {
+            Error::Failure(_) => result::Result::Fail,
+            Error::Incompatible(_) => result::Result::Skip,
+        }
+    }
+}
+
 struct GetInstanceProcClosure<'a> {
     vklib: &'a vulkan_funcs::Library,
     vk_instance: vk::VkInstance,

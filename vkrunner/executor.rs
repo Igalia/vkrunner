@@ -49,10 +49,7 @@ pub enum ExecutorError {
 impl ExecutorError {
     pub fn result(&self) -> result::Result {
         match self {
-            ExecutorError::Context(e) => match e {
-                context::Error::Failure(_) => result::Result::Fail,
-                context::Error::Incompatible(_) => result::Result::Skip,
-            },
+            ExecutorError::Context(e) => e.result(),
             ExecutorError::Window(e) => e.result(),
             ExecutorError::PipelineError(_) => result::Result::Fail,
             ExecutorError::LoadError(_) => result::Result::Fail,
