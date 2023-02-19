@@ -39,6 +39,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::cell::RefCell;
 
+#[derive(Debug)]
 pub enum Error {
     Context(context::Error),
     Window(WindowError),
