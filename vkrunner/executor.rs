@@ -349,3 +349,281 @@ pub extern "C" fn vr_executor_execute_script(
 pub extern "C" fn vr_executor_free(executor: *mut Executor) {
     unsafe { Box::from_raw(executor) };
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::fake_vulkan::FakeVulkan;
+    use crate::config::{vr_config_new, vr_config_set_device_id};
+    use std::ffi::c_char;
+
+    fn create_fake_vulkan() -> Box<FakeVulkan> {
+        let mut fake_vulkan = FakeVulkan::new();
+        fake_vulkan.physical_devices.push(Default::default());
+        fake_vulkan.physical_devices[0].features.wideLines = vk::VK_TRUE;
+        fake_vulkan.physical_devices[0].format_properties.insert(
+            vk::VK_FORMAT_B8G8R8A8_UNORM,
+            vk::VkFormatProperties {
+                linearTilingFeatures: 0,
+                optimalTilingFeatures:
+                vk::VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT
+                    | vk::VK_FORMAT_FEATURE_BLIT_SRC_BIT,
+                bufferFeatures: 0,
+            },
+        );
+        fake_vulkan.physical_devices[0].format_properties.insert(
+            vk::VK_FORMAT_R8_UNORM,
+            vk::VkFormatProperties {
+                linearTilingFeatures: 0,
+                optimalTilingFeatures:
+                vk::VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT
+                    | vk::VK_FORMAT_FEATURE_BLIT_SRC_BIT,
+                bufferFeatures: 0,
+            },
+        );
+
+        let memory_properties =
+            &mut fake_vulkan.physical_devices[0].memory_properties;
+        memory_properties.memoryTypes[0].propertyFlags =
+            vk::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        memory_properties.memoryTypeCount = 1;
+        fake_vulkan.memory_requirements.memoryTypeBits = 1;
+
+        fake_vulkan
+    }
+
+    #[test]
+    fn recreate_resources() {
+        let fake_vulkan = create_fake_vulkan();
+
+        let config = unsafe { Rc::from_raw(vr_config_new()) };
+
+        let mut executor = Executor::new(Rc::clone(&config));
+
+        fake_vulkan.set_override();
+        executor.execute(&Source::from_string("".to_string())).unwrap();
+
+        let context = Rc::clone(executor.context.as_ref().unwrap());
+        let window = Rc::clone(&executor.window.as_ref().unwrap());
+
+        // Run another script that has the same requirements
+        executor.execute(&Source::from_string(
+            "[test]\n\
+             draw rect -1 -1 2 2".to_string()
+        )).unwrap();
+
+        // The context and window shouldn’t have changed
+        assert!(Rc::ptr_eq(&context, executor.context.as_ref().unwrap()));
+        assert!(Rc::ptr_eq(&window, executor.window.as_ref().unwrap()));
+
+        // Run a script with different requirements
+        fake_vulkan.set_override();
+        executor.execute(&Source::from_string(
+            "[require]\n\
+             wideLines\n\
+             [test]\n\
+             draw rect -1 -1 2 2".to_string()
+        )).unwrap();
+
+        // The context and window should have changed
+        assert!(!Rc::ptr_eq(&context, executor.context.as_ref().unwrap()));
+        assert!(!Rc::ptr_eq(&window, executor.window.as_ref().unwrap()));
+
+        let context = Rc::clone(executor.context.as_ref().unwrap());
+        let window = Rc::clone(&executor.window.as_ref().unwrap());
+
+        // Run the same script with a different framebuffer format
+        executor.execute(&Source::from_string(
+            "[require]\n\
+             wideLines\n\
+             framebuffer R8_UNORM\n\
+             [test]\n\
+             draw rect -1 -1 2 2".to_string()
+        )).unwrap();
+
+        // The context should stay the same but the framebuffer should
+        // have changed
+        assert!(Rc::ptr_eq(&context, executor.context.as_ref().unwrap()));
+        assert!(!Rc::ptr_eq(&window, executor.window.as_ref().unwrap()));
+    }
+
+    extern "C" fn get_instance_proc_cb(
+        func_name: *const c_char,
+        user_data: *const c_void,
+    ) -> *const c_void {
+        unsafe {
+            let fake_vulkan = &*(user_data as *const FakeVulkan);
+
+            let func = fake_vulkan.get_function(func_name);
+
+            std::mem::transmute(func)
+        }
+    }
+
+    #[test]
+    fn external_device() {
+        let fake_vulkan = create_fake_vulkan();
+
+        fake_vulkan.set_override();
+        let context = Context::new(&Requirements::new(), None).unwrap();
+
+        let config = unsafe { Rc::from_raw(vr_config_new()) };
+
+        let mut executor = Executor::new(Rc::clone(&config));
+
+        let (queue_family, _) = FakeVulkan::unmake_queue(context.queue());
+
+        executor.set_device(
+            get_instance_proc_cb,
+            (fake_vulkan.as_ref() as *const FakeVulkan).cast(),
+            context.physical_device(),
+            queue_family,
+            context.vk_device()
+        );
+
+        executor.execute(&Source::from_string("".to_string())).unwrap();
+    }
+
+    #[test]
+    fn external_requirements_error() {
+        let fake_vulkan = create_fake_vulkan();
+
+        fake_vulkan.set_override();
+        let context = Context::new(&Requirements::new(), None).unwrap();
+
+        let config = unsafe { Rc::from_raw(vr_config_new()) };
+
+        let mut executor = Executor::new(Rc::clone(&config));
+
+        let (queue_family, _) = FakeVulkan::unmake_queue(context.queue());
+
+        executor.set_device(
+            get_instance_proc_cb,
+            (fake_vulkan.as_ref() as *const FakeVulkan).cast(),
+            context.physical_device(),
+            queue_family,
+            context.vk_device()
+        );
+
+        let source = Source::from_string(
+            "[require]\n\
+             logicOp".to_string()
+        );
+
+        let error = executor.execute(&source).unwrap_err();
+
+        assert_eq!(
+            &error.to_string(),
+            "Missing required feature: logicOp",
+        );
+        assert_eq!(
+            error.result(),
+            result::Result::Skip,
+        );
+    }
+
+    #[test]
+    fn context_error() {
+        let fake_vulkan = create_fake_vulkan();
+
+        let config = unsafe { Rc::from_raw(vr_config_new()) };
+        vr_config_set_device_id(&config, 12);
+
+        let mut executor = Executor::new(Rc::clone(&config));
+
+        let source = Source::from_string("".to_string());
+
+        fake_vulkan.set_override();
+        let error = executor.execute(&source).unwrap_err();
+
+        assert_eq!(
+            &error.to_string(),
+            "Device 12 was selected but the Vulkan instance only reported \
+             1 device.",
+        );
+        assert_eq!(
+            error.result(),
+            result::Result::Fail,
+        );
+    }
+
+    fn run_script_error(source: &str) -> Error {
+        let fake_vulkan = create_fake_vulkan();
+
+        let config = unsafe { Rc::from_raw(vr_config_new()) };
+
+        let mut executor = Executor::new(config);
+
+        let source = Source::from_string(source.to_string());
+
+        fake_vulkan.set_override();
+        executor.execute(&source).unwrap_err()
+    }
+
+    #[test]
+    fn window_error() {
+        let error = run_script_error(
+            "[require]\n\
+             depthstencil R8_UNORM"
+        );
+
+        assert_eq!(
+            &error.to_string(),
+            "Format R8_UNORM is not supported as a depth/stencil attachment",
+        );
+        assert_eq!(
+            error.result(),
+            result::Result::Skip,
+        );
+    }
+
+    #[test]
+    fn script_error() {
+        let error = run_script_error("[bad section]\n");
+
+        assert_eq!(
+            &error.to_string(),
+            "line 1: Unknown section “bad section”",
+        );
+        assert_eq!(
+            error.result(),
+            result::Result::Fail,
+        );
+    }
+
+    #[test]
+    fn pipeline_error() {
+        let error = run_script_error(
+            "[vertex shader]\n\
+             12"
+        );
+
+        assert_eq!(
+            &error.to_string(),
+            "The compiler or assembler generated an invalid SPIR-V binary",
+        );
+        assert_eq!(
+            error.result(),
+            result::Result::Fail,
+        );
+    }
+
+    #[test]
+    fn tester_error() {
+        let error = run_script_error(
+            "[test]\n\
+             probe all rgb 1 2 3"
+        );
+
+        assert_eq!(
+            &error.to_string(),
+            "line 2: Probe color at (0,0)\n\
+             \x20 Expected: 1 2 3\n\
+             \x20 Observed: 0 0 0"
+        );
+        assert_eq!(
+            error.result(),
+            result::Result::Fail,
+        );
+    }
+}
