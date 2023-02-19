@@ -1,11 +1,7 @@
-vkrunner_bin_source_files = [
-   'main.c',
-   'getopt.c',
-]
-
-executable('vkrunner',
-           vkrunner_bin_source_files,
-           link_with : vkrunner_static_lib,
-           install : true,
-           dependencies : m_dep,
-           include_directories : include_directories('..'))
+vkrunner_exe = executable('vkrunner',
+                          sources : 'main.rs',
+                          link_with : vkrunner_rust_lib,
+                          install : true)
+if rust.found()
+    rust.test('exe-rust-unit-tests', vkrunner_exe)
+endif

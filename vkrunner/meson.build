@@ -1,7 +1,5 @@
 pkg = import('pkgconfig')
 
-rust = import('rust', required : false)
-
 vkrunner_public_headers = [
    'vr-callback.h',
    'vr-config.h',
@@ -36,7 +34,7 @@ pkg.generate(vkrunner_static_lib,
 if rust.found()
     # Fake compiler program to help test compiler.rs
     fake_compiler = executable('fake_compiler', sources: 'fake_compiler.rs')
-    rust.test('rust-unit-tests',
+    rust.test('lib-rust-unit-tests',
               vkrunner_rust_lib,
               depends: [fake_compiler],
               env: {'PIGLIT_GLSLANG_VALIDATOR_BINARY':
