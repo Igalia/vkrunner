@@ -244,7 +244,25 @@ impl Executor {
         }
     }
 
-    pub fn execute_script(
+    fn handle_execute_result(
+        &self,
+        result: Result<(), Error>
+    ) -> result::Result {
+        match result {
+            Ok(()) => result::Result::Pass,
+            Err(e) => {
+                use std::fmt::Write;
+                let _ = writeln!(
+                    self.config.borrow_mut().logger().borrow_mut(),
+                    "{}",
+                    e
+                );
+                e.result()
+            }
+        }
+    }
+
+    fn execute_script_or_error(
         &mut self,
         script: &Script
     ) -> Result<(), Error> {
@@ -278,11 +296,27 @@ impl Executor {
         Ok(())
     }
 
-    pub fn execute(
+    pub fn execute_script(
+        &mut self,
+        script: &Script
+    ) -> result::Result {
+        let res = self.execute_script_or_error(script);
+        self.handle_execute_result(res)
+    }
+
+    fn execute_source_or_error(
         &mut self,
         source: &Source,
     ) -> Result<(), Error> {
-        self.execute_script(&Script::load(source)?)
+        self.execute_script_or_error(&Script::load(source)?)
+    }
+
+    pub fn execute(
+        &mut self,
+        source: &Source,
+    ) -> result::Result {
+        let res = self.execute_source_or_error(source);
+        self.handle_execute_result(res)
     }
 }
 
@@ -319,22 +353,12 @@ pub extern "C" fn vr_executor_set_device(
     )
 }
 
-fn handle_execute_result(result: Result<(), Error>) -> result::Result {
-    match result {
-        Ok(()) => result::Result::Pass,
-        Err(e) => {
-            eprintln!("{}", e);
-            e.result()
-        }
-    }
-}
-
 #[no_mangle]
 pub extern "C" fn vr_executor_execute(
     executor: &mut Executor,
     source: &Source,
 ) -> result::Result {
-    handle_execute_result(executor.execute(source))
+    executor.execute(source)
 }
 
 #[no_mangle]
@@ -342,7 +366,7 @@ pub extern "C" fn vr_executor_execute_script(
     executor: &mut Executor,
     script: &Script,
 ) -> result::Result {
-    handle_execute_result(executor.execute_script(script))
+    executor.execute_script(script)
 }
 
 #[no_mangle]
@@ -401,16 +425,22 @@ mod test {
         let mut executor = Executor::new(Rc::clone(&config));
 
         fake_vulkan.set_override();
-        executor.execute(&Source::from_string("".to_string())).unwrap();
+        assert_eq!(
+            executor.execute(&Source::from_string("".to_string())),
+            result::Result::Pass,
+        );
 
         let context = Rc::clone(executor.context.as_ref().unwrap());
         let window = Rc::clone(&executor.window.as_ref().unwrap());
 
         // Run another script that has the same requirements
-        executor.execute(&Source::from_string(
-            "[test]\n\
-             draw rect -1 -1 2 2".to_string()
-        )).unwrap();
+        assert_eq!(
+            executor.execute(&Source::from_string(
+                "[test]\n\
+                 draw rect -1 -1 2 2".to_string()
+            )),
+            result::Result::Pass,
+        );
 
         // The context and window shouldn’t have changed
         assert!(Rc::ptr_eq(&context, executor.context.as_ref().unwrap()));
@@ -418,12 +448,15 @@ mod test {
 
         // Run a script with different requirements
         fake_vulkan.set_override();
-        executor.execute(&Source::from_string(
-            "[require]\n\
-             wideLines\n\
-             [test]\n\
-             draw rect -1 -1 2 2".to_string()
-        )).unwrap();
+        assert_eq!(
+            executor.execute(&Source::from_string(
+                "[require]\n\
+                 wideLines\n\
+                 [test]\n\
+                 draw rect -1 -1 2 2".to_string()
+            )),
+            result::Result::Pass,
+        );
 
         // The context and window should have changed
         assert!(!Rc::ptr_eq(&context, executor.context.as_ref().unwrap()));
@@ -433,13 +466,16 @@ mod test {
         let window = Rc::clone(&executor.window.as_ref().unwrap());
 
         // Run the same script with a different framebuffer format
-        executor.execute(&Source::from_string(
-            "[require]\n\
-             wideLines\n\
-             framebuffer R8_UNORM\n\
-             [test]\n\
-             draw rect -1 -1 2 2".to_string()
-        )).unwrap();
+        assert_eq!(
+            executor.execute(&Source::from_string(
+                "[require]\n\
+                 wideLines\n\
+                 framebuffer R8_UNORM\n\
+                 [test]\n\
+                 draw rect -1 -1 2 2".to_string()
+            )),
+            result::Result::Pass,
+        );
 
         // The context should stay the same but the framebuffer should
         // have changed
@@ -481,7 +517,10 @@ mod test {
             context.vk_device()
         );
 
-        executor.execute(&Source::from_string("".to_string())).unwrap();
+        assert_eq!(
+            executor.execute(&Source::from_string("".to_string())),
+            result::Result::Pass,
+        );
     }
 
     #[test]
@@ -510,7 +549,7 @@ mod test {
              logicOp".to_string()
         );
 
-        let error = executor.execute(&source).unwrap_err();
+        let error = executor.execute_source_or_error(&source).unwrap_err();
 
         assert_eq!(
             &error.to_string(),
@@ -534,7 +573,7 @@ mod test {
         let source = Source::from_string("".to_string());
 
         fake_vulkan.set_override();
-        let error = executor.execute(&source).unwrap_err();
+        let error = executor.execute_source_or_error(&source).unwrap_err();
 
         assert_eq!(
             &error.to_string(),
@@ -557,7 +596,7 @@ mod test {
         let source = Source::from_string(source.to_string());
 
         fake_vulkan.set_override();
-        executor.execute(&source).unwrap_err()
+        executor.execute_source_or_error(&source).unwrap_err()
     }
 
     #[test]
