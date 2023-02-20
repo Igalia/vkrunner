@@ -1947,8 +1947,27 @@ impl<'a> Loader<'a> {
 }
 
 impl Script {
-    pub fn load(source: &Source) -> Result<Script, LoadError> {
+    fn load_or_error(source: &Source) -> Result<Script, LoadError> {
         Loader::new(source)?.parse()
+    }
+
+    pub fn load(config: &Config, source: &Source) -> Option<Script> {
+        match Script::load_or_error(source) {
+            Err(e) => {
+                let logger = config.logger();
+
+                use std::fmt::Write;
+
+                let _ = writeln!(
+                    logger.borrow_mut(),
+                    "{}",
+                    e
+                );
+
+                None
+            },
+            Ok(script) => Some(script),
+        }
     }
 
     pub fn shaders(&self, stage: Stage) -> &[Shader] {
@@ -2095,22 +2114,7 @@ pub extern "C" fn vr_script_load(
     config: &RefCell<Config>,
     source: &Source
 ) -> Option<Box<Script>> {
-    match Script::load(source) {
-        Err(e) => {
-            let logger = config.borrow().logger();
-
-            use std::fmt::Write;
-
-            let _ = writeln!(
-                logger.borrow_mut(),
-                "{}",
-                e
-            );
-
-            None
-        },
-        Ok(script) => Some(Box::new(script)),
-    }
+    Script::load(&config.borrow(), source).map(|script| Box::new(script))
 }
 
 #[no_mangle]
@@ -2160,13 +2164,15 @@ mod test {
 
     fn check_error(source: &str, error: &str) {
         let source = Source::from_string(source.to_string());
-        let load_error = Script::load(&source).unwrap_err().to_string();
+        let load_error = Script::load_or_error(
+            &source
+        ).unwrap_err().to_string();
         assert_eq!(error, load_error);
     }
 
     fn script_from_string(source: String) -> Script {
         let source = Source::from_string(source);
-        Script::load(&source).unwrap()
+        Script::load_or_error(&source).unwrap()
     }
 
     fn check_test_command(source: &str, op: Operation) -> Script {
@@ -3262,7 +3268,7 @@ mod test {
     #[test]
     fn test_load_from_invalid_file() {
         let source = Source::from_file("this-file-does-not-exist".to_string());
-        let e = Script::load(&source).unwrap_err();
+        let e = Script::load_or_error(&source).unwrap_err();
         match e {
             LoadError::Stream(StreamError::IoError(e)) => {
                 assert_eq!(e.kind(), io::ErrorKind::NotFound);
@@ -3397,7 +3403,7 @@ mod test {
         fs::write(&filename, b"enchant\xe9 in latin1").unwrap();
 
         let source = Source::from_file(filename);
-        let error = Script::load(&source).unwrap_err();
+        let error = Script::load_or_error(&source).unwrap_err();
 
         match &error {
             LoadError::Stream(StreamError::IoError(e)) => {

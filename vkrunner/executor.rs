@@ -26,7 +26,7 @@ use crate::vulkan_funcs;
 use crate::context::{self, Context};
 use crate::window::{Window, WindowError};
 use crate::config::Config;
-use crate::script::{Script, LoadError};
+use crate::script::Script;
 use crate::source::Source;
 use crate::result;
 use crate::vk;
@@ -44,7 +44,6 @@ pub enum Error {
     Context(context::Error),
     Window(WindowError),
     PipelineError(pipeline_set::Error),
-    LoadError(LoadError),
     TestError(tester::Error),
     ExternalDeviceRequirementsError(requirements::Error),
 }
@@ -56,7 +55,6 @@ impl Error {
             Error::Window(e) => e.result(),
             Error::ExternalDeviceRequirementsError(e) => e.result(),
             Error::PipelineError(_) => result::Result::Fail,
-            Error::LoadError(_) => result::Result::Fail,
             Error::TestError(_) => result::Result::Fail,
         }
     }
@@ -71,12 +69,6 @@ impl From<context::Error> for Error {
 impl From<WindowError> for Error {
     fn from(error: WindowError) -> Error {
         Error::Window(error)
-    }
-}
-
-impl From<LoadError> for Error {
-    fn from(error: LoadError) -> Error {
-        Error::LoadError(error)
     }
 }
 
@@ -98,7 +90,6 @@ impl fmt::Display for Error {
             Error::Context(e) => e.fmt(f),
             Error::Window(e) => e.fmt(f),
             Error::PipelineError(e) => e.fmt(f),
-            Error::LoadError(e) => e.fmt(f),
             Error::TestError(e) => e.fmt(f),
             Error::ExternalDeviceRequirementsError(e) => e.fmt(f),
         }
@@ -304,19 +295,15 @@ impl Executor {
         self.handle_execute_result(res)
     }
 
-    fn execute_source_or_error(
-        &mut self,
-        source: &Source,
-    ) -> Result<(), Error> {
-        self.execute_script_or_error(&Script::load(source)?)
-    }
-
     pub fn execute(
         &mut self,
         source: &Source,
     ) -> result::Result {
-        let res = self.execute_source_or_error(source);
-        self.handle_execute_result(res)
+        let load_res = Script::load(&self.config.borrow(), source);
+
+        load_res
+            .and_then(|script| Some(self.execute_script(&script)))
+            .unwrap_or(result::Result::Fail)
     }
 }
 
@@ -548,8 +535,9 @@ mod test {
             "[require]\n\
              logicOp".to_string()
         );
+        let script = Script::load(&executor.config.borrow(), &source).unwrap();
 
-        let error = executor.execute_source_or_error(&source).unwrap_err();
+        let error = executor.execute_script_or_error(&script).unwrap_err();
 
         assert_eq!(
             &error.to_string(),
@@ -571,9 +559,10 @@ mod test {
         let mut executor = Executor::new(Rc::clone(&config));
 
         let source = Source::from_string("".to_string());
+        let script = Script::load(&executor.config.borrow(), &source).unwrap();
 
         fake_vulkan.set_override();
-        let error = executor.execute_source_or_error(&source).unwrap_err();
+        let error = executor.execute_script_or_error(&script).unwrap_err();
 
         assert_eq!(
             &error.to_string(),
@@ -594,9 +583,10 @@ mod test {
         let mut executor = Executor::new(config);
 
         let source = Source::from_string(source.to_string());
+        let script = Script::load(&executor.config.borrow(), &source).unwrap();
 
         fake_vulkan.set_override();
-        executor.execute_source_or_error(&source).unwrap_err()
+        executor.execute_script_or_error(&script).unwrap_err()
     }
 
     #[test]
@@ -613,20 +603,6 @@ mod test {
         assert_eq!(
             error.result(),
             result::Result::Skip,
-        );
-    }
-
-    #[test]
-    fn script_error() {
-        let error = run_script_error("[bad section]\n");
-
-        assert_eq!(
-            &error.to_string(),
-            "line 1: Unknown section “bad section”",
-        );
-        assert_eq!(
-            error.result(),
-            result::Result::Fail,
         );
     }
 

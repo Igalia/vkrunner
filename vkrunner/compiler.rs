@@ -404,6 +404,7 @@ mod test {
     use crate::context::Context;
     use crate::requirements::Requirements;
     use crate::source::Source;
+    use crate::config::Config;
     use std::ffi::{c_char, c_void, CStr};
 
     struct CompileOutput {
@@ -445,7 +446,7 @@ mod test {
         let context = Context::new(&Requirements::new(), None).unwrap();
 
         let source = Source::from_string(source.to_owned());
-        let script = Script::load(&source).unwrap();
+        let script = Script::load(&Config::new(), &source).unwrap();
         let mut log = Vec::new();
         let mut logger = Logger::new(
             Some(log_cb),

@@ -959,6 +959,7 @@ mod test {
     use crate::context::Context;
     use crate::requirements::Requirements;
     use crate::source::Source;
+    use crate::config::Config;
 
     #[derive(Debug)]
     struct TestData {
@@ -1009,7 +1010,7 @@ mod test {
             let mut logger = Logger::new(None, ptr::null_mut());
 
             let source = Source::from_string(source.to_string());
-            let script = Script::load(&source).unwrap();
+            let script = Script::load(&Config::new(), &source).unwrap();
 
             let pipeline_set = PipelineSet::new(
                 &mut logger,

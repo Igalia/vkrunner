@@ -1631,6 +1631,7 @@ mod test {
     use crate::logger::Logger;
     use crate::source::Source;
     use crate::window_format::WindowFormat;
+    use crate::config::Config;
     use std::ffi::c_void;
 
     #[derive(Debug)]
@@ -1683,7 +1684,7 @@ mod test {
             ).unwrap());
 
             let source = Source::from_string(source.to_string());
-            let script = Script::load(&source).unwrap();
+            let script = Script::load(&Config::new(), &source).unwrap();
 
             let window = Rc::new(Window::new(
                 Rc::clone(&context),
