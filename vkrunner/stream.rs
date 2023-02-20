@@ -277,7 +277,7 @@ mod test {
     #[test]
     fn test_missing_file() {
         let source = source::Source::from_file(
-            "this-file-does-not-exist".to_string()
+            "this-file-does-not-exist".to_string().into()
         );
         let e = Stream::new(&source).unwrap_err();
         match e {
@@ -291,7 +291,7 @@ mod test {
     fn run_test_file_source(filename: String) {
         fs::write(&filename, "my source code").unwrap();
 
-        let source = source::Source::from_file(filename);
+        let source = source::Source::from_file(filename.into());
         let mut stream = Stream::new(&source).unwrap();
         let mut line = String::new();
         assert_eq!(stream.read_line(&mut line).unwrap(), 14);

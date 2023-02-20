@@ -23,13 +23,14 @@
 // DEALINGS IN THE SOFTWARE.
 
 use std::ffi::{c_char, CStr};
+use std::path::PathBuf;
 
 /// Struct representing the requested source for the data of a
 /// [Source]. This can either be a filename to open and read
 /// or directly a string containing the source code.
 #[derive(Clone, Debug)]
 pub(crate) enum Data {
-    File { filename: String },
+    File { filename: PathBuf },
     String { source: String },
 }
 
@@ -67,7 +68,7 @@ impl Source {
     }
 
     /// Creates a source that will read lines from the given file.
-    pub fn from_file(filename: String) -> Source {
+    pub fn from_file(filename: PathBuf) -> Source {
         Self::from_data(Data::File { filename })
     }
 
@@ -111,7 +112,7 @@ pub extern "C" fn vr_source_from_file(
     filename: *const c_char,
 ) -> *mut Source {
     let filename = unsafe {
-        CStr::from_ptr(filename).to_str().unwrap().to_owned()
+        CStr::from_ptr(filename).to_str().unwrap().to_owned().into()
     };
     Box::into_raw(Box::new(Source::from_file(filename)))
 }
@@ -148,10 +149,13 @@ mod test {
             Data::String { source } if source == "my script"
         ));
 
-        let source = Source::from_file("my_script.shader_test".to_owned());
+        let source = Source::from_file(
+            "my_script.shader_test".to_owned().into()
+        );
         assert!(matches!(
             source.data(),
-            Data::File { filename } if filename == "my_script.shader_test"
+            Data::File { filename }
+            if filename.to_str().unwrap() == "my_script.shader_test",
         ));
     }
 

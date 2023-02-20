@@ -3267,7 +3267,9 @@ mod test {
 
     #[test]
     fn test_load_from_invalid_file() {
-        let source = Source::from_file("this-file-does-not-exist".to_string());
+        let source = Source::from_file(
+            "this-file-does-not-exist".to_string().into()
+        );
         let e = Script::load_or_error(&source).unwrap_err();
         match e {
             LoadError::Stream(StreamError::IoError(e)) => {
@@ -3402,7 +3404,7 @@ mod test {
     fn run_test_bad_utf8(filename: String) {
         fs::write(&filename, b"enchant\xe9 in latin1").unwrap();
 
-        let source = Source::from_file(filename);
+        let source = Source::from_file(filename.into());
         let error = Script::load_or_error(&source).unwrap_err();
 
         match &error {
