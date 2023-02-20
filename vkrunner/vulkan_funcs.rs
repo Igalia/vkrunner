@@ -132,8 +132,48 @@ impl Library {
             });
         }
 
-        #[cfg(not(unix))]
-        todo!("library opening on non-Unix platforms is not yet implemented");
+        #[cfg(windows)]
+        {
+            extern "system" {
+                fn LoadLibraryA(
+                    filename: *const c_char,
+                ) -> *mut c_void;
+                fn GetProcAddress(
+                    handle: *mut c_void,
+                    func_name: *const c_char,
+                ) -> *const c_void;
+            }
+
+            let lib_name = "vulkan-1.dll";
+
+            let lib = unsafe {
+                let c_lib_name = CString::new(lib_name).unwrap();
+                LoadLibraryA(c_lib_name.as_ptr())
+            };
+
+            if lib.is_null() {
+                return Err(Error::OpenLibraryFailed(lib_name));
+            }
+
+            let get_instance_proc_addr = unsafe {
+                std::mem::transmute(GetProcAddress(
+                    lib,
+                    "vkGetInstanceProcAddr\0".as_ptr().cast()
+                ))
+            };
+
+            return Ok(LoaderFunc {
+                lib_vulkan: lib,
+                lib_vulkan_is_fake: false,
+                get_instance_proc_addr
+            });
+        }
+
+        #[cfg(not(any(unix,windows)))]
+        todo!(
+            "library opening on platforms other than Unix and Windows is \
+             not yet implemented"
+        );
     }
 
     pub fn new() -> Result<Library, Error> {
@@ -176,11 +216,22 @@ impl Drop for Library {
             }
         }
 
-        #[cfg(not(unix))]
+        #[cfg(windows)]
         {
-            todo!("library closing on non-Unix platforms is not yet \
-                   implemented");
+            extern "system" {
+                fn FreeLibrary(handle: *const c_void) -> c_int;
+            }
+
+            if !self.lib_vulkan_is_fake {
+                unsafe { FreeLibrary(self.lib_vulkan) };
+            }
         }
+
+        #[cfg(not(any(unix,windows)))]
+        todo!(
+            "library closing on platforms other than Windows and Unix is not \
+             yet implemented"
+        );
     }
 }
 
