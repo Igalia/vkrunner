@@ -354,7 +354,7 @@ pub extern "C" fn vr_executor_free(executor: *mut Executor) {
 mod test {
     use super::*;
     use crate::fake_vulkan::FakeVulkan;
-    use crate::config::{vr_config_new, vr_config_set_device_id};
+    use crate::config::Config;
     use std::ffi::c_char;
 
     fn create_fake_vulkan() -> Box<FakeVulkan> {
@@ -396,7 +396,7 @@ mod test {
     fn recreate_resources() {
         let fake_vulkan = create_fake_vulkan();
 
-        let config = unsafe { Rc::from_raw(vr_config_new()) };
+        let config = Rc::new(RefCell::new(Config::new()));
 
         let mut executor = Executor::new(Rc::clone(&config));
 
@@ -467,7 +467,7 @@ mod test {
         fake_vulkan.set_override();
         let context = Context::new(&Requirements::new(), None).unwrap();
 
-        let config = unsafe { Rc::from_raw(vr_config_new()) };
+        let config = Rc::new(RefCell::new(Config::new()));
 
         let mut executor = Executor::new(Rc::clone(&config));
 
@@ -491,7 +491,7 @@ mod test {
         fake_vulkan.set_override();
         let context = Context::new(&Requirements::new(), None).unwrap();
 
-        let config = unsafe { Rc::from_raw(vr_config_new()) };
+        let config = Rc::new(RefCell::new(Config::new()));
 
         let mut executor = Executor::new(Rc::clone(&config));
 
@@ -526,8 +526,8 @@ mod test {
     fn context_error() {
         let fake_vulkan = create_fake_vulkan();
 
-        let config = unsafe { Rc::from_raw(vr_config_new()) };
-        vr_config_set_device_id(&config, 12);
+        let config = Rc::new(RefCell::new(Config::new()));
+        config.borrow_mut().set_device_id(Some(12));
 
         let mut executor = Executor::new(Rc::clone(&config));
 
@@ -550,7 +550,7 @@ mod test {
     fn run_script_error(source: &str) -> Error {
         let fake_vulkan = create_fake_vulkan();
 
-        let config = unsafe { Rc::from_raw(vr_config_new()) };
+        let config = Rc::new(RefCell::new(Config::new()));
 
         let mut executor = Executor::new(config);
 

@@ -30,6 +30,8 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::fmt;
 
+pub type ErrorCallback = logger::WriteCallback;
+
 pub struct Config {
     show_disassembly: bool,
     device_id: Option<usize>,
@@ -42,6 +44,64 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn new() -> Config {
+        Config {
+            show_disassembly: false,
+            device_id: None,
+            error_cb: None,
+            inspect_cb: None,
+            user_data: ptr::null_mut(),
+            logger: Cell::new(None),
+        }
+    }
+
+    /// Sets whether the SPIR-V disassembly of the shaders should be
+    /// shown when a script is run. The disassembly will be shown on
+    /// the standard out or it will be passed to the `error_cb` if one
+    /// has been set. The disassembly is generated with the
+    /// `spirv-dis` program which needs to be found in the path or it
+    /// can be specified with the `PIGLIT_SPIRV_DIS_BINARY`
+    /// environment variable.
+    pub fn set_show_disassembly(&mut self, show_disassembly: bool) {
+        self.show_disassembly = show_disassembly;
+    }
+
+    /// Sets or removes a callback that will receive error messages
+    /// generated during the script execution. The callback will be
+    /// invoked one line at a time without the trailing newline
+    /// terminator. If no callback is specified then the output will
+    /// be printed on the standard output instead. The callback can
+    /// later be removed by passing `None`.
+    pub fn set_error_cb(&mut self, error_cb: Option<ErrorCallback>) {
+        self.error_cb = error_cb;
+        self.reset_logger();
+    }
+
+    /// Sets or removes an inspection callback. The callback will be
+    /// invoked after executing a script so that the application can
+    /// have a chance to examine the framebuffer and any storage or
+    /// uniform buffers created by the script.
+    pub fn set_inspect_cb(&mut self, inspect_cb: Option<inspect::Callback>) {
+        self.inspect_cb = inspect_cb;
+    }
+
+    /// Sets a pointer that will be passed to the `error_cb` and the
+    /// `inspect_cb`.
+    pub fn set_user_data(&mut self, user_data: *mut c_void) {
+        self.user_data = user_data;
+        self.reset_logger();
+    }
+
+    /// Sets or removes a device number to pick out of the list of
+    /// `vkPhysicalDevice`s returned by `vkEnumeratePhysicalDevices`.
+    /// The device will still be checked to see if it is compatible
+    /// with the script and the test will report Skip if not. If no
+    /// device ID is set then VkRunner will pick the first one that is
+    /// compatible with the script.
+    pub fn set_device_id(&mut self, device_id: Option<usize>) {
+        self.device_id = device_id;
+    }
+
     /// Get a logger that will write to the current `error_cb` of the
     /// `Config`. The logger will be shared between calls to this
     /// until the callback is changed.
@@ -76,14 +136,7 @@ impl Config {
 
 #[no_mangle]
 pub extern "C" fn vr_config_new() -> *const RefCell<Config> {
-    Rc::into_raw(Rc::new(RefCell::new(Config {
-        show_disassembly: false,
-        device_id: None,
-        error_cb: None,
-        inspect_cb: None,
-        user_data: ptr::null_mut(),
-        logger: Cell::new(None),
-    })))
+    Rc::into_raw(Rc::new(RefCell::new(Config::new())))
 }
 
 #[no_mangle]
@@ -97,7 +150,7 @@ pub extern "C" fn vr_config_set_show_disassembly(
     config: &RefCell<Config>,
     show_disassembly: bool,
 ) {
-    config.borrow_mut().show_disassembly = show_disassembly;
+    config.borrow_mut().set_show_disassembly(show_disassembly);
 }
 
 #[no_mangle]
@@ -105,19 +158,15 @@ pub extern "C" fn vr_config_set_user_data(
     config: &RefCell<Config>,
     user_data: *mut c_void,
 ) {
-    let mut config = config.borrow_mut();
-    config.user_data = user_data;
-    config.reset_logger();
+    config.borrow_mut().set_user_data(user_data);
 }
 
 #[no_mangle]
 pub extern "C" fn vr_config_set_error_cb(
     config: &RefCell<Config>,
-    error_cb: Option<logger::WriteCallback>,
+    error_cb: Option<ErrorCallback>,
 ) {
-    let mut config = config.borrow_mut();
-    config.error_cb = error_cb;
-    config.reset_logger();
+    config.borrow_mut().set_error_cb(error_cb);
 }
 
 #[no_mangle]
@@ -125,7 +174,7 @@ pub extern "C" fn vr_config_set_inspect_cb(
     config: &RefCell<Config>,
     inspect_cb: Option<inspect::Callback>,
 ) {
-    config.borrow_mut().inspect_cb = inspect_cb;
+    config.borrow_mut().set_inspect_cb(inspect_cb);
 }
 
 #[no_mangle]
@@ -133,11 +182,11 @@ pub extern "C" fn vr_config_set_device_id(
     config: &RefCell<Config>,
     device_id: c_int,
 ) {
-    config.borrow_mut().device_id = if device_id < 0 {
+    config.borrow_mut().set_device_id(if device_id < 0 {
         None
     } else {
         Some(device_id as usize)
-    };
+    });
 }
 
 // Need to implement this manually because the derive macro can’t
