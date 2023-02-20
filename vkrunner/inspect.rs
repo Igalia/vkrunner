@@ -72,7 +72,7 @@ pub type Callback = extern "C" fn(
 
 /// A struct to combine the inspection callback with its user data pointer
 #[derive(Clone)]
-pub struct Inspector {
+pub(crate) struct Inspector {
     callback: Callback,
     user_data: *mut c_void,
 }

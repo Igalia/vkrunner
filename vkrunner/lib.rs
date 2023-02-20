@@ -10,7 +10,7 @@ mod vk;
 mod vulkan_funcs;
 mod requirements;
 mod slot;
-mod result;
+pub mod result;
 mod shader_stage;
 mod pipeline_key;
 mod window_format;
@@ -28,10 +28,18 @@ mod logger;
 mod compiler;
 mod pipeline_set;
 mod flush_memory;
-mod inspect;
+pub mod inspect;
 mod tester;
 
 #[cfg(test)]
 mod fake_vulkan;
 #[cfg(test)]
 mod env_var_test;
+
+// Re-export the public API
+pub use config::Config;
+pub use executor::Executor;
+pub use format::Format;
+pub use script::Script;
+pub use shader_stage::Stage;
+pub use source::Source;

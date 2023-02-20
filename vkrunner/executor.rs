@@ -40,7 +40,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 #[derive(Debug)]
-pub enum Error {
+pub(crate) enum Error {
     Context(context::Error),
     Window(WindowError),
     PipelineError(pipeline_set::Error),

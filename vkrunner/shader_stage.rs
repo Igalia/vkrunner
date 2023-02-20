@@ -38,10 +38,10 @@ pub enum Stage {
 
 /// The number of shader stages known to VkRunner. This should match
 /// the number of values in [Stage].
-pub const N_STAGES: usize = 6;
+pub(crate) const N_STAGES: usize = 6;
 
 /// All the possible stage values.
-pub static ALL_STAGES: [Stage; N_STAGES] = [
+pub(crate) static ALL_STAGES: [Stage; N_STAGES] = [
     Stage::Vertex,
     Stage::TessCtrl,
     Stage::TessEval,
@@ -53,7 +53,7 @@ pub static ALL_STAGES: [Stage; N_STAGES] = [
 impl Stage {
     /// Get the corresponding flag for this stage. This can be used to
     /// store the stages in a bitmask.
-    pub const fn flag(self) -> vk::VkShaderStageFlagBits {
+    pub(crate) const fn flag(self) -> vk::VkShaderStageFlagBits {
         vk::VK_SHADER_STAGE_VERTEX_BIT << self as usize
     }
 }

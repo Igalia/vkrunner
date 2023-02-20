@@ -48,13 +48,13 @@ pub enum Shader {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BufferType {
+pub(crate) enum BufferType {
     Ubo,
     Ssbo,
 }
 
 #[derive(Debug, Clone)]
-pub struct Buffer {
+pub(crate) struct Buffer {
     pub desc_set: u32,
     pub binding: u32,
     pub buffer_type: BufferType,
@@ -74,7 +74,7 @@ pub struct Script {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Operation {
+pub(crate) enum Operation {
     DrawRect {
         x: f32,
         y: f32,
@@ -134,13 +134,13 @@ pub enum Operation {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Command {
+pub(crate) struct Command {
     pub line_num: usize,
     pub op: Operation,
 }
 
 #[derive(Debug)]
-pub enum LoadError {
+pub(crate) enum LoadError {
     Stream(StreamError),
     Vbo { line_num: usize, detail: vbo::Error },
     Invalid { line_num: usize, message: String },
@@ -1974,31 +1974,31 @@ impl Script {
         &*self.stages[stage as usize]
     }
 
-    pub fn commands(&self) -> &[Command] {
+    pub(crate) fn commands(&self) -> &[Command] {
         &*self.commands
     }
 
-    pub fn pipeline_keys(&self) -> &[pipeline_key::Key] {
+    pub(crate) fn pipeline_keys(&self) -> &[pipeline_key::Key] {
         &*self.pipeline_keys
     }
 
-    pub fn requirements(&self) -> &Requirements {
+    pub(crate) fn requirements(&self) -> &Requirements {
         &self.requirements
     }
 
-    pub fn window_format(&self) -> &WindowFormat {
+    pub(crate) fn window_format(&self) -> &WindowFormat {
         &self.window_format
     }
 
-    pub fn vertex_data(&self) -> Option<&vbo::Vbo> {
+    pub(crate) fn vertex_data(&self) -> Option<&vbo::Vbo> {
         self.vertex_data.as_ref()
     }
 
-    pub fn indices(&self) -> &[u16] {
+    pub(crate) fn indices(&self) -> &[u16] {
         &*self.indices
     }
 
-    pub fn buffers(&self) -> &[Buffer] {
+    pub(crate) fn buffers(&self) -> &[Buffer] {
         &*self.buffers
     }
 

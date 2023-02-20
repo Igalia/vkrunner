@@ -31,15 +31,15 @@ use std::slice;
 
 #[derive(Debug)]
 pub struct Format {
-    pub vk_format: vk::VkFormat,
-    pub name: &'static str,
-    pub packed_size: Option<NonZeroUsize>,
+    pub(crate) vk_format: vk::VkFormat,
+    pub(crate) name: &'static str,
+    pub(crate) packed_size: Option<NonZeroUsize>,
     n_parts: usize,
     parts: [Part; 4],
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub enum Component {
+pub(crate) enum Component {
     R,
     G,
     B,
@@ -50,7 +50,7 @@ pub enum Component {
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub enum Mode {
+pub(crate) enum Mode {
     UNORM,
     SNORM,
     USCALED,
@@ -63,7 +63,7 @@ pub enum Mode {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Part {
+pub(crate) struct Part {
     pub bits: usize,
     pub component: Component,
     pub mode: Mode,
@@ -95,14 +95,16 @@ impl PartialEq<Format> for vk::VkFormat {
 }
 
 impl Format {
-    pub fn lookup_by_name(name: &str) -> Option<&'static Format> {
+    pub(crate) fn lookup_by_name(name: &str) -> Option<&'static Format> {
         match FORMATS.binary_search_by(|format| format.name.cmp(name)) {
             Ok(pos) => Some(&FORMATS[pos]),
             Err(_) => None,
         }
     }
 
-    pub fn lookup_by_vk_format(vk_format: vk::VkFormat) -> &'static Format {
+    pub(crate) fn lookup_by_vk_format(
+        vk_format: vk::VkFormat
+    ) -> &'static Format {
         for format in FORMATS.iter() {
             if format.vk_format == vk_format {
                 return format;
@@ -112,7 +114,7 @@ impl Format {
         unreachable!("lookup failed for format {:?}", vk_format);
     }
 
-    pub fn lookup_by_details(
+    pub(crate) fn lookup_by_details(
         bit_size: usize,
         mode: Mode,
         n_components: usize
@@ -148,7 +150,7 @@ impl Format {
         None
     }
 
-    pub fn parts(&self) -> &[Part] {
+    pub(crate) fn parts(&self) -> &[Part] {
         &self.parts[0..self.n_parts]
     }
 
@@ -159,11 +161,11 @@ impl Format {
         }
     }
 
-    pub fn packed_size(&self) -> Option<usize> {
+    pub(crate) fn packed_size(&self) -> Option<usize> {
         self.packed_size.map(|s| usize::from(s))
     }
 
-    pub fn alignment(&self) -> usize {
+    pub(crate) fn alignment(&self) -> usize {
         match self.packed_size {
             Some(size) => usize::from(size) / 8,
             None => self.parts().iter().map(|p| p.bits).max().unwrap() / 8,

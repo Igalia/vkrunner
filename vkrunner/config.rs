@@ -105,7 +105,7 @@ impl Config {
     /// Get a logger that will write to the current `error_cb` of the
     /// `Config`. The logger will be shared between calls to this
     /// until the callback is changed.
-    pub fn logger(&self) -> Rc<RefCell<Logger>> {
+    pub(crate) fn logger(&self) -> Rc<RefCell<Logger>> {
         let logger = self.logger.take().unwrap_or_else(|| {
             Rc::new(RefCell::new(Logger::new(self.error_cb, self.user_data)))
         });
@@ -115,15 +115,15 @@ impl Config {
         logger
     }
 
-    pub fn inspector(&self) -> Option<inspect::Inspector> {
+    pub(crate) fn inspector(&self) -> Option<inspect::Inspector> {
         self.inspect_cb.map(|cb| inspect::Inspector::new(cb, self.user_data))
     }
 
-    pub fn show_disassembly(&self) -> bool {
+    pub(crate) fn show_disassembly(&self) -> bool {
         self.show_disassembly
     }
 
-    pub fn device_id(&self) -> Option<usize> {
+    pub(crate) fn device_id(&self) -> Option<usize> {
         self.device_id
     }
 

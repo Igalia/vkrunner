@@ -1587,7 +1587,7 @@ impl<'a> Tester<'a> {
     }
 }
 
-pub fn run(
+pub(crate) fn run(
     window: &Window,
     pipeline_set: &PipelineSet,
     script: &Script,
