@@ -36,7 +36,6 @@ use crate::tolerance::Tolerance;
 use crate::slot;
 use crate::format::Component;
 use crate::inspect;
-use crate::format::Format;
 use std::fmt;
 use std::ptr;
 use std::mem;
@@ -1572,7 +1571,7 @@ impl<'a> Tester<'a> {
                 width: window_format.width as c_int,
                 height: window_format.height as c_int,
                 stride: self.window.linear_memory_stride(),
-                format: window_format.color_format as *const Format,
+                format: window_format.color_format,
                 data: self.window.linear_memory_map(),
             },
             n_buffers: buffers.len(),
@@ -2249,7 +2248,7 @@ mod test {
         assert!(data.color_buffer.stride >= window_format.width * 4);
         assert_eq!(
             data.color_buffer.format,
-            window_format.color_format as *const Format
+            window_format.color_format,
         );
         assert!(!data.color_buffer.data.is_null());
 

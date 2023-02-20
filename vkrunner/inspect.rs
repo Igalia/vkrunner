@@ -36,9 +36,8 @@ pub struct Image {
     /// The stride in bytes from one row of the image to the next
     pub stride: usize,
 
-    /// An opaque pointer describing the format of each pixel in the
-    /// buffer
-    pub format: *const Format,
+    /// A description the format of each pixel in the buffer
+    pub format: &'static Format,
 
     /// The buffer data
     pub data: *const c_void,
