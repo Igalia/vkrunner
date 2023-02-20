@@ -34,7 +34,6 @@ use crate::buffer::{self, MappedMemory, DeviceMemory, Buffer};
 use crate::flush_memory::{self, flush_memory};
 use crate::tolerance::Tolerance;
 use crate::slot;
-use crate::format::Component;
 use crate::inspect;
 use std::fmt;
 use std::ptr;
@@ -1472,13 +1471,7 @@ impl<'a> Tester<'a> {
         let window_format = self.window.format();
 
         let depth_stencil_flags = match window_format.depth_stencil_format {
-            Some(format) => {
-                format.parts().iter().map(|part| match part.component {
-                    Component::D => vk::VK_IMAGE_ASPECT_DEPTH_BIT,
-                    Component::S => vk::VK_IMAGE_ASPECT_STENCIL_BIT,
-                    _ => 0,
-                }).fold(0, |a, b| a | b)
-            },
+            Some(format) => format.depth_stencil_aspect_flags(),
             None => 0,
         };
 

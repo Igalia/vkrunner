@@ -171,6 +171,14 @@ impl Format {
             None => self.parts().iter().map(|p| p.bits).max().unwrap() / 8,
         }
     }
+
+    pub(crate) fn depth_stencil_aspect_flags(&self) -> vk::VkImageAspectFlags {
+        self.parts().iter().map(|part| match part.component {
+            Component::D => vk::VK_IMAGE_ASPECT_DEPTH_BIT,
+            Component::S => vk::VK_IMAGE_ASPECT_STENCIL_BIT,
+            _ => 0,
+        }).fold(0, |a, b| a | b)
+    }
 }
 
 impl Mode {
