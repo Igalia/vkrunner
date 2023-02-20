@@ -530,7 +530,7 @@ impl DepthStencilResources {
             context,
             format,
             image.image,
-            vk::VK_IMAGE_ASPECT_DEPTH_BIT,
+            format.depth_stencil_aspect_flags(),
         )?;
 
         Ok(DepthStencilResources { _image: image, _memory: memory, image_view })
