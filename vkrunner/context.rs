@@ -146,7 +146,7 @@ impl fmt::Display for Error {
                     f,
                     "Device {} was selected but the Vulkan instance only \
                      reported {} device{}.",
-                    device_id,
+                    device_id.saturating_add(1),
                     n_devices,
                     if n_devices == 1 { "" } else { "s" },
                 )
@@ -1211,7 +1211,7 @@ mod test {
         let err = Context::new(&mut reqs, Some(3)).unwrap_err();
         assert_eq!(
             err.to_string(),
-            "Device 3 was selected but the Vulkan instance only reported 3 \
+            "Device 4 was selected but the Vulkan instance only reported 3 \
              devices."
         );
 
@@ -1220,7 +1220,7 @@ mod test {
         let err = Context::new(&mut reqs, Some(3)).unwrap_err();
         assert_eq!(
             err.to_string(),
-            "Device 3 was selected but the Vulkan instance only reported 1 \
+            "Device 4 was selected but the Vulkan instance only reported 1 \
              device."
         );
 

@@ -61,6 +61,7 @@ enum Error {
     IoError(io::Error),
     BufferNotFound(u32),
     NoBuffers,
+    ZeroDeviceId,
 }
 
 #[derive(Debug)]
@@ -129,6 +130,12 @@ impl fmt::Display for Error {
                 write!(
                     f,
                     "Buffer dump requested but the script has no buffers"
+                )
+            },
+            Error::ZeroDeviceId => {
+                write!(
+                    f,
+                    "Device IDs start from 1 but 0 was specified",
                 )
             },
         }
@@ -569,7 +576,7 @@ fn set_up_config(
     config: &Rc<RefCell<Config>>,
     options: &Options,
     inspect_data: &mut InspectData,
-) {
+) -> Result<(), Error> {
     let mut config = config.borrow_mut();
 
     config.set_inspect_cb(Some(inspect_cb));
@@ -578,12 +585,17 @@ fn set_up_config(
     if let Some(&ArgumentValue::Integer(device_id))
         = options.values.get(DEVICE_ID_OPTION)
     {
-        config.set_device_id(Some(device_id as usize));
+        match device_id.checked_sub(1) {
+            None => return Err(Error::ZeroDeviceId),
+            Some(device_id) => config.set_device_id(Some(device_id as usize)),
+        }
     }
 
     if let Some(ArgumentValue::Flag) = options.values.get(DISASM_OPTION) {
         config.set_show_disassembly(true);
     }
+
+    Ok(())
 }
 
 fn format_result(result: result::Result) -> String {
@@ -613,7 +625,7 @@ fn run() -> Result<(), Error> {
 
     let mut inspect_data = InspectData::new(&options);
 
-    set_up_config(&config, &options, &mut inspect_data);
+    set_up_config(&config, &options, &mut inspect_data)?;
 
     let token_replacements = get_token_replacements(&options.values)?;
 

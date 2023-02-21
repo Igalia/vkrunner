@@ -566,7 +566,7 @@ mod test {
 
         assert_eq!(
             &error.to_string(),
-            "Device 12 was selected but the Vulkan instance only reported \
+            "Device 13 was selected but the Vulkan instance only reported \
              1 device.",
         );
         assert_eq!(
