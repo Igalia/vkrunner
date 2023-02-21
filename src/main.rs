@@ -50,6 +50,7 @@ enum OptError {
     MissingArgument(&'static Opt),
     InvalidUtf8(&'static Opt),
     InvalidInteger(String),
+    ArgumentForFlag(&'static Opt),
 }
 
 #[derive(Debug)]
@@ -106,6 +107,13 @@ impl fmt::Display for OptError {
             },
             OptError::InvalidInteger(s) => {
                 write!(f, "Invalid integer: {}", s)
+            },
+            OptError::ArgumentForFlag(o) => {
+                write!(
+                    f,
+                    "Option --{} is a flag and can not take an argument",
+                    o.long,
+                )
             },
         }
     }
@@ -269,28 +277,46 @@ fn format_help(f: &mut fmt::Formatter) -> fmt::Result {
     Ok(())
 }
 
+fn next_arg<I>(
+    opt: &'static Opt,
+    args: &mut I,
+    opt_arg: Option<&str>
+) -> Result<OsString, OptError>
+    where I: Iterator<Item = OsString>
+{
+    // Use opt_arg if it’s available or else get the next arg from the iterator
+    opt_arg
+        .map(|arg| arg.into())
+        .or_else(|| args.next())
+        .ok_or_else(|| OptError::MissingArgument(opt))
+}
+
 fn process_argument<I>(
     values: &mut OptValues,
     args: &mut I,
     opt: &'static Opt,
+    opt_arg: Option<&str>,
 ) -> Result<(), OptError>
     where I: Iterator<Item = OsString>
 {
     match opt.argument_type {
         ArgumentType::Flag => {
+            if opt_arg.is_some() {
+                return Err(OptError::ArgumentForFlag(opt));
+            }
+
             values.insert(opt.long, ArgumentValue::Flag);
         },
-        ArgumentType::Filename => match args.next() {
-            Some(filename) => {
-                values.insert(
-                    opt.long,
-                    ArgumentValue::Filename(filename),
-                );
-            },
-            None => return Err(OptError::MissingArgument(opt)),
+        ArgumentType::Filename => {
+            values.insert(
+                opt.long,
+                ArgumentValue::Filename(next_arg(opt, args, opt_arg)?),
+            );
         },
-        ArgumentType::StringArray => match args.next() {
-            Some(arg) => match arg.to_str() {
+        ArgumentType::StringArray => {
+            let arg = next_arg(opt, args, opt_arg)?;
+
+            match arg.to_str() {
                 Some(s) => {
                     values.entry(opt.long)
                         .and_modify(|value| match value {
@@ -303,11 +329,12 @@ fn process_argument<I>(
                         ));
                 },
                 None => return Err(OptError::InvalidUtf8(opt)),
-            },
-            None => return Err(OptError::MissingArgument(opt)),
+            }
         },
-        ArgumentType::Integer => match args.next() {
-            Some(arg) => match arg.to_str() {
+        ArgumentType::Integer => {
+            let arg = next_arg(opt, args, opt_arg)?;
+
+            match arg.to_str() {
                 Some(s) => match s.parse::<u32>() {
                     Ok(value) => {
                         values.insert(
@@ -322,8 +349,7 @@ fn process_argument<I>(
                     },
                 },
                 None => return Err(OptError::InvalidUtf8(opt)),
-            },
-            None => return Err(OptError::MissingArgument(opt)),
+            }
         },
     }
 
@@ -337,9 +363,14 @@ fn process_long_arg<I>(
 ) -> Result<(), OptError>
     where I: Iterator<Item = OsString>
 {
+    let (arg, opt_arg) = match arg.split_once('=') {
+        Some((arg, opt_arg)) => (arg, Some(opt_arg)),
+        None => (arg, None),
+    };
+
     for opt in OPTIONS.iter() {
         if opt.long.eq(arg) {
-            return process_argument(values, args, opt);
+            return process_argument(values, args, opt, opt_arg);
         }
     }
 
@@ -361,7 +392,7 @@ fn process_short_args<I>(
         for opt in OPTIONS.iter() {
             if let Some(opt_ch) = opt.short {
                 if opt_ch == ch {
-                    process_argument(values, args, opt)?;
+                    process_argument(values, args, opt, None)?;
                     continue 'arg_loop;
                 }
             }
@@ -686,7 +717,7 @@ mod test {
             "-dB".into(), "12".into(),
             "--image".into(), "screenshot.png".into(),
             "--replace".into(), "bad=aĉa".into(),
-            "--replace".into(), "good=bona".into(),
+            "--replace=good=bona".into(),
             "script.shader_test".into(),
         ];
 
@@ -822,6 +853,16 @@ mod test {
         assert_eq!(
             &error.to_string(),
             "Invalid integer: twelve",
+        );
+    }
+
+    #[test]
+    fn argument_for_flag() {
+        let args = vec!["vkrunner".into(), "--quiet=yes".into()].into_iter();
+        let error = parse_options(args).unwrap_err();
+        assert_eq!(
+            &error.to_string(),
+            "Option --quiet is a flag and can not take an argument",
         );
     }
 }
