@@ -66,6 +66,7 @@ class Converter:
         with tempfile.NamedTemporaryFile() as temp_outfile:
             if self._type == 'glsl':
                 subprocess.check_call([self._binary,
+                                       "--quiet",
                                        "-S", self._stage,
                                        "-G",
                                        "-V",
