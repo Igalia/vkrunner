@@ -435,12 +435,6 @@ impl Image {
     }
 }
 
-fn color_linear_memory_stride(
-    window_format: &WindowFormat
-) -> usize {
-    window_format.color_format.size() * window_format.height
-}
-
 #[derive(Debug)]
 struct ImageView {
     image_view: vk::VkImageView,
@@ -656,9 +650,11 @@ impl Window {
             depth_stencil_resources.as_ref().map(|r| r.image_view.image_view),
         )?;
 
+        let linear_memory_stride = format.color_format.size() * format.width;
+
         let linear_buffer = Buffer::new(
             Rc::clone(&context),
-            color_linear_memory_stride(format) * format.height,
+            linear_memory_stride * format.height,
             vk::VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         )?;
         let linear_memory = DeviceMemory::new_buffer(
@@ -679,7 +675,7 @@ impl Window {
                 &context,
                 linear_memory.memory_type_index,
             ),
-            linear_memory_stride: color_linear_memory_stride(format),
+            linear_memory_stride,
             linear_memory_map,
             linear_memory,
             linear_buffer,
@@ -1199,6 +1195,41 @@ mod test {
         test_simple_function_error(
             "vkCreateFramebuffer",
             "Error creating vkFramebuffer",
+        );
+    }
+
+    #[test]
+    fn rectangular_framebuffer() {
+        let fake_vulkan = base_fake_vulkan();
+
+        fake_vulkan.set_override();
+        let context = Rc::new(Context::new(
+            &Requirements::new(),
+            None
+        ).unwrap());
+
+        let mut format = WindowFormat::default();
+
+        format.width = 200;
+        format.height = 100;
+
+        let window = Window::new(
+            Rc::clone(&context),
+            &format,
+        ).unwrap();
+
+        assert_eq!(
+            window.linear_memory_stride(),
+            200 * format.color_format.size()
+        );
+
+        let HandleType::Memory { ref contents, .. } =
+            fake_vulkan.get_handle(window.linear_memory()).data
+        else { unreachable!("Mismatched handle"); };
+
+        assert_eq!(
+            contents.len(),
+            window.linear_memory_stride() * 100,
         );
     }
 }
