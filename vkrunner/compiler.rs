@@ -269,6 +269,7 @@ fn compile_glsl(
         logger,
         Command::new(exe)
             .args([
+                "--quiet",
                 "-V",
                 "--target-env", &version_str,
                 "-S", stage_name(stage),
@@ -490,6 +491,7 @@ mod test {
         assert_eq!(
             &log,
             &[
+                "quiet",
                 "vulkan_spirv",
                 "target_env: vulkan1.0",
                 "stage: frag",
@@ -512,6 +514,7 @@ mod test {
         assert_eq!(
             &log,
             &[
+                "quiet",
                 "vulkan_spirv",
                 "target_env: vulkan1.0",
                 "stage: vert",
@@ -569,6 +572,7 @@ mod test {
         assert_eq!(
             &log,
             &[
+                "quiet",
                 "vulkan_spirv",
                 "target_env: vulkan1.0",
                 &format!("stage: {}", compiler_argument)

@@ -53,6 +53,7 @@ fn main() {
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
+            "--quiet" => println!("quiet"),
             "-V" => println!("vulkan_spirv"),
             "--target-env" => println!("target_env: {}", args.next().unwrap()),
             "-S" => println!("stage: {}", args.next().unwrap()),
