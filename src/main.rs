@@ -840,13 +840,9 @@ mod test {
 
     #[test]
     fn invalid_integer() {
-        use std::os::unix::ffi::OsStrExt;
-        use std::ffi::OsStr;
-
         let args = vec![
             "vkrunner".into(),
-            "-B".into(),
-            OsStr::from_bytes(b"twelve").into(),
+            "-B".into(), "twelve".into(),
         ].into_iter();
 
         let error = parse_options(args).unwrap_err();
