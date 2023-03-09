@@ -7,8 +7,14 @@ possible.
 
 ## Building
 
-VkRunner requires [meson](https://mesonbuild.com/) and a rust compiler
-to build.
+VkRunner requires the Vulkan headers in order to build. On a Linux
+system these can be installed via the standard system packages which
+are `libvulkan-dev` on Ubuntu and Debian or `vulkan-headers` on
+Fedora. On Windows the header can be found by installing LunarG’s
+VulkanSDK from [here](https://www.lunarg.com/vulkan-sdk/).
+
+VkRunner additionally requires [meson](https://mesonbuild.com/) and a
+rust compiler to build.
 
 To build it type:
 
@@ -18,6 +24,14 @@ ninja -C build
 ```
 
 You will find the VkRunner executable under `build/src/`.
+
+If the Vulkan headers are installed in a non-standard location (as
+will be the case for Windows), you can point Meson to it when
+configuring the build as follows:
+
+```
+meson setup build -Dvulkan_header_path=/path/to/vulkan/include
+```
 
 ## Running
 

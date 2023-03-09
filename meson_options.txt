@@ -1,0 +1,2 @@
+option('vulkan_header_path', type : 'string',
+       description : 'Include path to the Vulkan header file')
