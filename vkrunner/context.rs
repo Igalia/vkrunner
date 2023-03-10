@@ -1278,7 +1278,7 @@ mod test {
         let mut fake_vulkan = FakeVulkan::new();
         fake_vulkan.physical_devices.push(Default::default());
 
-        let device = fake_vulkan.add_handle(HandleType::Device);
+        let device = fake_vulkan.add_dispatchable_handle(HandleType::Device);
 
         extern "C" fn no_create_device(
             _physical_device: vk::VkPhysicalDevice,
@@ -1381,6 +1381,6 @@ mod test {
 
         drop(context);
 
-        fake_vulkan.get_handle_mut(device).freed = true;
+        fake_vulkan.get_dispatchable_handle_mut(device).freed = true;
     }
 }

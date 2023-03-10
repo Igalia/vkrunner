@@ -1102,7 +1102,7 @@ impl FakeVulkan {
         fake_vulkan.next_result("vkEnumerateDeviceExtensionProperties")
     }
 
-    pub fn add_handle<T>(&mut self, data: HandleType) -> *mut T {
+    pub fn add_dispatchable_handle<T>(&mut self, data: HandleType) -> *mut T {
         self.handles.push(Handle {
             freed: false,
             data,
@@ -1111,7 +1111,22 @@ impl FakeVulkan {
         self.handles.len() as *mut T
     }
 
-    pub fn handle_to_index<T>(handle: *mut T) -> usize {
+    #[cfg(target_pointer_width = "64")]
+    pub fn add_handle<T>(&mut self, data: HandleType) -> *mut T {
+        self.add_dispatchable_handle(data)
+    }
+
+    #[cfg(not(target_pointer_width = "64"))]
+    pub fn add_handle(&mut self, data: HandleType) -> u64 {
+        self.handles.push(Handle {
+            freed: false,
+            data,
+        });
+
+        self.handles.len() as u64
+    }
+
+    pub fn dispatchable_handle_to_index<T>(handle: *mut T) -> usize {
         let handle_num = handle as usize;
 
         assert!(handle_num > 0);
@@ -1119,6 +1134,40 @@ impl FakeVulkan {
         handle_num - 1
     }
 
+    #[cfg(target_pointer_width = "64")]
+    pub fn handle_to_index<T>(handle: *mut T) -> usize {
+        FakeVulkan::dispatchable_handle_to_index(handle)
+    }
+
+    #[cfg(not(target_pointer_width = "64"))]
+    pub fn handle_to_index(handle: u64) -> usize {
+        assert!(handle > 0);
+
+        (handle - 1) as usize
+    }
+
+    pub fn get_dispatchable_handle<T>(&self, handle: *mut T) -> &Handle {
+        let index = FakeVulkan::dispatchable_handle_to_index(handle);
+        let handle = &self.handles[index];
+
+        assert!(!handle.freed);
+
+        handle
+    }
+
+    pub fn get_dispatchable_handle_mut<T>(
+        &mut self,
+        handle: *mut T,
+    ) -> &mut Handle {
+        let index = FakeVulkan::dispatchable_handle_to_index(handle);
+        let handle = &mut self.handles[index];
+
+        assert!(!handle.freed);
+
+        handle
+    }
+
+    #[cfg(target_pointer_width = "64")]
     pub fn get_handle<T>(&self, handle: *mut T) -> &Handle {
         let handle = &self.handles[FakeVulkan::handle_to_index(handle)];
 
@@ -1127,10 +1176,26 @@ impl FakeVulkan {
         handle
     }
 
+    #[cfg(not(target_pointer_width = "64"))]
+    pub fn get_handle(&self, handle: u64) -> &Handle {
+        let handle = &self.handles[FakeVulkan::handle_to_index(handle)];
+
+        assert!(!handle.freed);
+
+        handle
+    }
+
+    #[cfg(target_pointer_width = "64")]
     pub fn get_freed_handle<T>(&self, handle: *mut T) -> &Handle {
         &self.handles[FakeVulkan::handle_to_index(handle)]
     }
 
+    #[cfg(not(target_pointer_width = "64"))]
+    pub fn get_freed_handle(&self, handle: u64) -> &Handle {
+        &self.handles[FakeVulkan::handle_to_index(handle)]
+    }
+
+    #[cfg(target_pointer_width = "64")]
     pub fn get_handle_mut<T>(&mut self, handle: *mut T) -> &mut Handle {
         let handle = &mut self.handles[FakeVulkan::handle_to_index(handle)];
 
@@ -1139,8 +1204,17 @@ impl FakeVulkan {
         handle
     }
 
+    #[cfg(not(target_pointer_width = "64"))]
+    pub fn get_handle_mut(&mut self, handle: u64) -> &mut Handle {
+        let handle = &mut self.handles[FakeVulkan::handle_to_index(handle)];
+
+        assert!(!handle.freed);
+
+        handle
+    }
+
     fn check_device(&self, device: vk::VkDevice) {
-        let handle = self.get_handle(device);
+        let handle = self.get_dispatchable_handle(device);
         assert!(matches!(handle.data, HandleType::Device));
     }
 
@@ -1213,7 +1287,8 @@ impl FakeVulkan {
         }
 
         unsafe {
-            *instance_out = fake_vulkan.add_handle(HandleType::Instance);
+            *instance_out =
+                fake_vulkan.add_dispatchable_handle(HandleType::Instance);
         }
 
         res
@@ -1234,7 +1309,8 @@ impl FakeVulkan {
         }
 
         unsafe {
-            *device_out = fake_vulkan.add_handle(HandleType::Device);
+            *device_out =
+                fake_vulkan.add_dispatchable_handle(HandleType::Device);
         }
 
         res
@@ -1246,7 +1322,7 @@ impl FakeVulkan {
     ) {
         let fake_vulkan = FakeVulkan::current();
 
-        let handle = fake_vulkan.get_handle_mut(device);
+        let handle = fake_vulkan.get_dispatchable_handle_mut(device);
         assert!(matches!(handle.data, HandleType::Device));
         handle.freed = true;
     }
@@ -1257,7 +1333,7 @@ impl FakeVulkan {
     ) {
         let fake_vulkan = FakeVulkan::current();
 
-        let handle = fake_vulkan.get_handle_mut(instance);
+        let handle = fake_vulkan.get_dispatchable_handle_mut(instance);
         assert!(matches!(handle.data, HandleType::Instance));
         handle.freed = true;
     }
@@ -1322,7 +1398,7 @@ impl FakeVulkan {
 
         for i in 0..(n_buffers as usize) {
             unsafe {
-                *command_buffers.add(i) = fake_vulkan.add_handle(
+                *command_buffers.add(i) = fake_vulkan.add_dispatchable_handle(
                     HandleType::CommandBuffer {
                         command_pool: FakeVulkan::handle_to_index(
                             command_pool_handle
@@ -1355,7 +1431,7 @@ impl FakeVulkan {
             };
 
             let command_buffer_handle =
-                fake_vulkan.get_handle_mut(command_buffer);
+                fake_vulkan.get_dispatchable_handle_mut(command_buffer);
 
             match command_buffer_handle.data {
                 HandleType::CommandBuffer { command_pool: handle_pool, .. } => {
@@ -2195,7 +2271,7 @@ impl FakeVulkan {
 
             for &command_buffer in command_buffers.iter() {
                 let HandleType::CommandBuffer { ref mut commands, begun, .. } =
-                    fake_vulkan.get_handle_mut(command_buffer).data
+                    fake_vulkan.get_dispatchable_handle_mut(command_buffer).data
                 else {
                     unreachable!("bad handle type")
                 };
@@ -2328,7 +2404,7 @@ impl FakeVulkan {
         }
 
         let HandleType::CommandBuffer { ref mut begun, .. } =
-            fake_vulkan.get_handle_mut(command_buffer).data
+            fake_vulkan.get_dispatchable_handle_mut(command_buffer).data
         else { unreachable!("mismatched handle"); };
 
         assert!(!*begun);
@@ -2349,7 +2425,7 @@ impl FakeVulkan {
         }
 
         let HandleType::CommandBuffer { ref mut begun, .. } =
-            fake_vulkan.get_handle_mut(command_buffer).data
+            fake_vulkan.get_dispatchable_handle_mut(command_buffer).data
         else { unreachable!("mismatched handle"); };
 
         assert!(*begun);
@@ -2364,7 +2440,7 @@ impl FakeVulkan {
         command: Command,
     ) {
         let HandleType::CommandBuffer { ref mut commands, begun, .. } =
-            self.get_handle_mut(command_buffer).data
+            self.get_dispatchable_handle_mut(command_buffer).data
         else { unreachable!("mismatched handle"); };
 
         assert!(begun);
