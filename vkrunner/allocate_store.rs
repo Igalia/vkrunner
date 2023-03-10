@@ -62,7 +62,7 @@ fn allocate_memory(
         memory_type_flags,
     )?;
 
-    let mut memory = ptr::null_mut();
+    let mut memory = vk::null_handle();
 
     let allocate_info = vk::VkMemoryAllocateInfo {
         sType: vk::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
@@ -356,7 +356,7 @@ mod test {
             0, // memory_type_flags
         ).unwrap();
 
-        assert!(!device_memory.is_null());
+        assert!(device_memory != vk::null_handle());
         assert_eq!(memory_type, 0);
 
         unsafe {

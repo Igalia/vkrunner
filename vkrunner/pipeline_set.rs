@@ -151,7 +151,7 @@ impl PipelineCache {
             pInitialData: ptr::null(),
         };
 
-        let mut handle = ptr::null_mut();
+        let mut handle = vk::null_handle();
 
         let res = unsafe {
             window.device().vkCreatePipelineCache.unwrap()(
@@ -232,7 +232,7 @@ impl DescriptorPool {
             pPoolSizes: pool_sizes.as_ptr(),
         };
 
-        let mut handle = ptr::null_mut();
+        let mut handle = vk::null_handle();
 
         let res = unsafe {
             window.device().vkCreateDescriptorPool.unwrap()(
@@ -297,7 +297,7 @@ impl DescriptorSetLayoutVec {
             pBindings: bindings.as_ptr(),
         };
 
-        let mut handle = ptr::null_mut();
+        let mut handle = vk::null_handle();
 
         let res = unsafe {
             self.window.device().vkCreateDescriptorSetLayout.unwrap()(
@@ -472,7 +472,7 @@ impl PipelineLayout {
         stages: vk::VkShaderStageFlagBits,
         descriptor_data: Option<&DescriptorData>
     ) -> Result<PipelineLayout, Error> {
-        let mut handle = ptr::null_mut();
+        let mut handle = vk::null_handle();
 
         let push_constant_range = vk::VkPushConstantRange {
             stageFlags: stages,
@@ -653,7 +653,7 @@ impl PipelineVec {
                         modules[shader_stage::Stage::Compute as usize]
                             .as_ref()
                             .map(|m| m.handle)
-                            .unwrap_or(ptr::null_mut())
+                            .unwrap_or(vk::null_handle())
                     )?
                 },
             };
@@ -779,7 +779,7 @@ impl PipelineVec {
         create_info.pMultisampleState = ptr::addr_of!(multisample_state);
         create_info.subpass = 0;
         create_info.basePipelineHandle =
-            parent_pipeline.unwrap_or(ptr::null_mut());
+            parent_pipeline.unwrap_or(vk::null_handle());
         create_info.basePipelineIndex = -1;
 
         create_info.stageCount = stages.len() as u32;
@@ -804,7 +804,7 @@ impl PipelineVec {
         create_info.pVertexInputState =
             ptr::addr_of!(vertex_input_state.create_info);
 
-        let mut handle = ptr::null_mut();
+        let mut handle = vk::null_handle();
 
         let res = unsafe {
             window.device().vkCreateGraphicsPipelines.unwrap()(
@@ -852,11 +852,11 @@ impl PipelineVec {
             },
 
             layout,
-            basePipelineHandle: ptr::null_mut(),
+            basePipelineHandle: vk::null_handle(),
             basePipelineIndex: -1,
         };
 
-        let mut handle = ptr::null_mut();
+        let mut handle = vk::null_handle();
 
         let res = unsafe {
             window.device().vkCreateComputePipelines.unwrap()(
@@ -1134,7 +1134,7 @@ mod test {
             create_info.renderPass,
             test_data.window.render_passes()[0]
         );
-        assert_eq!(create_info.basePipelineHandle, ptr::null_mut());
+        assert_eq!(create_info.basePipelineHandle, vk::null_handle());
 
         assert_eq!(create_data.bindings.len(), 1);
         assert_eq!(create_data.bindings[0].binding, 0);

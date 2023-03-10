@@ -300,7 +300,7 @@ impl RenderPass {
             pDependencies: ptr::null(),
         };
 
-        let mut render_pass: vk::VkRenderPass = ptr::null_mut();
+        let mut render_pass: vk::VkRenderPass = vk::null_handle();
 
         let res = unsafe {
             context.device().vkCreateRenderPass.unwrap()(
@@ -355,7 +355,7 @@ impl Image {
         context: Rc<Context>,
         image_create_info: &vk::VkImageCreateInfo,
     ) -> Result<Image, WindowError> {
-        let mut image: vk::VkImage = ptr::null_mut();
+        let mut image: vk::VkImage = vk::null_handle();
 
         let res = unsafe {
             context.device().vkCreateImage.unwrap()(
@@ -483,7 +483,7 @@ impl ImageView {
             },
         };
 
-        let mut image_view: vk::VkImageView = ptr::null_mut();
+        let mut image_view: vk::VkImageView = vk::null_handle();
 
         let res = unsafe {
             context.device().vkCreateImageView.unwrap()(
@@ -576,7 +576,7 @@ impl Framebuffer {
             layers: 1,
         };
 
-        let mut framebuffer: vk::VkFramebuffer = ptr::null_mut();
+        let mut framebuffer: vk::VkFramebuffer = vk::null_handle();
 
         let res = unsafe {
             context.device().vkCreateFramebuffer.unwrap()(
@@ -883,8 +883,8 @@ mod test {
         );
         assert_eq!(window.vk_device(), context.vk_device());
         assert_ne!(window.render_passes()[0], window.render_passes()[1]);
-        assert!(!window.linear_memory().is_null());
-        assert!(!window.linear_buffer().is_null());
+        assert!(window.linear_memory() != vk::null_handle());
+        assert!(window.linear_buffer() != vk::null_handle());
         assert!(!window.linear_memory_map().is_null());
         assert_eq!(
             window.linear_memory_stride(),
@@ -892,8 +892,8 @@ mod test {
                 * window.format().width
         );
         assert!(window.need_linear_memory_invalidate());
-        assert!(!window.framebuffer().is_null());
-        assert!(!window.color_image().is_null());
+        assert!(window.framebuffer() != vk::null_handle());
+        assert!(window.color_image() != vk::null_handle());
 
         let rp = get_render_pass_attachments(
             fake_vulkan.as_mut(),

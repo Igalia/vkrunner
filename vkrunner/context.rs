@@ -317,6 +317,8 @@ impl InstancePair {
         instance_create_info.ppEnabledExtensionNames =
             enabled_extensions.as_ptr();
 
+        // VkInstance is a dispatchable handle so it is always a
+        // pointer and we can’t use vk::null_handle.
         let mut vk_instance = ptr::null_mut();
 
         let res = unsafe {
@@ -433,6 +435,8 @@ impl DevicePair {
             pEnabledFeatures: base_features,
         };
 
+        // VkDevice is a dispatchable handle so it is always a pointer
+        // and we can’t use vk::null_handle.
         let mut device = ptr::null_mut();
 
         let res = unsafe {
@@ -543,7 +547,7 @@ impl<'a> DeviceResources<'a> {
             flags: vk::VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
             queueFamilyIndex: queue_family,
         };
-        let mut command_pool = ptr::null_mut();
+        let mut command_pool = vk::null_handle();
         let res = unsafe {
             self.device_pair.vkdev.vkCreateCommandPool.unwrap()(
                 self.device_pair.device,
@@ -570,6 +574,8 @@ impl<'a> DeviceResources<'a> {
             level: vk::VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             commandBufferCount: 1,
         };
+        // VkCommandBuffer is a dispatchable handle so it is always a
+        // pointer and we can’t use vk::null_handle.
         let mut command_buffer = ptr::null_mut();
         let res = unsafe {
             self.device_pair.vkdev.vkAllocateCommandBuffers.unwrap()(
@@ -594,7 +600,7 @@ impl<'a> DeviceResources<'a> {
             pNext: ptr::null(),
             flags: 0,
         };
-        let mut fence = ptr::null_mut();
+        let mut fence = vk::null_handle();
         let res = unsafe {
             self.device_pair.vkdev.vkCreateFence.unwrap()(
                 self.device_pair.device,
@@ -794,6 +800,8 @@ impl Context {
             );
         }
 
+        // VkQueue is a dispatchable handle so it is always a pointer
+        // and we can’t use vk::null_handle.
         let mut queue = ptr::null_mut();
 
         unsafe {
@@ -1007,7 +1015,7 @@ mod test {
         );
         assert_eq!(context.memory_properties().memoryTypeCount, 3);
         assert!(!context.command_buffer().is_null());
-        assert!(!context.fence().is_null());
+        assert!(context.fence() != vk::null_handle());
         assert_eq!(FakeVulkan::unmake_queue(context.queue()), (0, 0));
     }
 

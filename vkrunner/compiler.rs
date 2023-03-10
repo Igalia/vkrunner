@@ -150,7 +150,7 @@ fn create_shader_from_binary(
         pCode: data.as_ptr(),
     };
 
-    let mut module: vk::VkShaderModule = ptr::null_mut();
+    let mut module: vk::VkShaderModule = vk::null_handle();
 
     let res = unsafe {
         context.device().vkCreateShaderModule.unwrap()(

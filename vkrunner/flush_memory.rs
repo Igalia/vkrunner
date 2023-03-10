@@ -99,7 +99,7 @@ mod test {
 
     impl Memory {
         fn new(context: Rc<Context>) -> Memory {
-            let mut handle = ptr::null_mut();
+            let mut handle = vk::null_handle();
 
             let allocate_info = vk::VkMemoryAllocateInfo {
                 sType: vk::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,

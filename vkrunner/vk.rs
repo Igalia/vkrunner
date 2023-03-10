@@ -27,3 +27,17 @@
 #![allow(non_snake_case)]
 
 include!("vulkan_bindings.rs");
+
+/// Function to return a value that can be used where the Vulkan
+/// documentation specifies that `VK_NULL_HANDLE` can be used.
+#[cfg(target_pointer_width = "64")]
+pub fn null_handle<T>() -> *mut T {
+    std::ptr::null_mut()
+}
+
+#[cfg(not(target_pointer_width = "64"))]
+pub fn null_handle() -> u64 {
+    // On 32-bit platforms the non-dispatchable handles are defined as
+    // a 64-bit integer instead of a pointer.
+    0u64
+}

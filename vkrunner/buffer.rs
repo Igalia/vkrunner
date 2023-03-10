@@ -198,7 +198,7 @@ impl Buffer {
             pQueueFamilyIndices: ptr::null(),
         };
 
-        let mut buffer: vk::VkBuffer = ptr::null_mut();
+        let mut buffer: vk::VkBuffer = vk::null_handle();
 
         let res = unsafe {
             context.device().vkCreateBuffer.unwrap()(
