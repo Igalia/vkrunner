@@ -1,3 +1,5 @@
+# REPOSITORY MOVED TO https://gitlab.freedesktop.org/mesa/vkrunner
+
 # VkRunner
 
 VkRunner is a Vulkan shader tester based on `shader_runner` in
